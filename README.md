@@ -96,6 +96,16 @@ The `effect-line-manager/web` entry is separate from the headless root package.
 Importing it does not register custom elements. Register the complete account
 management component set explicitly:
 
+To open the included interactive demo with seeded in-memory accounts, run:
+
+```bash
+vp dev demo
+```
+
+Then open the local URL printed by Vite+, normally `http://localhost:5173/`.
+Create, edit, activate, deactivate, and delete operations remain in memory and
+reset when the page reloads.
+
 ```ts
 import {
   defineLineAccountManagementElements,
