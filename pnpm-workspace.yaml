@@ -1,7 +1,18 @@
+allowBuilds:
+  msgpackr-extract: set this to true or false
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vitest: npm:@voidzero-dev/vite-plus-test@latest
   vite-plus: latest
+minimumReleaseAgeExclude:
+  - "@effect/tsgo-darwin-arm64@0.14.2"
+  - "@effect/tsgo-darwin-x64@0.14.2"
+  - "@effect/tsgo-linux-arm64@0.14.2"
+  - "@effect/tsgo-linux-arm@0.14.2"
+  - "@effect/tsgo-linux-x64@0.14.2"
+  - "@effect/tsgo-win32-arm64@0.14.2"
+  - "@effect/tsgo-win32-x64@0.14.2"
+  - "@effect/tsgo@0.14.2"
 overrides:
   vite: "catalog:"
   vitest: "catalog:"

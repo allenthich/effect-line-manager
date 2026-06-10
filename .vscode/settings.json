@@ -18,5 +18,30 @@
   "editor.formatOnSaveMode": "file",
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "explicit"
-  }
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#a8701c",
+    "activityBar.background": "#a8701c",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#0e5237",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "panel.border": "#a8701c",
+    "sash.hoverBorder": "#a8701c",
+    "statusBar.background": "#7c5315",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#a8701c",
+    "statusBarItem.remoteBackground": "#7c5315",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "tab.activeBorder": "#a8701c",
+    "titleBar.activeBackground": "#7c5315",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#7c531599",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#7c5315",
+  "js/ts.experimental.useTsgo": true,
+  "typescript.experimental.useTsgo": true,
+  "typescript.native-preview.tsdk": "node_modules/@typescript/native-preview"
 }

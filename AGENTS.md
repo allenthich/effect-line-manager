@@ -14,3 +14,18 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+## General
+
+- DO NOT perform git commit or git push commands unless explicitly asked to do so
+
+## Source Code Reference
+
+Source code for dependencies is cached at `~/.opensrc/`.
+
+Use `opensrc path` inside other commands to read source:
+
+\`\`\`bash
+rg "pattern" $(opensrc path <package>)
+cat $(opensrc path <package>)/path/to/file
+\`\`\`
