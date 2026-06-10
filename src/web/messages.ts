@@ -57,6 +57,8 @@ export interface LineAccountManagementMessages {
   readonly createSuccess: string;
   readonly updateSuccess: string;
   readonly deleteSuccess: string;
+  readonly configuredBadge: string;
+  readonly notConfiguredBadge: string;
   readonly deleteConfirmation: (name: string) => string;
   readonly profileImageAlt: (name: string) => string;
 }
@@ -74,7 +76,7 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   nameLabel: "Account name",
   nameHint: "A name used to identify this account.",
   channelIdLabel: "Channel ID",
-  channelIdHint: "The Messaging API channel ID cannot be changed after creation.",
+  channelIdHint: "The Messaging API channel ID.",
   channelAccessTokenLabel: "Channel access token",
   channelAccessTokenCreateHint: "Enter the Messaging API channel access token.",
   channelAccessTokenEditHint: "Leave blank to keep the current token.",
@@ -88,10 +90,10 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   activeLabel: "Account active",
   activeStatus: "Active",
   inactiveStatus: "Inactive",
-  loginConfigured: "LINE Login configured",
-  loginNotConfigured: "LINE Login not configured",
-  liffConfigured: "LIFF configured",
-  liffNotConfigured: "LIFF not configured",
+  loginConfigured: "LINE Login",
+  loginNotConfigured: "LINE Login",
+  liffConfigured: "LIFF",
+  liffNotConfigured: "LIFF",
   editAccount: "Edit",
   deleteAccount: "Delete",
   activateAccount: "Activate",
@@ -121,6 +123,8 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   createSuccess: "LINE account created.",
   updateSuccess: "LINE account updated.",
   deleteSuccess: "LINE account deleted.",
+  configuredBadge: "Saved",
+  notConfiguredBadge: "Not set",
   deleteConfirmation: (name) => `Delete ${name}? This action cannot be undone.`,
   profileImageAlt: (name) => `${name} profile image`,
 };

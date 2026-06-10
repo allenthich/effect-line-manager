@@ -93,6 +93,7 @@ export class LineAccountManagement extends LitElement {
       cursor: pointer;
       font: inherit;
       font-weight: 650;
+      transition: all 0.15s ease-in-out;
     }
 
     button:focus-visible {
@@ -111,14 +112,39 @@ export class LineAccountManagement extends LitElement {
       color: var(--line-account-primary-contrast, #fff);
     }
 
+    .add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .add-btn:hover:not(:disabled) {
+      background-color: var(--line-account-primary-hover, #05b04b);
+      border-color: var(--line-account-primary-hover, #05b04b);
+    }
+
+    .add-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .add-icon {
+      width: 1.125rem;
+      height: 1.125rem;
+      flex-shrink: 0;
+    }
+
     .danger {
       border-color: var(--line-account-danger-color, #c62828);
       background: var(--line-account-danger-color, #c62828);
       color: #fff;
     }
 
+    .danger:hover:not(:disabled) {
+      background-color: var(--line-account-danger-hover, #b02020);
+      border-color: var(--line-account-danger-hover, #b02020);
+    }
+
     .state,
-    .notice,
     .error {
       margin-bottom: var(--line-account-space-4, 1rem);
       padding: var(--line-account-space-4, 1rem);
@@ -127,14 +153,116 @@ export class LineAccountManagement extends LitElement {
       background: var(--line-account-surface-background, #fff);
     }
 
-    .notice {
-      border-color: var(--line-account-primary-color, #06c755);
-    }
-
     .error {
       border-color: var(--line-account-danger-color, #c62828);
       background: var(--line-account-danger-background, #fff0f0);
       color: var(--line-account-danger-color, #a61b1b);
+    }
+
+    .spinner-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--line-account-space-6, 3rem);
+      gap: 1rem;
+      border: 1px solid var(--line-account-border-color, #e4e7eb);
+      border-radius: var(--line-account-radius, 0.75rem);
+      background: var(--line-account-surface-background, #fff);
+    }
+
+    .spinner {
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid var(--line-account-muted-background, #eef2f5);
+      border-top-color: var(--line-account-primary-color, #06c755);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 1000;
+      pointer-events: none;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem 0.75rem 0.75rem;
+      border: 1px solid var(--line-account-primary-color, #06c755);
+      border-radius: 0.5rem;
+      background: var(--line-account-surface-background, #fff);
+      color: var(--line-account-text-color, #1f2933);
+      box-shadow:
+        0 10px 25px -5px rgba(0, 0, 0, 0.1),
+        0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      max-width: 24rem;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .toast-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      color: var(--line-account-primary-color, #06c755);
+      flex-shrink: 0;
+    }
+
+    .toast-message {
+      font-size: 0.875rem;
+      font-weight: 550;
+      margin: 0;
+      flex-grow: 1;
+    }
+
+    .toast-close {
+      background: none;
+      border: none;
+      min-height: auto;
+      padding: 0.25rem;
+      color: var(--line-account-muted-color, #52606d);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.25rem;
+      margin-left: 0.5rem;
+      transition:
+        background-color 0.15s,
+        color 0.15s;
+    }
+
+    .toast-close:hover {
+      color: var(--line-account-text-color, #1f2933);
+      background-color: var(--line-account-muted-background, #eef2f5);
+    }
+
+    .toast-close svg {
+      width: 1rem;
+      height: 1rem;
     }
 
     .state h2,
@@ -179,6 +307,7 @@ export class LineAccountManagement extends LitElement {
 
   #loadGeneration = 0;
   #lastAdapter: LineAccountManagementAdapter | undefined;
+  #noticeTimeoutId: number | undefined;
 
   constructor() {
     super();
@@ -202,6 +331,13 @@ export class LineAccountManagement extends LitElement {
     super.connectedCallback();
     this.#lastAdapter = this.adapter;
     void this.reload();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.#noticeTimeoutId !== undefined) {
+      window.clearTimeout(this.#noticeTimeoutId);
+    }
   }
 
   async reload(): Promise<void> {
@@ -247,21 +383,72 @@ export class LineAccountManagement extends LitElement {
             <p class="description">${messages.description}</p>
           </div>
           <button
-            class="primary"
+            class="primary add-btn"
             part="add-button"
             type="button"
             ?disabled=${this.adapter === undefined}
             @click=${this.#openCreate}
           >
+            <svg
+              class="add-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
             ${messages.addAccount}
           </button>
         </header>
 
-        ${this.notice
-          ? html`<p class="notice" role="status" aria-live="polite">${this.notice}</p>`
-          : nothing}
         ${this.#renderCollection(messages)}
       </section>
+
+      ${this.notice
+        ? html`
+            <div class="toast-container" part="toast-container">
+              <div class="toast" role="status" aria-live="polite" part="toast">
+                <svg
+                  class="toast-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <p class="toast-message">${this.notice}</p>
+                <button
+                  class="toast-close"
+                  type="button"
+                  aria-label="Dismiss notification"
+                  @click=${this.#dismissNotice}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          `
+        : nothing}
 
       <line-account-dialog
         data-kind="create"
@@ -359,9 +546,14 @@ export class LineAccountManagement extends LitElement {
     }
 
     if (this.loading) {
-      return html`<p class="state" role="status" aria-live="polite">
-        ${messages.loadingAccounts}
-      </p>`;
+      return html`
+        <div class="spinner-container" role="status" aria-live="polite">
+          <div class="spinner"></div>
+          <p style="margin: 0; font-weight: 550; color: var(--line-account-muted-color, #52606d)">
+            ${messages.loadingAccounts}
+          </p>
+        </div>
+      `;
     }
 
     if (this.loadError) {
@@ -391,6 +583,25 @@ export class LineAccountManagement extends LitElement {
   get #resolvedMessages(): LineAccountManagementMessages {
     return { ...defaultLineAccountManagementMessages, ...this.messages };
   }
+
+  #showNotice(text: string): void {
+    this.notice = text;
+    if (this.#noticeTimeoutId !== undefined) {
+      window.clearTimeout(this.#noticeTimeoutId);
+    }
+    this.#noticeTimeoutId = window.setTimeout(() => {
+      this.notice = undefined;
+      this.#noticeTimeoutId = undefined;
+    }, 5000);
+  }
+
+  #dismissNotice = (): void => {
+    if (this.#noticeTimeoutId !== undefined) {
+      window.clearTimeout(this.#noticeTimeoutId);
+      this.#noticeTimeoutId = undefined;
+    }
+    this.notice = undefined;
+  };
 
   #openCreate = (): void => {
     if (this.adapter === undefined) return;
@@ -438,7 +649,7 @@ export class LineAccountManagement extends LitElement {
     try {
       const account = await adapter.create(input);
       this.dialogKind = undefined;
-      this.notice = this.#resolvedMessages.createSuccess;
+      this.#showNotice(this.#resolvedMessages.createSuccess);
       await this.reload();
       this.dispatchEvent(new CustomEvent("line-account-created", eventOptions({ account })));
     } catch (error) {
@@ -464,7 +675,7 @@ export class LineAccountManagement extends LitElement {
       const updated = await adapter.update(account.id, input);
       this.dialogKind = undefined;
       this.selectedAccount = undefined;
-      this.notice = this.#resolvedMessages.updateSuccess;
+      this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
         new CustomEvent("line-account-updated", eventOptions({ account: updated })),
@@ -490,7 +701,7 @@ export class LineAccountManagement extends LitElement {
     this.accountErrors = accountErrors;
     try {
       const updated = await adapter.update(account.id, { isActive: !account.isActive });
-      this.notice = this.#resolvedMessages.updateSuccess;
+      this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
         new CustomEvent("line-account-updated", eventOptions({ account: updated })),
@@ -522,7 +733,7 @@ export class LineAccountManagement extends LitElement {
       await adapter.delete(account.id);
       this.dialogKind = undefined;
       this.selectedAccount = undefined;
-      this.notice = this.#resolvedMessages.deleteSuccess;
+      this.#showNotice(this.#resolvedMessages.deleteSuccess);
       await this.reload();
       this.dispatchEvent(new CustomEvent("line-account-deleted", eventOptions({ id: account.id })));
     } catch (error) {

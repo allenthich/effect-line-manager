@@ -39,8 +39,8 @@ describe("line-account-card", () => {
     expect(element.shadowRoot?.textContent).toContain("LINE Store");
     expect(element.shadowRoot?.textContent).toContain("@line-store");
     expect(element.shadowRoot?.textContent).toContain("Active");
-    expect(element.shadowRoot?.textContent).toContain("LINE Login configured");
-    expect(element.shadowRoot?.textContent).toContain("LIFF not configured");
+    expect(element.shadowRoot?.textContent).toContain("LINE Login");
+    expect(element.shadowRoot?.textContent).toContain("LIFF");
     expect(element.shadowRoot?.querySelector('[part="card"]')).not.toBeNull();
   });
 
@@ -53,7 +53,7 @@ describe("line-account-card", () => {
 
     expect(element.shadowRoot?.textContent).toContain("Internal name");
     expect(element.shadowRoot?.querySelector('[aria-hidden="true"]')?.textContent).toBe("I");
-    expect(element.shadowRoot?.textContent).toContain("LINE Login not configured");
+    expect(element.shadowRoot?.textContent).toContain("LINE Login");
   });
 
   test("emits composed account request events and disables every action", async () => {

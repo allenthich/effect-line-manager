@@ -112,19 +112,20 @@ describe("create mode", () => {
 });
 
 describe("edit mode", () => {
-  test("shows immutable channel ID and emits an empty payload when unchanged", async () => {
+  test("shows editable channel ID and emits an empty payload when unchanged", async () => {
     const element = await makeForm("edit", account);
 
-    expect(input(element, "channelId").readOnly).toBe(true);
+    expect(input(element, "channelId").readOnly).toBe(false);
     expect(input(element, "channelId").value).toBe(account.channelId);
     expect(input(element, "channelAccessToken").value).toBe("");
     expect(input(element, "channelSecret").value).toBe("");
     expect(submit(element)).toEqual({ mode: "edit", input: {} });
   });
 
-  test("includes changed names and non-empty Messaging API credentials", async () => {
+  test("includes changed names, channel IDs, and non-empty Messaging API credentials", async () => {
     const element = await makeForm("edit", account);
     setValue(element, "name", " Updated store ");
+    setValue(element, "channelId", " 987654321 ");
     setValue(element, "channelAccessToken", " rotated-token ");
     setValue(element, "channelSecret", " rotated-secret ");
 
@@ -132,6 +133,7 @@ describe("edit mode", () => {
       mode: "edit",
       input: {
         name: "Updated store",
+        channelId: "987654321",
         channelAccessToken: "rotated-token",
         channelSecret: "rotated-secret",
       },
@@ -178,6 +180,53 @@ describe("edit mode", () => {
 
     expect(input(element, "name").value).toBe("Second account");
     expect(input(element, "channelId").value).toBe("channel-2");
+  });
+
+  test("populates password fields with hints, allows eye toggle reveal, and excludes unmodified hints from payload", async () => {
+    const accountWithHints: LineAccountView = {
+      ...account,
+      hasChannelAccessToken: true,
+      hasChannelSecret: true,
+      hasLoginChannelSecret: true,
+      channelAccessTokenHint: "20010••••••••••••••••",
+      channelSecretHint: "e3b0c••••••••••••••••",
+      loginChannelSecretHint: "f9afb••••••••••••••••",
+    };
+    const element = await makeForm("edit", accountWithHints);
+
+    const accessTokenInput = input(element, "channelAccessToken");
+    expect(accessTokenInput.value).toBe("20010••••••••••••••••");
+    expect(accessTokenInput.type).toBe("password");
+
+    // Click the eye toggle to reveal
+    const toggleButton = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'button[aria-label="Show password"]',
+    );
+    expect(toggleButton).not.toBeNull();
+    toggleButton?.click();
+    await element.updateComplete;
+
+    expect(accessTokenInput.type).toBe("text");
+
+    // Click the eye toggle to hide
+    const hideButton = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'button[aria-label="Hide password"]',
+    );
+    expect(hideButton).not.toBeNull();
+    hideButton?.click();
+    await element.updateComplete;
+
+    expect(accessTokenInput.type).toBe("password");
+
+    // Submit without changing should emit empty payload
+    expect(submit(element)).toEqual({ mode: "edit", input: {} });
+
+    // Change one field
+    setValue(element, "channelAccessToken", "new-token");
+    expect(submit(element)).toEqual({
+      mode: "edit",
+      input: { channelAccessToken: "new-token" },
+    });
   });
 
   test("disables submission and shows an external error without clearing values", async () => {

@@ -9,6 +9,12 @@ const seed: LineAccountView = {
   isActive: true,
   loginChannelId: null,
   liffId: null,
+  hasChannelAccessToken: true,
+  hasChannelSecret: true,
+  hasLoginChannelSecret: false,
+  channelAccessTokenHint: "20010••••••••••••••••",
+  channelSecretHint: "e3b0c••••••••••••••••",
+  loginChannelSecretHint: null,
 };
 
 test("provides isolated in-memory CRUD behavior for the demo page", async () => {

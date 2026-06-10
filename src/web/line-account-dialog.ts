@@ -23,10 +23,44 @@ export class LineAccountDialog extends LitElement {
       background: var(--line-account-surface-background, #fff);
       color: inherit;
       box-shadow: var(--line-account-dialog-shadow, 0 1.5rem 4rem rgb(0 0 0 / 24%));
+
+      /* Animation */
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+      transition:
+        opacity 0.2s ease-out,
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        display 0.2s allow-discrete,
+        overlay 0.2s allow-discrete;
+    }
+
+    dialog[open] {
+      opacity: 1;
+      transform: scale(1) translateY(0);
     }
 
     dialog::backdrop {
-      background: var(--line-account-backdrop-color, rgb(15 23 42 / 55%));
+      background: var(--line-account-backdrop-color, rgb(15 23 42 / 40%));
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      transition:
+        opacity 0.2s ease-out,
+        display 0.2s allow-discrete,
+        overlay 0.2s allow-discrete;
+    }
+
+    dialog[open]::backdrop {
+      opacity: 1;
+    }
+
+    @starting-style {
+      dialog[open] {
+        opacity: 0;
+        transform: scale(0.96) translateY(8px);
+      }
+      dialog[open]::backdrop {
+        opacity: 0;
+      }
     }
 
     h2 {
@@ -46,6 +80,7 @@ export class LineAccountDialog extends LitElement {
       gap: var(--line-account-space-2, 0.5rem);
       padding: var(--line-account-space-4, 1rem) var(--line-account-space-5, 1.25rem);
       border-top: 1px solid var(--line-account-border-color, #d9e0e6);
+      background: var(--line-account-dialog-footer-bg, #fafbfc);
     }
   `;
 

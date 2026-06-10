@@ -10,6 +10,12 @@ export interface LineAccountView {
   readonly liffId: string | null;
   readonly createdAt?: string | Date;
   readonly updatedAt?: string | Date;
+  readonly hasChannelAccessToken?: boolean;
+  readonly hasChannelSecret?: boolean;
+  readonly hasLoginChannelSecret?: boolean;
+  readonly channelAccessTokenHint?: string | null;
+  readonly channelSecretHint?: string | null;
+  readonly loginChannelSecretHint?: string | null;
 }
 
 export interface CreateLineAccountInput {
@@ -24,6 +30,7 @@ export interface CreateLineAccountInput {
 
 export interface UpdateLineAccountInput {
   readonly name?: string;
+  readonly channelId?: string;
   readonly channelAccessToken?: string;
   readonly channelSecret?: string;
   readonly loginChannelId?: string | null;
