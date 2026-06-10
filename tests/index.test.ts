@@ -1,6 +1,34 @@
 import { expect, test } from "vite-plus/test";
-import { fn } from "../src/index.ts";
+import {
+  CreateLineChannelInput,
+  LineApiResponseError,
+  LineChannel,
+  LineChannelNotFoundError,
+  LineClientRegistry,
+  LineMessages,
+  LineRepository,
+  LineSignatureError,
+  LineTextMessage,
+  makeLineApiClient,
+  makeLineClientRegistryLayer,
+  verifyLineSignature,
+  verifyLineSignatureString,
+} from "../src/index.ts";
 
-test("fn", () => {
-  expect(fn()).toBe("Hello, tsdown!");
+test("exports the stable LINE manager API", () => {
+  expect([
+    CreateLineChannelInput,
+    LineApiResponseError,
+    LineChannel,
+    LineChannelNotFoundError,
+    LineClientRegistry,
+    LineMessages,
+    LineRepository,
+    LineSignatureError,
+    LineTextMessage,
+    makeLineApiClient,
+    makeLineClientRegistryLayer,
+    verifyLineSignature,
+    verifyLineSignatureString,
+  ]).not.toContain(undefined);
 });
