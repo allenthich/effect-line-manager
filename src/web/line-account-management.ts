@@ -374,6 +374,9 @@ export class LineAccountManagement extends LitElement {
       box-shadow: none;
       cursor: pointer;
       transition: all 0.15s ease-in-out;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
     }
 
     .variant-btn:hover {
@@ -557,6 +560,54 @@ export class LineAccountManagement extends LitElement {
       margin-top: auto;
       border-top: 1px solid var(--line-account-border-color, #e4e7eb);
       padding-top: 1.25rem;
+    }
+
+    /* Switch used in split-pane details header */
+    .switch {
+      position: relative;
+      width: 2.75rem;
+      height: 1.5rem;
+      padding: 0;
+      border: 1px solid var(--line-account-border-color, #c7d0d9);
+      border-radius: 999px;
+      background-color: var(--line-account-switch-off-bg, #e4e7eb);
+      cursor: pointer;
+      min-height: auto;
+      transition:
+        background-color 0.2s,
+        border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .switch:focus-visible {
+      outline: 3px solid var(--line-account-focus-color, #74d7a1);
+      outline-offset: 2px;
+    }
+
+    .switch.checked {
+      background-color: var(--line-account-primary-color, #06c755);
+      border-color: var(--line-account-primary-color, #06c755);
+    }
+
+    .switch-thumb {
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 50%;
+      background-color: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .switch.checked .switch-thumb {
+      transform: translateX(1.25rem);
+    }
+
+    .switch:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
     }
 
     @container (max-width: 36rem) {
@@ -810,6 +861,16 @@ export class LineAccountManagement extends LitElement {
         >
           ${messages.cancel}
         </button>
+        <button
+          class="primary"
+          part="submit-button"
+          slot="footer"
+          type="submit"
+          form="line-account-form"
+          ?disabled=${this.createPending}
+        >
+          ${this.createPending ? messages.creatingAccount : messages.createAccount}
+        </button>
       </line-account-dialog>
 
       <line-account-dialog
@@ -833,6 +894,16 @@ export class LineAccountManagement extends LitElement {
           @click=${this.#closeDialog}
         >
           ${messages.cancel}
+        </button>
+        <button
+          class="primary"
+          part="submit-button"
+          slot="footer"
+          type="submit"
+          form="line-account-form"
+          ?disabled=${this.editPending}
+        >
+          ${this.editPending ? messages.savingAccount : messages.saveChanges}
         </button>
       </line-account-dialog>
 
@@ -928,23 +999,39 @@ export class LineAccountManagement extends LitElement {
           <button
             class="variant-btn ${this.variant === "grid" ? "active" : ""}"
             type="button"
+            title="Grid view"
             @click=${() => this.#setVariant("grid")}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.9rem;height:0.9rem;flex-shrink:0">
+              <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
             Grid
           </button>
           <button
             class="variant-btn ${this.variant === "list" ? "active" : ""}"
             type="button"
+            title="Table view"
             @click=${() => this.#setVariant("list")}
           >
-            Table
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.9rem;height:0.9rem;flex-shrink:0">
+              <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            List
           </button>
           <button
             class="variant-btn ${this.variant === "split" ? "active" : ""}"
             type="button"
+            title="Split pane view"
             @click=${() => this.#setVariant("split")}
           >
-            Split Pane
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.9rem;height:0.9rem;flex-shrink:0">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+            Split
           </button>
         </div>
       </div>
@@ -1127,15 +1214,6 @@ export class LineAccountManagement extends LitElement {
               </button>
             </div>
           </div>
-          <div class="details-row">
-            <span class="details-label">Channel Status</span>
-            <div class="status-container" style="margin-top: 0.25rem;">
-              <span class="status-dot ${account.isActive ? "active" : "inactive"}"></span>
-              <span style="font-size: 0.875rem; font-weight: 600;"
-                >${account.isActive ? messages.activeStatus : messages.inactiveStatus}</span
-              >
-            </div>
-          </div>
         </div>
 
         <div class="details-section">
@@ -1170,14 +1248,6 @@ export class LineAccountManagement extends LitElement {
                       </svg>
                     </button>
                   </div>
-                </div>
-                <div class="details-row">
-                  <span class="details-label">Status</span>
-                  <span
-                    class="badge configured"
-                    style="margin-top: 0.25rem; align-self: flex-start;"
-                    >${messages.loginConfigured}</span
-                  >
                 </div>
               `
             : html`
@@ -1217,14 +1287,6 @@ export class LineAccountManagement extends LitElement {
                       </svg>
                     </button>
                   </div>
-                </div>
-                <div class="details-row">
-                  <span class="details-label">Status</span>
-                  <span
-                    class="badge configured"
-                    style="margin-top: 0.25rem; align-self: flex-start;"
-                    >${messages.liffConfigured}</span
-                  >
                 </div>
               `
             : html`

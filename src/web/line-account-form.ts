@@ -305,6 +305,7 @@ export class LineAccountForm extends LitElement {
     return html`
       <form
         part="form"
+        id="line-account-form"
         aria-describedby=${visibleError ? "form-error" : nothing}
         @submit=${this.#handleSubmit}
       >
@@ -364,17 +365,6 @@ export class LineAccountForm extends LitElement {
           <legend>${this.messages.liffGroup}</legend>
           ${this.#renderField("liffId", this.messages.liffIdLabel, "text", false)}
         </fieldset>
-        <div class="actions">
-          <button part="submit-button" type="submit" ?disabled=${this.submitting}>
-            ${this.submitting
-              ? editing
-                ? this.messages.savingAccount
-                : this.messages.creatingAccount
-              : editing
-                ? this.messages.saveChanges
-                : this.messages.createAccount}
-          </button>
-        </div>
       </form>
     `;
   }

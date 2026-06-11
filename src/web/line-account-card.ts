@@ -102,27 +102,13 @@ export class LineAccountCard extends LitElement {
       font-size: 0.875rem;
     }
 
-    .status-container {
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-      font-weight: 600;
-    }
-
-    .status-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
+    .channel-id {
+      font-family: monospace;
+      font-size: 0.8125rem;
+      background: var(--line-account-muted-background, #eef2f5);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
       display: inline-block;
-    }
-
-    .status-dot.active {
-      background-color: var(--line-account-primary-color, #06c755);
-      box-shadow: 0 0 0 2px rgb(6 199 85 / 20%);
-    }
-
-    .status-dot.inactive {
-      background-color: var(--line-account-muted-color, #8a9ba8);
     }
 
     .switch {
@@ -437,13 +423,7 @@ export class LineAccountCard extends LitElement {
           </button>
         </div>
         <div class="metadata">
-          <span>${this.messages.channelIdLabel}: ${account.channelId}</span>
-          <div class="status-container">
-            <span class="status-dot ${account.isActive ? "active" : "inactive"}"></span>
-            <span
-              >${account.isActive ? this.messages.activeStatus : this.messages.inactiveStatus}</span
-            >
-          </div>
+          <span class="channel-id">${this.messages.channelIdLabel}: ${account.channelId}</span>
         </div>
         <div class="badges">
           <span class="badge ${account.loginChannelId ? "configured" : "unconfigured"}">
