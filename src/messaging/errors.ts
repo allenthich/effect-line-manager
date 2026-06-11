@@ -1,33 +1,8 @@
 import { Schema } from "effect";
-import { LineChannelId } from "./domain.ts";
 
-export const LineApiOperation = Schema.Literals(["pushMessage", "replyMessage"]);
+export const LineApiOperation = Schema.Literals(["pushMessage", "replyMessage", "getBotInfo"]);
 
 export type LineApiOperation = typeof LineApiOperation.Type;
-
-export const LineRepositoryOperation = Schema.Literals([
-  "create",
-  "findByChannelId",
-  "listAll",
-  "deleteByChannelId",
-]);
-
-export type LineRepositoryOperation = typeof LineRepositoryOperation.Type;
-
-export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryError>()(
-  "LineRepositoryError",
-  {
-    operation: LineRepositoryOperation,
-    cause: Schema.Defect(),
-  },
-) {}
-
-export class LineChannelNotFoundError extends Schema.TaggedErrorClass<LineChannelNotFoundError>()(
-  "LineChannelNotFoundError",
-  {
-    channelId: LineChannelId,
-  },
-) {}
 
 export class LineApiTransportError extends Schema.TaggedErrorClass<LineApiTransportError>()(
   "LineApiTransportError",

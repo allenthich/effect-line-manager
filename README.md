@@ -9,6 +9,33 @@ reply messages, and verifies webhook signatures against exact request bytes.
 The package intentionally does not include a database adapter, web framework
 controller, process-wide runtime, retry policy, or distributed cache.
 
+## Architecture Overview
+
+The library operates on a decoupled, headless core model. Host applications manage their own database relationships (e.g. mapping store models to `LineChannelRecordId`), and use the library's `LineClientRegistry` to fetch authenticated clients at runtime.
+
+```mermaid
+graph TD
+    subgraph Host Application
+        DB[(Host DB)] -->|foreign key mapping| Store[Store/Manager Entity]
+        Store -->|LineChannelRecordId| Registry[LineClientRegistry]
+        WebhookController[Webhook Endpoint /webhooks/line/:id] -->|Verify/Route| Registry
+    end
+
+    subgraph effect-line-manager Library
+        Registry -->|Caches by Record ID| Clients[Client Cache]
+        Clients -->|GET getMessagingClient| MsgClient[LineApiClient]
+        Clients -->|GET getLoginClient| LoginClient[LineLoginClient]
+        Clients -->|GET getLiffClient| LiffClient[LineLiffClient]
+        Repo[LineRepository Service] -->|Implemented by Host| DB
+    end
+
+    subgraph LINE APIs
+        MsgClient -->|Push/Reply Messages| MsgAPI[LINE Messaging API]
+        LoginClient -->|OIDC / Profile| LoginAPI[LINE Login API]
+        LiffClient -->|App CRUD| LiffAPI[LINE LIFF API]
+    end
+```
+
 ## Repository and Registry
 
 Implement `LineRepository` with infrastructure owned by the host application,

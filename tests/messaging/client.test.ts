@@ -7,8 +7,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "effect/unstable/http";
-import { makeLineApiClient } from "../../src/line/client.ts";
-import type { LineMessageTuple } from "../../src/line/domain.ts";
+import { makeLineApiClient, type LineMessageTuple } from "../../src/messaging/client.ts";
 
 const baseUrl = "https://line.test";
 
@@ -28,7 +27,7 @@ const requestJson = async (request: HttpClientRequest.HttpClientRequest) => {
 
 const failure = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.flip(effect));
 
-describe("LINE API client", () => {
+describe("LINE Messaging API client", () => {
   test("sends an authenticated push message with caller options", async () => {
     const { client: httpClient, requests } = makeCapturingClient();
     const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
@@ -73,6 +72,34 @@ describe("LINE API client", () => {
       replyToken: "reply-token",
       messages: [{ type: "text", text: "hello" }],
       notificationDisabled: false,
+    });
+  });
+
+  test("fetches authenticated bot info details", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              userId: "U-bot-id",
+              basicId: "@basic-id",
+              displayName: "My Bot",
+              pictureUrl: "https://example.com/pic.png",
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const info = await Effect.runPromise(client.getBotInfo());
+    expect(info).toEqual({
+      userId: "U-bot-id",
+      basicId: "@basic-id",
+      displayName: "My Bot",
+      pictureUrl: "https://example.com/pic.png",
     });
   });
 

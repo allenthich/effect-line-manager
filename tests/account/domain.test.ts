@@ -2,54 +2,72 @@ import { describe, expect, test } from "vite-plus/test";
 import { Redacted, Schema } from "effect";
 import { inspect } from "node:util";
 import {
-  CreateLineChannelInput,
-  LineChannel,
+  CreateLineAccountInput,
+  LineAccount,
   LineChannelId,
   LineChannelRecordId,
-  LineMessages,
-} from "../../src/line/domain.ts";
+  LineLoginChannelId,
+  LineLiffId,
+} from "../../src/account/domain.ts";
 
-describe("LINE domain schemas", () => {
-  test("constructs a channel with redacted credentials and a valid date", () => {
+describe("LINE account domain schemas", () => {
+  test("constructs an account with redacted credentials and a valid date", () => {
     const channelSecret = Redacted.make("channel-secret");
     const channelAccessToken = Redacted.make("access-token");
+    const loginChannelSecret = Redacted.make("login-secret");
     const createdAt = new Date("2026-06-10T00:00:00.000Z");
 
-    const channel = Schema.decodeUnknownSync(LineChannel)({
+    const account = Schema.decodeUnknownSync(LineAccount)({
       id: "channel-record-1",
       name: "Primary",
       channelId: "1234567890",
       channelSecret,
       channelAccessToken,
+      isActive: true,
+      loginChannelId: "login-channel-123",
+      loginChannelSecret,
+      liffId: "liff-123",
       createdAt,
+      updatedAt: createdAt,
     });
 
-    expect(channel.createdAt).toBe(createdAt);
-    expect(Redacted.value(channel.channelSecret)).toBe("channel-secret");
-    expect(Redacted.value(channel.channelAccessToken)).toBe("access-token");
-    expect(inspect(channel)).not.toContain("channel-secret");
-    expect(inspect(channel)).not.toContain("access-token");
+    expect(account.createdAt).toBe(createdAt);
+    expect(Redacted.value(account.channelSecret)).toBe("channel-secret");
+    expect(Redacted.value(account.channelAccessToken)).toBe("access-token");
+    expect(account.loginChannelId).toBe("login-channel-123");
+    expect(account.liffId).toBe("liff-123");
+    expect(inspect(account)).not.toContain("channel-secret");
+    expect(inspect(account)).not.toContain("access-token");
+    expect(inspect(account)).not.toContain("login-secret");
   });
 
   test("rejects an invalid creation date", () => {
     expect(() =>
-      Schema.decodeUnknownSync(LineChannel)({
+      Schema.decodeUnknownSync(LineAccount)({
         id: "channel-record-1",
         name: "Primary",
         channelId: "1234567890",
         channelSecret: Redacted.make("channel-secret"),
         channelAccessToken: Redacted.make("access-token"),
+        isActive: true,
+        loginChannelId: null,
+        loginChannelSecret: null,
+        liffId: null,
         createdAt: new Date("invalid"),
+        updatedAt: new Date(),
       }),
     ).toThrow();
   });
 
-  test("models mutable channel creation fields", () => {
-    const input = Schema.decodeUnknownSync(CreateLineChannelInput)({
+  test("models mutable account creation fields", () => {
+    const input = Schema.decodeUnknownSync(CreateLineAccountInput)({
       name: "Primary",
       channelId: "1234567890",
       channelSecret: Redacted.make("channel-secret"),
       channelAccessToken: Redacted.make("access-token"),
+      loginChannelId: null,
+      loginChannelSecret: null,
+      liffId: null,
     });
 
     expect(input.name).toBe("Primary");
@@ -57,50 +75,37 @@ describe("LINE domain schemas", () => {
     expect(input).not.toHaveProperty("createdAt");
   });
 
-  test("brands non-empty channel identifiers at the domain boundary", () => {
+  test("brands non-empty account identifiers at the domain boundary", () => {
     expect(Schema.decodeUnknownSync(LineChannelRecordId)("record-1")).toBe("record-1");
     expect(Schema.decodeUnknownSync(LineChannelId)("channel-1")).toBe("channel-1");
+    expect(Schema.decodeUnknownSync(LineLoginChannelId)("login-1")).toBe("login-1");
+    expect(Schema.decodeUnknownSync(LineLiffId)("liff-1")).toBe("liff-1");
     expect(() => Schema.decodeUnknownSync(LineChannelRecordId)("   ")).toThrow();
     expect(() => Schema.decodeUnknownSync(LineChannelId)("")).toThrow();
   });
 
   test("rejects blank names and credentials", () => {
     expect(() =>
-      Schema.decodeUnknownSync(CreateLineChannelInput)({
+      Schema.decodeUnknownSync(CreateLineAccountInput)({
         name: "   ",
         channelId: "channel-1",
         channelSecret: Redacted.make("channel-secret"),
         channelAccessToken: Redacted.make("access-token"),
+        loginChannelId: null,
+        loginChannelSecret: null,
+        liffId: null,
       }),
     ).toThrow();
     expect(() =>
-      Schema.decodeUnknownSync(CreateLineChannelInput)({
+      Schema.decodeUnknownSync(CreateLineAccountInput)({
         name: "Primary",
         channelId: "channel-1",
         channelSecret: Redacted.make("   "),
         channelAccessToken: Redacted.make("access-token"),
+        loginChannelId: null,
+        loginChannelSecret: null,
+        liffId: null,
       }),
-    ).toThrow();
-  });
-
-  test.each([1, 2, 3, 4, 5])("accepts %i text messages", (count) => {
-    const messages = Array.from({ length: count }, (_, index) => ({
-      type: "text" as const,
-      text: `message-${index}`,
-    }));
-
-    expect(Schema.decodeUnknownSync(LineMessages)(messages)).toEqual(messages);
-  });
-
-  test("rejects empty and oversized message collections", () => {
-    expect(() => Schema.decodeUnknownSync(LineMessages)([])).toThrow();
-    expect(() =>
-      Schema.decodeUnknownSync(LineMessages)(
-        Array.from({ length: 6 }, (_, index) => ({
-          type: "text",
-          text: `message-${index}`,
-        })),
-      ),
     ).toThrow();
   });
 });

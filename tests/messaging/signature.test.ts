@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, test } from "vite-plus/test";
 import { Effect, Redacted } from "effect";
-import { verifyLineSignature, verifyLineSignatureString } from "../../src/line/signature.ts";
+import { verifyLineSignature, verifyLineSignatureString } from "../../src/messaging/signature.ts";
 
 const publishedBody = '{"destination":"U8e742f61d673b39c7fff3cecb7536ef0","events":[]}';
 const publishedSecret = Redacted.make("8c570fa6dd201bb328f1c1eac23a96d8");

@@ -2,50 +2,74 @@ import { describe, expect, test } from "vite-plus/test";
 import { Deferred, Effect, Fiber, Layer, Option, Redacted, Schema, type Duration } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { LineChannel, LineChannelId, LineChannelRecordId } from "../../src/line/domain.ts";
-import { LineRepositoryError } from "../../src/line/errors.ts";
-import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/line/registry.ts";
-import { LineRepository, type LineRepositoryService } from "../../src/line/repository.ts";
+import {
+  LineAccount,
+  LineChannelId,
+  LineChannelRecordId,
+  LineLoginChannelId,
+} from "../../src/account/domain.ts";
+import { LineRepositoryError } from "../../src/account/errors.ts";
+import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/account/registry.ts";
+import { LineRepository, type LineRepositoryService } from "../../src/account/repository.ts";
 
 const decodeChannelId = Schema.decodeUnknownSync(LineChannelId);
 const channelId = decodeChannelId("channel-1");
-const missingChannelId = decodeChannelId("missing");
 const recordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
+const missingRecordId = Schema.decodeUnknownSync(LineChannelRecordId)("missing-record");
 
-const makeChannel = (token: string) =>
-  new LineChannel({
+const makeAccount = (token: string) =>
+  new LineAccount({
     id: recordId,
     name: "Primary",
     channelId,
     channelSecret: Redacted.make("channel-secret"),
     channelAccessToken: Redacted.make(token),
+    isActive: true,
+    loginChannelId: Schema.decodeUnknownSync(LineLoginChannelId)("login-channel-1"),
+    loginChannelSecret: Redacted.make("login-secret"),
+    liffId: null,
     createdAt: new Date("2026-06-10T00:00:00.000Z"),
+    updatedAt: new Date("2026-06-10T00:00:00.000Z"),
   });
 
 const makeRepository = (
-  findByChannelId: LineRepositoryService["findByChannelId"],
+  findById: LineRepositoryService["findById"],
+  update?: LineRepositoryService["update"],
 ): LineRepositoryService => ({
   create: (input) =>
     Effect.succeed(
-      new LineChannel({
+      new LineAccount({
         id: Schema.decodeUnknownSync(LineChannelRecordId)("created-record"),
         name: input.name,
         channelId: input.channelId,
         channelSecret: input.channelSecret,
         channelAccessToken: input.channelAccessToken,
+        isActive: true,
+        loginChannelId: input.loginChannelId,
+        loginChannelSecret: input.loginChannelSecret,
+        liffId: input.liffId,
         createdAt: new Date("2026-06-10T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-10T00:00:00.000Z"),
       }),
     ),
-  findByChannelId,
+  update:
+    update ??
+    (() =>
+      Effect.fail(
+        new LineRepositoryError({ operation: "update", cause: new Error("unimplemented") }),
+      )),
+  findById,
+  findByChannelId: () => Effect.succeedNone,
+  findByBotUserId: () => Effect.succeedNone,
   listAll: () => Effect.succeed([]),
-  deleteByChannelId: () => Effect.void,
+  deleteById: () => Effect.void,
 });
 
-const makeCapturingHttpClient = () => {
+const makeCapturingHttpClient = (status = 200, body: string | null = null) => {
   const requests: Array<HttpClientRequest.HttpClientRequest> = [];
   const client = HttpClient.make((request) => {
     requests.push(request);
-    return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })));
+    return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(body, { status })));
   });
   return { client, requests } as const;
 };
@@ -74,12 +98,12 @@ const run = <A, E>(
 const failure = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.flip(effect));
 
 describe("LineClientRegistry", () => {
-  test("reuses a client after one repository lookup", async () => {
+  test("reuses client group after one repository lookup", async () => {
     let lookups = 0;
     const repository = makeRepository(() =>
       Effect.sync(() => {
         lookups += 1;
-        return Option.some(makeChannel("token-1"));
+        return Option.some(makeAccount("token-1"));
       }),
     );
     const { client: httpClient } = makeCapturingHttpClient();
@@ -87,9 +111,14 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const first = yield* registry.getClient(channelId);
-        const second = yield* registry.getClient(channelId);
-        expect(second).toBe(first);
+        const msg1 = yield* registry.getMessagingClient(recordId);
+        const msg2 = yield* registry.getMessagingClient(recordId);
+        expect(msg2).toBe(msg1);
+
+        const login1 = yield* registry.getLoginClient(recordId);
+        const liff1 = yield* registry.getLiffClient(recordId);
+        expect(login1).toBeDefined();
+        expect(liff1).toBeDefined();
       }),
       repository,
       httpClient,
@@ -105,7 +134,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         lookups += 1;
         yield* Deferred.await(gate);
-        return Option.some(makeChannel("token-1"));
+        return Option.some(makeAccount("token-1"));
       }),
     );
     const { client: httpClient } = makeCapturingHttpClient();
@@ -114,7 +143,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
         const fiber = yield* Effect.all(
-          [registry.getClient(channelId), registry.getClient(channelId)],
+          [registry.getMessagingClient(recordId), registry.getMessagingClient(recordId)],
           { concurrency: "unbounded" },
         ).pipe(Effect.forkChild);
         yield* Effect.yieldNow;
@@ -132,7 +161,7 @@ describe("LineClientRegistry", () => {
     const { client: httpClient } = makeCapturingHttpClient();
     const missingRepository = makeRepository(() => Effect.succeedNone);
     const repositoryFailure = new LineRepositoryError({
-      operation: "findByChannelId",
+      operation: "findById",
       cause: new Error("database unavailable"),
     });
     const failingRepository = makeRepository(() => Effect.fail(repositoryFailure));
@@ -141,31 +170,31 @@ describe("LineClientRegistry", () => {
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
-          return yield* registry.getClient(missingChannelId);
+          return yield* registry.getMessagingClient(missingRecordId);
         }).pipe(Effect.provide(makeLayer(missingRepository, httpClient))),
       ),
     ).resolves.toMatchObject({
       _tag: "LineChannelNotFoundError",
-      channelId: "missing",
+      recordId: "missing-record",
     });
 
     await expect(
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
-          return yield* registry.getClient(channelId);
+          return yield* registry.getMessagingClient(recordId);
         }).pipe(Effect.provide(makeLayer(failingRepository, httpClient))),
       ),
     ).resolves.toBe(repositoryFailure);
   });
 
   test("reloads rotated credentials after invalidation", async () => {
-    let channel = makeChannel("token-1");
+    let account = makeAccount("token-1");
     let lookups = 0;
     const repository = makeRepository(() =>
       Effect.sync(() => {
         lookups += 1;
-        return Option.some(channel);
+        return Option.some(account);
       }),
     );
     const { client: httpClient, requests } = makeCapturingHttpClient();
@@ -173,19 +202,19 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const initial = yield* registry.getClient(channelId);
+        const initial = yield* registry.getMessagingClient(recordId);
         yield* initial.pushMessage("U123", [{ type: "text", text: "initial" }]);
 
-        channel = makeChannel("token-2");
-        const cached = yield* registry.getClient(channelId);
+        account = makeAccount("token-2");
+        const cached = yield* registry.getMessagingClient(recordId);
         yield* cached.pushMessage("U123", [{ type: "text", text: "cached" }]);
 
-        yield* registry.invalidate(channelId);
-        const rotated = yield* registry.getClient(channelId);
+        yield* registry.invalidate(recordId);
+        const rotated = yield* registry.getMessagingClient(recordId);
         yield* rotated.pushMessage("U123", [{ type: "text", text: "rotated" }]);
 
         yield* registry.invalidateAll();
-        yield* registry.getClient(channelId);
+        yield* registry.getMessagingClient(recordId);
       }),
       repository,
       httpClient,
@@ -200,12 +229,12 @@ describe("LineClientRegistry", () => {
   });
 
   test("reloads successful and failed lookups after their configured TTL", async () => {
-    let channel: Option.Option<LineChannel> = Option.some(makeChannel("token-1"));
+    let account: Option.Option<LineAccount> = Option.some(makeAccount("token-1"));
     let lookups = 0;
     const repository = makeRepository(() =>
       Effect.sync(() => {
         lookups += 1;
-        return channel;
+        return account;
       }),
     );
     const { client: httpClient } = makeCapturingHttpClient();
@@ -217,17 +246,17 @@ describe("LineClientRegistry", () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        yield* registry.getClient(channelId);
+        yield* registry.getMessagingClient(recordId);
         yield* TestClock.adjust("2 minutes");
-        yield* registry.getClient(channelId);
+        yield* registry.getMessagingClient(recordId);
 
-        channel = Option.none();
-        yield* registry.invalidate(channelId);
-        yield* Effect.exit(registry.getClient(channelId));
-        channel = Option.some(makeChannel("token-2"));
-        yield* Effect.exit(registry.getClient(channelId));
+        account = Option.none();
+        yield* registry.invalidate(recordId);
+        yield* Effect.exit(registry.getMessagingClient(recordId));
+        account = Option.some(makeAccount("token-2"));
+        yield* Effect.exit(registry.getMessagingClient(recordId));
         yield* TestClock.adjust("6 seconds");
-        yield* registry.getClient(channelId);
+        yield* registry.getMessagingClient(recordId);
       }).pipe(
         Effect.provide(makeLayer(repository, httpClient, config)),
         Effect.provide(TestClock.layer()),
@@ -235,5 +264,60 @@ describe("LineClientRegistry", () => {
     );
 
     expect(lookups).toBe(4);
+  });
+
+  test("syncs bot profile from LINE API to database", async () => {
+    const repository = makeRepository(
+      () => Effect.succeed(Option.some(makeAccount("token-1"))),
+      (id, input) => {
+        expect(id).toBe(recordId);
+        expect(input).toEqual({
+          botUserId: "U-sync-bot",
+          basicId: "@sync-basic",
+          displayName: "Synced Bot",
+          pictureUrl: "https://sync.test/pic.png",
+        });
+        const original = makeAccount("token-1");
+        return Effect.succeed(
+          new LineAccount({
+            id: original.id,
+            name: original.name,
+            channelId: original.channelId,
+            channelSecret: original.channelSecret,
+            channelAccessToken: original.channelAccessToken,
+            isActive: original.isActive,
+            loginChannelId: original.loginChannelId,
+            loginChannelSecret: original.loginChannelSecret,
+            liffId: original.liffId,
+            createdAt: original.createdAt,
+            updatedAt: original.updatedAt,
+            botUserId: "U-sync-bot",
+            basicId: "@sync-basic",
+            displayName: "Synced Bot",
+            pictureUrl: "https://sync.test/pic.png",
+          }),
+        );
+      },
+    );
+
+    const { client: httpClient } = makeCapturingHttpClient(
+      200,
+      JSON.stringify({
+        userId: "U-sync-bot",
+        basicId: "@sync-basic",
+        displayName: "Synced Bot",
+        pictureUrl: "https://sync.test/pic.png",
+      }),
+    );
+
+    await run(
+      Effect.gen(function* () {
+        const registry = yield* LineClientRegistry;
+        const synced = yield* registry.syncBotProfile(recordId);
+        expect(synced.displayName).toBe("Synced Bot");
+      }),
+      repository,
+      httpClient,
+    );
   });
 });

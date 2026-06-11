@@ -1,6 +1,5 @@
 import { Cause, Effect, Redacted, Schema, type Duration } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
-import { LineMessages, type LineMessageTuple } from "./domain.ts";
 import {
   LineApiAuthenticationError,
   LineApiRateLimitError,
@@ -14,6 +13,24 @@ import {
 const defaultBaseUrl = "https://api.line.me";
 const defaultRequestTimeout = "30 seconds";
 
+export const LineTextMessage = Schema.Struct({
+  type: Schema.Literal("text"),
+  text: Schema.String,
+});
+
+export type LineTextMessage = typeof LineTextMessage.Type;
+
+export type LineMessageTuple =
+  | readonly [LineTextMessage]
+  | readonly [LineTextMessage, LineTextMessage]
+  | readonly [LineTextMessage, LineTextMessage, LineTextMessage]
+  | readonly [LineTextMessage, LineTextMessage, LineTextMessage, LineTextMessage]
+  | readonly [LineTextMessage, LineTextMessage, LineTextMessage, LineTextMessage, LineTextMessage];
+
+export const LineMessages = Schema.NonEmptyArray(LineTextMessage).check(Schema.isMaxLength(5));
+
+export type LineMessages = typeof LineMessages.Type;
+
 const PushMessageBody = Schema.Struct({
   to: Schema.String,
   messages: LineMessages,
@@ -24,6 +41,13 @@ const ReplyMessageBody = Schema.Struct({
   replyToken: Schema.String,
   messages: LineMessages,
   notificationDisabled: Schema.optional(Schema.Boolean),
+});
+
+const BotInfoResponse = Schema.Struct({
+  userId: Schema.String,
+  basicId: Schema.String,
+  displayName: Schema.String,
+  pictureUrl: Schema.optional(Schema.String),
 });
 
 export interface LinePushOptions {
@@ -49,6 +73,15 @@ export type LineApiClientError =
   | LineRequestEncodingError;
 
 export interface LineApiClient {
+  readonly getBotInfo: () => Effect.Effect<
+    {
+      readonly userId: string;
+      readonly basicId: string;
+      readonly displayName: string;
+      readonly pictureUrl?: string | undefined;
+    },
+    LineApiClientError
+  >;
   readonly pushMessage: (
     recipientId: string,
     messages: LineMessageTuple,
@@ -81,7 +114,46 @@ export const makeLineApiClient = (
   const rootUrl = withoutTrailingSlash(config.baseUrl ?? defaultBaseUrl);
   const requestTimeout = config.requestTimeout ?? defaultRequestTimeout;
 
-  const execute = <S extends Schema.Top & { readonly EncodingServices: never }>(
+  const handleFailureResponse = (
+    operation: LineApiOperation,
+    status: number,
+    responseBody: string,
+    headers: Record<string, string>,
+  ) =>
+    Effect.gen(function* () {
+      const requestId = headers["x-line-request-id"];
+      const acceptedRequestId = headers["x-line-accepted-request-id"];
+      const token = Redacted.value(channelAccessToken);
+      const sanitizedBody =
+        token.length === 0 ? responseBody : responseBody.replaceAll(token, "[REDACTED]");
+      const responseFields = {
+        operation,
+        body: sanitizedBody,
+        ...(requestId === undefined ? {} : { requestId }),
+        ...(acceptedRequestId === undefined ? {} : { acceptedRequestId }),
+      };
+
+      if (status === 401 || status === 403) {
+        return yield* new LineApiAuthenticationError({
+          ...responseFields,
+          status,
+        });
+      }
+      if (status === 429) {
+        const retryAfter = headers["retry-after"];
+        return yield* new LineApiRateLimitError({
+          ...responseFields,
+          status: 429,
+          ...(retryAfter === undefined ? {} : { retryAfter }),
+        });
+      }
+      return yield* new LineApiResponseError({
+        ...responseFields,
+        status,
+      });
+    });
+
+  const executePost = <S extends Schema.Top & { readonly EncodingServices: never }>(
     operation: LineApiOperation,
     path: string,
     schema: S,
@@ -125,36 +197,69 @@ export const makeLineApiClient = (
           (cause) => new LineApiTransportError({ operation, cause: sanitizedCause(cause) }),
         ),
       );
-      const requestId = response.headers["x-line-request-id"];
-      const acceptedRequestId = response.headers["x-line-accepted-request-id"];
-      const token = Redacted.value(channelAccessToken);
-      const sanitizedBody =
-        token.length === 0 ? responseBody : responseBody.replaceAll(token, "[REDACTED]");
-      const responseFields = {
-        operation,
-        body: sanitizedBody,
-        ...(requestId === undefined ? {} : { requestId }),
-        ...(acceptedRequestId === undefined ? {} : { acceptedRequestId }),
-      };
 
-      if (response.status === 401 || response.status === 403) {
-        return yield* new LineApiAuthenticationError({
-          ...responseFields,
-          status: response.status,
-        });
+      return yield* handleFailureResponse(
+        operation,
+        response.status,
+        responseBody,
+        response.headers,
+      );
+    }).pipe(
+      Effect.timeout(requestTimeout),
+      Effect.mapError((cause) =>
+        Cause.isTimeoutError(cause) ? new LineApiTimeoutError({ operation }) : cause,
+      ),
+    );
+
+  const executeGet = <S extends Schema.Top & { readonly EncodingServices: never }>(
+    operation: LineApiOperation,
+    path: string,
+    schema: S,
+  ): Effect.Effect<S["Type"], LineApiClientError, S["DecodingServices"]> =>
+    Effect.gen(function* () {
+      yield* Effect.annotateCurrentSpan({ operation });
+
+      const request = HttpClientRequest.get(`${rootUrl}${path}`).pipe(
+        HttpClientRequest.bearerToken(channelAccessToken),
+      );
+
+      const response = yield* httpClient
+        .execute(request)
+        .pipe(
+          Effect.mapError(
+            (cause) => new LineApiTransportError({ operation, cause: sanitizedCause(cause) }),
+          ),
+        );
+
+      if (response.status >= 200 && response.status < 300) {
+        const bodyJson = yield* response.json.pipe(
+          Effect.mapError(
+            (cause) => new LineApiTransportError({ operation, cause: sanitizedCause(cause) }),
+          ),
+        );
+        return yield* Schema.decodeUnknownEffect(schema)(bodyJson).pipe(
+          Effect.mapError(
+            (cause) =>
+              new LineRequestEncodingError({
+                operation,
+                cause: sanitizedCause(cause),
+              }),
+          ),
+        );
       }
-      if (response.status === 429) {
-        const retryAfter = response.headers["retry-after"];
-        return yield* new LineApiRateLimitError({
-          ...responseFields,
-          status: 429,
-          ...(retryAfter === undefined ? {} : { retryAfter }),
-        });
-      }
-      return yield* new LineApiResponseError({
-        ...responseFields,
-        status: response.status,
-      });
+
+      const responseBody = yield* response.text.pipe(
+        Effect.mapError(
+          (cause) => new LineApiTransportError({ operation, cause: sanitizedCause(cause) }),
+        ),
+      );
+
+      return yield* handleFailureResponse(
+        operation,
+        response.status,
+        responseBody,
+        response.headers,
+      );
     }).pipe(
       Effect.timeout(requestTimeout),
       Effect.mapError((cause) =>
@@ -163,8 +268,11 @@ export const makeLineApiClient = (
     );
 
   return {
+    getBotInfo: Effect.fn("LineApiClient.getBotInfo")(function* () {
+      return yield* executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse);
+    }),
     pushMessage: Effect.fn("LineApiClient.pushMessage")(function* (recipientId, messages, options) {
-      return yield* execute(
+      return yield* executePost(
         "pushMessage",
         "/v2/bot/message/push",
         PushMessageBody,
@@ -180,7 +288,7 @@ export const makeLineApiClient = (
     }),
     replyMessage: Effect.fn("LineApiClient.replyMessage")(
       function* (replyToken, messages, options) {
-        return yield* execute("replyMessage", "/v2/bot/message/reply", ReplyMessageBody, {
+        return yield* executePost("replyMessage", "/v2/bot/message/reply", ReplyMessageBody, {
           replyToken,
           messages,
           ...(options?.notificationDisabled === undefined

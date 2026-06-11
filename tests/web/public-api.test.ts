@@ -16,7 +16,10 @@ import {
 } from "../../src/web/index.ts";
 
 test("keeps the root package browser UI free", () => {
-  expect(Object.keys(rootApi).some((key) => key.startsWith("LineAccount"))).toBe(false);
+  expect(
+    Object.keys(rootApi).some((key) => key.startsWith("LineAccount") && key !== "LineAccount"),
+  ).toBe(false);
+  expect(Object.keys(rootApi).some((key) => key.startsWith("defineLineAccount"))).toBe(false);
 });
 
 test("exports the complete web component API without registering elements", () => {
