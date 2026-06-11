@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { LineChannelRecordId } from "./domain.ts";
+import { LineChannelId, LineChannelRecordId } from "./domain.ts";
 
 export const LineRepositoryOperation = Schema.Literals([
   "create",
@@ -18,6 +18,27 @@ export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryE
   {
     operation: LineRepositoryOperation,
     cause: Schema.Defect(),
+  },
+) {}
+
+export class LineAccountDuplicateChannelError extends Schema.TaggedErrorClass<LineAccountDuplicateChannelError>()(
+  "LineAccountDuplicateChannelError",
+  {
+    channelId: LineChannelId,
+  },
+) {}
+
+export class LineAccountNotFoundError extends Schema.TaggedErrorClass<LineAccountNotFoundError>()(
+  "LineAccountNotFoundError",
+  {
+    recordId: LineChannelRecordId,
+  },
+) {}
+
+export class LineAccountPersistenceError extends Schema.TaggedErrorClass<LineAccountPersistenceError>()(
+  "LineAccountPersistenceError",
+  {
+    operation: LineRepositoryOperation,
   },
 ) {}
 

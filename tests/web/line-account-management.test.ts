@@ -18,9 +18,18 @@ const firstAccount: LineAccountView = {
   id: "account-1",
   name: "First account",
   channelId: "channel-1",
+  botUserId: null,
+  basicId: null,
+  displayName: null,
+  pictureUrl: null,
   isActive: true,
   loginChannelId: null,
   liffId: null,
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+  hasChannelAccessToken: true,
+  hasChannelSecret: true,
+  hasLoginChannelSecret: false,
 };
 
 const secondAccount: LineAccountView = {

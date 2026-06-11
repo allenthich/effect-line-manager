@@ -14,21 +14,21 @@ export const createInMemoryLineAccountAdapter = (
     hasChannelAccessToken: acc.hasChannelAccessToken ?? true,
     hasChannelSecret: acc.hasChannelSecret ?? true,
     hasLoginChannelSecret: acc.hasLoginChannelSecret ?? (acc.loginChannelId ? true : false),
-    channelAccessTokenHint: acc.channelAccessTokenHint ?? "20010••••••••••••••••",
-    channelSecretHint: acc.channelSecretHint ?? "e3b0c••••••••••••••••",
-    loginChannelSecretHint:
-      acc.loginChannelSecretHint ?? (acc.loginChannelId ? "f9afb••••••••••••••••" : null),
   }));
   let nextId = accounts.length + 1;
 
   return {
     list: async () => accounts.map(copyAccount),
     create: async (input) => {
-      const now = new Date().toISOString();
+      const now = new Date();
       const account: LineAccountView = {
         id: `demo-account-${nextId++}`,
         name: input.name,
         channelId: input.channelId,
+        botUserId: null,
+        basicId: null,
+        displayName: null,
+        pictureUrl: null,
         isActive: true,
         loginChannelId: input.loginChannelId,
         liffId: input.liffId,
@@ -37,11 +37,6 @@ export const createInMemoryLineAccountAdapter = (
         hasChannelAccessToken: true,
         hasChannelSecret: true,
         hasLoginChannelSecret: input.loginChannelSecret ? true : false,
-        channelAccessTokenHint: `${input.channelAccessToken.slice(0, 5)}••••••••••••••••`,
-        channelSecretHint: `${input.channelSecret.slice(0, 5)}••••••••••••••••`,
-        loginChannelSecretHint: input.loginChannelSecret
-          ? `${input.loginChannelSecret.slice(0, 5)}••••••••••••••••`
-          : null,
       };
       accounts = [...accounts, account];
       return copyAccount(account);
@@ -74,24 +69,18 @@ const applyUpdate = (account: LineAccountView, input: UpdateLineAccountInput): L
     ? {}
     : {
         hasChannelAccessToken: true,
-        channelAccessTokenHint: `${input.channelAccessToken.slice(0, 5)}••••••••••••••••`,
       }),
   ...(input.channelSecret === undefined
     ? {}
     : {
         hasChannelSecret: true,
-        channelSecretHint: `${input.channelSecret.slice(0, 5)}••••••••••••••••`,
       }),
   ...(input.loginChannelId === null
-    ? { hasLoginChannelSecret: false, loginChannelSecretHint: null }
+    ? { hasLoginChannelSecret: false }
     : input.loginChannelSecret !== undefined
       ? {
           hasLoginChannelSecret: input.loginChannelSecret !== null,
-          loginChannelSecretHint:
-            input.loginChannelSecret !== null
-              ? `${input.loginChannelSecret.slice(0, 5)}••••••••••••••••`
-              : null,
         }
       : {}),
-  updatedAt: new Date().toISOString(),
+  updatedAt: new Date(),
 });

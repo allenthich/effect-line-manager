@@ -9,6 +9,8 @@ import { makeLineLoginClient, type LineLoginClient } from "../login/client.ts";
 import { makeLineLiffClient, type LineLiffClient } from "../liff/client.ts";
 import { LineChannelRecordId, type LineAccount } from "./domain.ts";
 import {
+  type LineAccountDuplicateChannelError,
+  type LineAccountNotFoundError,
   LineChannelNotFoundError,
   LineLoginConfigMissingError,
   type LineRepositoryError,
@@ -53,7 +55,11 @@ export class LineClientRegistry extends Context.Service<
       recordId: LineChannelRecordId,
     ) => Effect.Effect<
       LineAccount,
-      LineRepositoryError | LineChannelNotFoundError | LineApiClientError
+      | LineRepositoryError
+      | LineAccountNotFoundError
+      | LineAccountDuplicateChannelError
+      | LineChannelNotFoundError
+      | LineApiClientError
     >;
 
     readonly invalidate: (recordId: LineChannelRecordId) => Effect.Effect<void>;

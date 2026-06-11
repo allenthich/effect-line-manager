@@ -1,5 +1,5 @@
 allowBuilds:
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: false
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vitest: npm:@voidzero-dev/vite-plus-test@latest

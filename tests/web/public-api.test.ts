@@ -1,5 +1,11 @@
-import { expect, test } from "vite-plus/test";
+import { expect, expectTypeOf, test } from "vite-plus/test";
 import * as rootApi from "../../src/index.ts";
+import type {
+  CreateLineAccountInput as RootCreateLineAccountInput,
+  LineAccountManagementAdapter as RootLineAccountManagementAdapter,
+  LineAccountView as RootLineAccountView,
+  UpdateLineAccountInput as RootUpdateLineAccountInput,
+} from "../../src/index.ts";
 import {
   LineAccountCard,
   LineAccountDialog,
@@ -13,13 +19,25 @@ import {
   defineLineAccountList,
   defineLineAccountManagement,
   defineLineAccountManagementElements,
+  type CreateLineAccountInput as WebCreateLineAccountInput,
+  type LineAccountManagementAdapter as WebLineAccountManagementAdapter,
+  type LineAccountView as WebLineAccountView,
+  type UpdateLineAccountInput as WebUpdateLineAccountInput,
 } from "../../src/web/index.ts";
 
 test("keeps the root package browser UI free", () => {
-  expect(
-    Object.keys(rootApi).some((key) => key.startsWith("LineAccount") && key !== "LineAccount"),
-  ).toBe(false);
+  expect(rootApi).not.toHaveProperty("LineAccountCard");
+  expect(rootApi).not.toHaveProperty("LineAccountDialog");
+  expect(rootApi).not.toHaveProperty("LineAccountForm");
+  expect(rootApi).not.toHaveProperty("LineAccountList");
   expect(Object.keys(rootApi).some((key) => key.startsWith("defineLineAccount"))).toBe(false);
+});
+
+test("re-exports canonical management DTO and adapter types", () => {
+  expectTypeOf<WebLineAccountView>().toEqualTypeOf<RootLineAccountView>();
+  expectTypeOf<WebCreateLineAccountInput>().toEqualTypeOf<RootCreateLineAccountInput>();
+  expectTypeOf<WebUpdateLineAccountInput>().toEqualTypeOf<RootUpdateLineAccountInput>();
+  expectTypeOf<WebLineAccountManagementAdapter>().toEqualTypeOf<RootLineAccountManagementAdapter>();
 });
 
 test("exports the complete web component API without registering elements", () => {

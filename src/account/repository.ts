@@ -1,24 +1,31 @@
 import { Context, type Effect, type Option } from "effect";
 import type {
-  CreateLineAccountInput,
+  CreateLineAccountRecordInput,
   LineAccount,
   LineChannelId,
   LineChannelRecordId,
-  UpdateLineAccountInput,
+  UpdateLineAccountRecordInput,
 } from "./domain.ts";
-import type { LineRepositoryError } from "./errors.ts";
+import type {
+  LineAccountDuplicateChannelError,
+  LineAccountNotFoundError,
+  LineRepositoryError,
+} from "./errors.ts";
 
 export class LineRepository extends Context.Service<
   LineRepository,
   {
     readonly create: (
-      input: CreateLineAccountInput,
-    ) => Effect.Effect<LineAccount, LineRepositoryError>;
+      input: CreateLineAccountRecordInput,
+    ) => Effect.Effect<LineAccount, LineAccountDuplicateChannelError | LineRepositoryError>;
 
     readonly update: (
       id: LineChannelRecordId,
-      input: UpdateLineAccountInput,
-    ) => Effect.Effect<LineAccount, LineRepositoryError>;
+      input: UpdateLineAccountRecordInput,
+    ) => Effect.Effect<
+      LineAccount,
+      LineAccountNotFoundError | LineAccountDuplicateChannelError | LineRepositoryError
+    >;
 
     readonly findById: (
       id: LineChannelRecordId,
@@ -34,7 +41,9 @@ export class LineRepository extends Context.Service<
 
     readonly listAll: () => Effect.Effect<ReadonlyArray<LineAccount>, LineRepositoryError>;
 
-    readonly deleteById: (id: LineChannelRecordId) => Effect.Effect<void, LineRepositoryError>;
+    readonly deleteById: (
+      id: LineChannelRecordId,
+    ) => Effect.Effect<void, LineAccountNotFoundError | LineRepositoryError>;
   }
 >()("effect-line-manager/LineRepository") {}
 
