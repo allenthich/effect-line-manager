@@ -19,6 +19,8 @@ export class LineAccountCard extends LitElement {
     messages: { attribute: false },
     disabled: { type: Boolean, reflect: true },
     error: { type: String },
+    variant: { type: String, reflect: true },
+    selected: { type: Boolean, reflect: true },
   };
 
   static styles = css`
@@ -39,13 +41,14 @@ export class LineAccountCard extends LitElement {
       box-shadow: var(--line-account-shadow, 0 1px 3px rgb(0 0 0 / 8%));
       box-sizing: border-box;
       transition:
-        transform 0.2s ease-in-out,
-        box-shadow 0.2s ease-in-out,
-        border-color 0.2s ease-in-out;
+        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.2s ease-in-out,
+        background-color 0.2s ease-in-out;
     }
 
     article:hover {
-      transform: translateY(-2px);
+      transform: translateY(-4px);
       box-shadow: var(--line-account-shadow-hover, 0 12px 24px rgb(29 53 38 / 10%));
       border-color: var(--line-account-primary-color, #06c755);
     }
@@ -88,6 +91,7 @@ export class LineAccountCard extends LitElement {
 
     h3 {
       font-size: 1rem;
+      font-weight: 650;
     }
 
     .metadata {
@@ -264,12 +268,123 @@ export class LineAccountCard extends LitElement {
       background: var(--line-account-danger-background, #fff0f0);
       color: var(--line-account-danger-color, #a61b1b);
     }
+
+    /* List Layout Variant */
+    :host([variant="list"]) article {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      padding: 0.75rem 1.25rem;
+      height: auto;
+    }
+
+    :host([variant="list"]) article:hover {
+      transform: translateX(4px);
+    }
+
+    :host([variant="list"]) .card-header {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex: 2;
+    }
+
+    :host([variant="list"]) .identity {
+      flex: 1;
+    }
+
+    :host([variant="list"]) .metadata {
+      flex: 1;
+      flex-direction: row;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    :host([variant="list"]) .badges {
+      flex: 1.2;
+      flex-direction: row;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    :host([variant="list"]) .actions {
+      flex: 0 0 auto;
+      margin-top: 0;
+      border-top: none;
+      padding-top: 0;
+    }
+
+    /* Split Sidebar Item Variant */
+    :host([variant="split"]) article {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      height: auto;
+      cursor: pointer;
+      box-shadow: none;
+      border-radius: var(--line-account-button-radius, 0.5rem);
+      border: 1px solid var(--line-account-border-color, #e4e7eb);
+      background: var(--line-account-surface-background, #fff);
+      transition: all 0.15s ease-in-out;
+    }
+
+    :host([variant="split"]) article:hover {
+      transform: none;
+      border-color: var(--line-account-primary-color, #06c755);
+      background: var(--line-account-muted-background, #f7f9fa);
+    }
+
+    :host([variant="split"][selected]) article {
+      border-color: var(--line-account-primary-color, #06c755);
+      background: var(--line-account-selected-bg, #e6fdf0);
+      box-shadow: 0 0 0 1px var(--line-account-primary-color, #06c755);
+    }
+
+    :host([variant="split"]) .card-header {
+      width: 100%;
+      gap: 0.75rem;
+    }
+
+    :host([variant="split"]) .metadata,
+    :host([variant="split"]) .badges,
+    :host([variant="split"]) .actions {
+      display: none;
+    }
+
+    @media (max-width: 48rem) {
+      :host([variant="list"]) article {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+      }
+      :host([variant="list"]) .card-header {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+      }
+      :host([variant="list"]) .metadata {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      :host([variant="list"]) .badges {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   `;
 
   declare account: LineAccountView | undefined;
   declare messages: LineAccountManagementMessages;
   declare disabled: boolean;
   declare error: string | undefined;
+  declare variant: string;
+  declare selected: boolean;
 
   constructor() {
     super();
@@ -277,6 +392,8 @@ export class LineAccountCard extends LitElement {
     this.messages = defaultLineAccountManagementMessages;
     this.disabled = false;
     this.error = undefined;
+    this.variant = "grid";
+    this.selected = false;
   }
 
   protected render() {
@@ -287,7 +404,7 @@ export class LineAccountCard extends LitElement {
     const initial = displayName.trim().charAt(0).toUpperCase();
 
     return html`
-      <article part="card">
+      <article part="card" @click=${this.#handleCardClick}>
         <div class="card-header">
           <div class="identity">
             ${account.pictureUrl
@@ -298,7 +415,11 @@ export class LineAccountCard extends LitElement {
               : html`<span class="initial" aria-hidden="true">${initial}</span>`}
             <div>
               <h3>${displayName}</h3>
-              ${account.basicId ? html`<p>${account.basicId}</p>` : nothing}
+              ${account.basicId
+                ? html`<p style="color:var(--line-account-muted-color, #52606d);font-size:0.875rem">
+                    ${account.basicId}
+                  </p>`
+                : nothing}
             </div>
           </div>
           <button
@@ -416,6 +537,26 @@ export class LineAccountCard extends LitElement {
       </article>
     `;
   }
+
+  #handleCardClick = (event: Event): void => {
+    if (this.variant === "split") {
+      const path = event.composedPath();
+      const isSwitch = path.some(
+        (el) => el instanceof HTMLElement && el.classList.contains("switch"),
+      );
+      if (isSwitch) return;
+
+      if (this.account !== undefined) {
+        this.dispatchEvent(
+          new CustomEvent("line-account-select-request", {
+            bubbles: true,
+            composed: true,
+            detail: { account: this.account },
+          }),
+        );
+      }
+    }
+  };
 
   #requestEdit = (): void => {
     if (this.account !== undefined)
