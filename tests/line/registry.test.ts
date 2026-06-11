@@ -1,33 +1,34 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Deferred, Effect, Fiber, Layer, Option, Redacted, type Duration } from "effect";
+import { Deferred, Effect, Fiber, Layer, Option, Redacted, Schema, type Duration } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { LineChannel } from "../../src/line/domain.ts";
+import { LineChannel, LineChannelId, LineChannelRecordId } from "../../src/line/domain.ts";
 import { LineRepositoryError } from "../../src/line/errors.ts";
-import {
-  LineClientRegistry,
-  makeLineClientRegistryLayer,
-  type LineClientRegistryConfig,
-} from "../../src/line/registry.ts";
-import { LineRepository, type LineRepositoryShape } from "../../src/line/repository.ts";
+import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/line/registry.ts";
+import { LineRepository, type LineRepositoryService } from "../../src/line/repository.ts";
+
+const decodeChannelId = Schema.decodeUnknownSync(LineChannelId);
+const channelId = decodeChannelId("channel-1");
+const missingChannelId = decodeChannelId("missing");
+const recordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
 
 const makeChannel = (token: string) =>
   new LineChannel({
-    id: "record-1",
+    id: recordId,
     name: "Primary",
-    channelId: "channel-1",
+    channelId,
     channelSecret: Redacted.make("channel-secret"),
     channelAccessToken: Redacted.make(token),
     createdAt: new Date("2026-06-10T00:00:00.000Z"),
   });
 
 const makeRepository = (
-  findByChannelId: LineRepositoryShape["findByChannelId"],
-): LineRepositoryShape => ({
+  findByChannelId: LineRepositoryService["findByChannelId"],
+): LineRepositoryService => ({
   create: (input) =>
     Effect.succeed(
       new LineChannel({
-        id: "created-record",
+        id: Schema.decodeUnknownSync(LineChannelRecordId)("created-record"),
         name: input.name,
         channelId: input.channelId,
         channelSecret: input.channelSecret,
@@ -50,11 +51,11 @@ const makeCapturingHttpClient = () => {
 };
 
 const makeLayer = (
-  repository: LineRepositoryShape,
+  repository: LineRepositoryService,
   httpClient: HttpClient.HttpClient,
   config?: LineClientRegistryConfig,
 ) =>
-  makeLineClientRegistryLayer(config).pipe(
+  LineClientRegistry.layer(config).pipe(
     Layer.provide(
       Layer.merge(
         Layer.succeed(LineRepository)(repository),
@@ -65,7 +66,7 @@ const makeLayer = (
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineClientRegistry>,
-  repository: LineRepositoryShape,
+  repository: LineRepositoryService,
   httpClient: HttpClient.HttpClient,
   config?: LineClientRegistryConfig,
 ) => Effect.runPromise(effect.pipe(Effect.provide(makeLayer(repository, httpClient, config))));
@@ -86,8 +87,8 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const first = yield* registry.getClient("channel-1");
-        const second = yield* registry.getClient("channel-1");
+        const first = yield* registry.getClient(channelId);
+        const second = yield* registry.getClient(channelId);
         expect(second).toBe(first);
       }),
       repository,
@@ -113,7 +114,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
         const fiber = yield* Effect.all(
-          [registry.getClient("channel-1"), registry.getClient("channel-1")],
+          [registry.getClient(channelId), registry.getClient(channelId)],
           { concurrency: "unbounded" },
         ).pipe(Effect.forkChild);
         yield* Effect.yieldNow;
@@ -132,7 +133,7 @@ describe("LineClientRegistry", () => {
     const missingRepository = makeRepository(() => Effect.succeedNone);
     const repositoryFailure = new LineRepositoryError({
       operation: "findByChannelId",
-      causeDescription: "database unavailable",
+      cause: new Error("database unavailable"),
     });
     const failingRepository = makeRepository(() => Effect.fail(repositoryFailure));
 
@@ -140,7 +141,7 @@ describe("LineClientRegistry", () => {
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
-          return yield* registry.getClient("missing");
+          return yield* registry.getClient(missingChannelId);
         }).pipe(Effect.provide(makeLayer(missingRepository, httpClient))),
       ),
     ).resolves.toMatchObject({
@@ -152,7 +153,7 @@ describe("LineClientRegistry", () => {
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
-          return yield* registry.getClient("channel-1");
+          return yield* registry.getClient(channelId);
         }).pipe(Effect.provide(makeLayer(failingRepository, httpClient))),
       ),
     ).resolves.toBe(repositoryFailure);
@@ -172,19 +173,19 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const initial = yield* registry.getClient("channel-1");
+        const initial = yield* registry.getClient(channelId);
         yield* initial.pushMessage("U123", [{ type: "text", text: "initial" }]);
 
         channel = makeChannel("token-2");
-        const cached = yield* registry.getClient("channel-1");
+        const cached = yield* registry.getClient(channelId);
         yield* cached.pushMessage("U123", [{ type: "text", text: "cached" }]);
 
-        yield* registry.invalidate("channel-1");
-        const rotated = yield* registry.getClient("channel-1");
+        yield* registry.invalidate(channelId);
+        const rotated = yield* registry.getClient(channelId);
         yield* rotated.pushMessage("U123", [{ type: "text", text: "rotated" }]);
 
         yield* registry.invalidateAll();
-        yield* registry.getClient("channel-1");
+        yield* registry.getClient(channelId);
       }),
       repository,
       httpClient,
@@ -216,17 +217,17 @@ describe("LineClientRegistry", () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        yield* registry.getClient("channel-1");
+        yield* registry.getClient(channelId);
         yield* TestClock.adjust("2 minutes");
-        yield* registry.getClient("channel-1");
+        yield* registry.getClient(channelId);
 
         channel = Option.none();
-        yield* registry.invalidate("channel-1");
-        yield* Effect.exit(registry.getClient("channel-1"));
+        yield* registry.invalidate(channelId);
+        yield* Effect.exit(registry.getClient(channelId));
         channel = Option.some(makeChannel("token-2"));
-        yield* Effect.exit(registry.getClient("channel-1"));
+        yield* Effect.exit(registry.getClient(channelId));
         yield* TestClock.adjust("6 seconds");
-        yield* registry.getClient("channel-1");
+        yield* registry.getClient(channelId);
       }).pipe(
         Effect.provide(makeLayer(repository, httpClient, config)),
         Effect.provide(TestClock.layer()),

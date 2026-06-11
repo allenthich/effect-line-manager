@@ -1,7 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Redacted, Schema } from "effect";
 import { inspect } from "node:util";
-import { CreateLineChannelInput, LineChannel, LineMessages } from "../../src/line/domain.ts";
+import {
+  CreateLineChannelInput,
+  LineChannel,
+  LineChannelId,
+  LineChannelRecordId,
+  LineMessages,
+} from "../../src/line/domain.ts";
 
 describe("LINE domain schemas", () => {
   test("constructs a channel with redacted credentials and a valid date", () => {
@@ -49,6 +55,32 @@ describe("LINE domain schemas", () => {
     expect(input.name).toBe("Primary");
     expect(input).not.toHaveProperty("id");
     expect(input).not.toHaveProperty("createdAt");
+  });
+
+  test("brands non-empty channel identifiers at the domain boundary", () => {
+    expect(Schema.decodeUnknownSync(LineChannelRecordId)("record-1")).toBe("record-1");
+    expect(Schema.decodeUnknownSync(LineChannelId)("channel-1")).toBe("channel-1");
+    expect(() => Schema.decodeUnknownSync(LineChannelRecordId)("   ")).toThrow();
+    expect(() => Schema.decodeUnknownSync(LineChannelId)("")).toThrow();
+  });
+
+  test("rejects blank names and credentials", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(CreateLineChannelInput)({
+        name: "   ",
+        channelId: "channel-1",
+        channelSecret: Redacted.make("channel-secret"),
+        channelAccessToken: Redacted.make("access-token"),
+      }),
+    ).toThrow();
+    expect(() =>
+      Schema.decodeUnknownSync(CreateLineChannelInput)({
+        name: "Primary",
+        channelId: "channel-1",
+        channelSecret: Redacted.make("   "),
+        channelAccessToken: Redacted.make("access-token"),
+      }),
+    ).toThrow();
   });
 
   test.each([1, 2, 3, 4, 5])("accepts %i text messages", (count) => {

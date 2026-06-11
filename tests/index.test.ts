@@ -2,7 +2,12 @@ import { expect, test } from "vite-plus/test";
 import {
   CreateLineChannelInput,
   LineApiResponseError,
+  LineApiAuthenticationError,
+  LineApiRateLimitError,
+  LineApiTimeoutError,
   LineChannel,
+  LineChannelId,
+  LineChannelRecordId,
   LineChannelNotFoundError,
   LineClientRegistry,
   LineMessages,
@@ -10,7 +15,6 @@ import {
   LineSignatureError,
   LineTextMessage,
   makeLineApiClient,
-  makeLineClientRegistryLayer,
   verifyLineSignature,
   verifyLineSignatureString,
 } from "../src/index.ts";
@@ -18,8 +22,13 @@ import {
 test("exports the stable LINE manager API", () => {
   expect([
     CreateLineChannelInput,
+    LineApiAuthenticationError,
+    LineApiRateLimitError,
     LineApiResponseError,
+    LineApiTimeoutError,
     LineChannel,
+    LineChannelId,
+    LineChannelRecordId,
     LineChannelNotFoundError,
     LineClientRegistry,
     LineMessages,
@@ -27,7 +36,6 @@ test("exports the stable LINE manager API", () => {
     LineSignatureError,
     LineTextMessage,
     makeLineApiClient,
-    makeLineClientRegistryLayer,
     verifyLineSignature,
     verifyLineSignatureString,
   ]).not.toContain(undefined);

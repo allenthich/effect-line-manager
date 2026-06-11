@@ -1,6 +1,7 @@
 import { Cache, Context, type Duration, Effect, Exit, Layer, Option } from "effect";
 import { HttpClient } from "effect/unstable/http";
 import { makeLineApiClient, type LineApiClient } from "./client.ts";
+import type { LineChannelId } from "./domain.ts";
 import { LineChannelNotFoundError, type LineRepositoryError } from "./errors.ts";
 import { LineRepository } from "./repository.ts";
 
@@ -14,18 +15,22 @@ export interface LineClientRegistryConfig {
   readonly failureTimeToLive?: Duration.Input | undefined;
 }
 
-export interface LineClientRegistryShape {
-  readonly getClient: (
-    channelId: string,
-  ) => Effect.Effect<LineApiClient, LineRepositoryError | LineChannelNotFoundError>;
-  readonly invalidate: (channelId: string) => Effect.Effect<void>;
-  readonly invalidateAll: () => Effect.Effect<void>;
-}
-
 export class LineClientRegistry extends Context.Service<
   LineClientRegistry,
-  LineClientRegistryShape
->()("effect-line-manager/LineClientRegistry") {}
+  {
+    readonly getClient: (
+      channelId: LineChannelId,
+    ) => Effect.Effect<LineApiClient, LineRepositoryError | LineChannelNotFoundError>;
+    readonly invalidate: (channelId: LineChannelId) => Effect.Effect<void>;
+    readonly invalidateAll: () => Effect.Effect<void>;
+  }
+>()("effect-line-manager/LineClientRegistry") {
+  static layer(config: LineClientRegistryConfig = {}) {
+    return Layer.effect(LineClientRegistry)(makeRegistry(config));
+  }
+}
+
+export type LineClientRegistryService = LineClientRegistry["Service"];
 
 const makeRegistry = (config: LineClientRegistryConfig = {}) =>
   Effect.gen(function* () {
@@ -34,33 +39,34 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const successTimeToLive = config.timeToLive ?? defaultTimeToLive;
     const failureTimeToLive = config.failureTimeToLive ?? defaultFailureTimeToLive;
 
+    const loadClient = Effect.fn("LineClientRegistry.loadClient")(function* (
+      channelId: LineChannelId,
+    ) {
+      const channel = yield* repository.findByChannelId(channelId);
+      if (Option.isNone(channel)) {
+        return yield* new LineChannelNotFoundError({ channelId });
+      }
+      return makeLineApiClient(httpClient, channel.value.channelAccessToken);
+    });
+
     const cache = yield* Cache.makeWith<
-      string,
+      LineChannelId,
       LineApiClient,
       LineRepositoryError | LineChannelNotFoundError
-    >(
-      (channelId) =>
-        repository
-          .findByChannelId(channelId)
-          .pipe(
-            Effect.flatMap((channel) =>
-              Option.isNone(channel)
-                ? Effect.fail(new LineChannelNotFoundError({ channelId }))
-                : Effect.succeed(makeLineApiClient(httpClient, channel.value.channelAccessToken)),
-            ),
-          ),
-      {
-        capacity: config.capacity ?? defaultCapacity,
-        timeToLive: (exit) => (Exit.isSuccess(exit) ? successTimeToLive : failureTimeToLive),
-      },
-    );
+    >(loadClient, {
+      capacity: config.capacity ?? defaultCapacity,
+      timeToLive: (exit) => (Exit.isSuccess(exit) ? successTimeToLive : failureTimeToLive),
+    });
 
-    return {
-      getClient: (channelId: string) => Cache.get(cache, channelId),
-      invalidate: (channelId: string) => Cache.invalidate(cache, channelId),
-      invalidateAll: () => Cache.invalidateAll(cache),
-    } satisfies LineClientRegistryShape;
+    return LineClientRegistry.of({
+      getClient: Effect.fn("LineClientRegistry.getClient")((channelId: LineChannelId) =>
+        Cache.get(cache, channelId),
+      ),
+      invalidate: Effect.fn("LineClientRegistry.invalidate")((channelId: LineChannelId) =>
+        Cache.invalidate(cache, channelId),
+      ),
+      invalidateAll: Effect.fn("LineClientRegistry.invalidateAll")(() =>
+        Cache.invalidateAll(cache),
+      ),
+    });
   });
-
-export const makeLineClientRegistryLayer = (config: LineClientRegistryConfig = {}) =>
-  Layer.effect(LineClientRegistry)(makeRegistry(config));

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Effect, Redacted } from "effect";
+import { Cause, Effect, Fiber, Option, Redacted } from "effect";
+import { TestClock } from "effect/testing";
 import {
   HttpClient,
   HttpClientError,
@@ -30,7 +31,7 @@ const failure = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.
 describe("LINE API client", () => {
   test("sends an authenticated push message with caller options", async () => {
     const { client: httpClient, requests } = makeCapturingClient();
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), baseUrl);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
 
     await Effect.runPromise(
       client.pushMessage("U123", [{ type: "text", text: "hello" }], {
@@ -55,7 +56,9 @@ describe("LINE API client", () => {
 
   test("sends an authenticated reply message without a retry header", async () => {
     const { client: httpClient, requests } = makeCapturingClient();
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), `${baseUrl}/`);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), {
+      baseUrl: `${baseUrl}/`,
+    });
 
     await Effect.runPromise(
       client.replyMessage("reply-token", [{ type: "text", text: "hello" }], {
@@ -75,7 +78,7 @@ describe("LINE API client", () => {
 
   test.each([200, 201, 204, 299])("accepts status %i as success", async (status) => {
     const { client: httpClient } = makeCapturingClient(status);
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), baseUrl);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
 
     await expect(
       Effect.runPromise(client.pushMessage("U123", [{ type: "text", text: "hello" }])),
@@ -97,7 +100,7 @@ describe("LINE API client", () => {
         ),
       ),
     );
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), baseUrl);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
 
     await expect(
       failure(client.replyMessage("reply-token", [{ type: "text", text: "hello" }])),
@@ -122,13 +125,14 @@ describe("LINE API client", () => {
         }),
       ),
     );
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), baseUrl);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
 
     const error = await failure(client.pushMessage("U123", [{ type: "text", text: "hello" }]));
 
     expect(error).toMatchObject({
       _tag: "LineApiTransportError",
       operation: "pushMessage",
+      cause: expect.objectContaining({ message: "TransportError" }),
     });
     expect(JSON.stringify(error)).not.toContain("access-token");
     expect(String(error)).not.toContain("access-token");
@@ -143,12 +147,12 @@ describe("LINE API client", () => {
         ),
       ),
     );
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), baseUrl);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
 
     const error = await failure(client.pushMessage("U123", [{ type: "text", text: "hello" }]));
 
     expect(error).toMatchObject({
-      _tag: "LineApiResponseError",
+      _tag: "LineApiAuthenticationError",
       body: '{"message":"invalid [REDACTED]"}',
     });
     expect(JSON.stringify(error)).not.toContain("access-token");
@@ -162,13 +166,117 @@ describe("LINE API client", () => {
         HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })),
       );
     });
-    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), baseUrl);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
     const invalidMessages = [{ type: "text", text: 42 }] as unknown as LineMessageTuple;
 
     await expect(failure(client.pushMessage("U123", invalidMessages))).resolves.toMatchObject({
       _tag: "LineRequestEncodingError",
       operation: "pushMessage",
+      cause: expect.anything(),
     });
     expect(executed).toBe(false);
+  });
+
+  test.each([401, 403])("distinguishes authentication status %i", async (status) => {
+    const { client: httpClient } = makeCapturingClient(status);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await expect(
+      failure(client.pushMessage("U123", [{ type: "text", text: "hello" }])),
+    ).resolves.toMatchObject({
+      _tag: "LineApiAuthenticationError",
+      operation: "pushMessage",
+      status,
+    });
+  });
+
+  test("distinguishes rate limiting and preserves retry metadata", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response('{"message":"slow down"}', {
+            status: 429,
+            headers: { "retry-after": "10" },
+          }),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await expect(
+      failure(client.pushMessage("U123", [{ type: "text", text: "hello" }])),
+    ).resolves.toMatchObject({
+      _tag: "LineApiRateLimitError",
+      operation: "pushMessage",
+      status: 429,
+      retryAfter: "10",
+    });
+  });
+
+  test("times out a provider request using the configured policy", async () => {
+    const httpClient = HttpClient.make(() => Effect.never);
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), {
+      baseUrl,
+      requestTimeout: "1 second",
+    });
+
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* client
+          .pushMessage("U123", [{ type: "text", text: "hello" }])
+          .pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+        yield* TestClock.adjust("2 seconds");
+        return yield* Fiber.join(fiber).pipe(Effect.flip);
+      }).pipe(Effect.provide(TestClock.layer())),
+    );
+
+    expect(error).toMatchObject({
+      _tag: "LineApiTimeoutError",
+      operation: "pushMessage",
+    });
+  });
+
+  test("times out while reading a stalled provider error body", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(new ReadableStream({ start: () => undefined }), { status: 500 }),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), {
+      baseUrl,
+      requestTimeout: "1 second",
+    });
+
+    const polled = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* client
+          .pushMessage("U123", [{ type: "text", text: "hello" }])
+          .pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+        yield* TestClock.adjust("2 seconds");
+        yield* Effect.yieldNow;
+        const exit = fiber.pollUnsafe();
+        yield* Fiber.interrupt(fiber);
+        return exit;
+      }).pipe(Effect.provide(TestClock.layer())),
+    );
+
+    expect(polled).toBeDefined();
+    expect(polled?._tag).toBe("Failure");
+    if (polled?._tag === "Failure") {
+      const error = Cause.findErrorOption(polled.cause);
+      expect(Option.isSome(error)).toBe(true);
+      if (Option.isSome(error)) {
+        expect(error.value).toMatchObject({
+          _tag: "LineApiTimeoutError",
+          operation: "pushMessage",
+        });
+      }
+    }
   });
 });

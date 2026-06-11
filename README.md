@@ -15,24 +15,25 @@ Implement `LineRepository` with infrastructure owned by the host application,
 then provide it with an `HttpClient.HttpClient` to the registry layer:
 
 ```ts
-import { Effect, Layer, Option } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import { FetchHttpClient, HttpClient } from "effect/unstable/http";
 import {
+  LineChannelId,
   LineClientRegistry,
   LineRepository,
-  makeLineClientRegistryLayer,
-  type LineRepositoryShape,
+  type LineRepositoryService,
 } from "effect-line-manager";
 
-declare const repository: LineRepositoryShape;
+declare const repository: LineRepositoryService;
 
 const dependencies = Layer.merge(Layer.succeed(LineRepository)(repository), FetchHttpClient.layer);
 
-const registryLayer = makeLineClientRegistryLayer().pipe(Layer.provide(dependencies));
+const registryLayer = LineClientRegistry.layer().pipe(Layer.provide(dependencies));
+const channelId = Schema.decodeUnknownSync(LineChannelId)("line-channel-id");
 
 const send = Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
-  const client = yield* registry.getClient("line-channel-id");
+  const client = yield* registry.getClient(channelId);
 
   yield* client.pushMessage("U-recipient-id", [{ type: "text", text: "Hello from Effect" }]);
 });
@@ -52,13 +53,31 @@ deleting credentials so subsequent lookups use current configuration:
 const rotateCredentials = Effect.gen(function* () {
   // Persist the new channel secret or access token first.
   const registry = yield* LineClientRegistry;
-  yield* registry.invalidate("line-channel-id");
+  yield* registry.invalidate(channelId);
 });
 ```
 
 The default cache capacity is 500, successful entries live for 30 minutes, and
 failed lookups live for 30 seconds. These values are configurable through
-`makeLineClientRegistryLayer`.
+`LineClientRegistry.layer(config)`.
+
+## Provider Failure Policy
+
+LINE API requests time out after 30 seconds by default. Override this only at
+client construction through `LineApiClientConfig.requestTimeout`. Expected
+failures remain distinct so callers can recover precisely:
+
+- `LineApiTimeoutError` for provider timeouts.
+- `LineApiAuthenticationError` for HTTP 401 and 403 responses.
+- `LineApiRateLimitError` for HTTP 429 responses, including the status and
+  `retryAfter` when LINE provides it.
+- `LineApiResponseError` for other non-success responses.
+- `LineApiTransportError` and `LineRequestEncodingError` for integration
+  failures with sanitized defect causes.
+
+The client does not retry automatically. Push retries require a caller-owned
+LINE retry key and an application-level policy that can prevent duplicate
+sends.
 
 ## Reply Messages
 

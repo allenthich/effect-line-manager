@@ -1,21 +1,37 @@
 import { Schema } from "effect";
 
+const NonEmptyTrimmedString = Schema.Trimmed.check(Schema.isNonEmpty());
+
+export const LineChannelRecordId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineChannelRecordId"),
+);
+
+export type LineChannelRecordId = typeof LineChannelRecordId.Type;
+
+export const LineChannelId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineChannelId"),
+);
+
+export type LineChannelId = typeof LineChannelId.Type;
+
+const LineCredential = Schema.Redacted(NonEmptyTrimmedString);
+
 export class LineChannel extends Schema.Class<LineChannel>("LineChannel")({
-  id: Schema.String,
-  name: Schema.String,
-  channelId: Schema.String,
-  channelSecret: Schema.Redacted(Schema.String),
-  channelAccessToken: Schema.Redacted(Schema.String),
+  id: LineChannelRecordId,
+  name: NonEmptyTrimmedString,
+  channelId: LineChannelId,
+  channelSecret: LineCredential,
+  channelAccessToken: LineCredential,
   createdAt: Schema.DateValid,
 }) {}
 
 export class CreateLineChannelInput extends Schema.Class<CreateLineChannelInput>(
   "CreateLineChannelInput",
 )({
-  name: Schema.String,
-  channelId: Schema.String,
-  channelSecret: Schema.Redacted(Schema.String),
-  channelAccessToken: Schema.Redacted(Schema.String),
+  name: NonEmptyTrimmedString,
+  channelId: LineChannelId,
+  channelSecret: LineCredential,
+  channelAccessToken: LineCredential,
 }) {}
 
 export const LineTextMessage = Schema.Struct({

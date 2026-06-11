@@ -1,14 +1,18 @@
-import { Effect, Redacted, Schema } from "effect";
+import { Cause, Effect, Redacted, Schema, type Duration } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { LineMessages, type LineMessageTuple } from "./domain.ts";
 import {
+  LineApiAuthenticationError,
+  LineApiRateLimitError,
   LineApiResponseError,
+  LineApiTimeoutError,
   LineApiTransportError,
   LineRequestEncodingError,
   type LineApiOperation,
 } from "./errors.ts";
 
 const defaultBaseUrl = "https://api.line.me";
+const defaultRequestTimeout = "30 seconds";
 
 const PushMessageBody = Schema.Struct({
   to: Schema.String,
@@ -31,8 +35,16 @@ export interface LineReplyOptions {
   readonly notificationDisabled?: boolean | undefined;
 }
 
+export interface LineApiClientConfig {
+  readonly baseUrl?: string | undefined;
+  readonly requestTimeout?: Duration.Input | undefined;
+}
+
 export type LineApiClientError =
   | LineApiTransportError
+  | LineApiTimeoutError
+  | LineApiAuthenticationError
+  | LineApiRateLimitError
   | LineApiResponseError
   | LineRequestEncodingError;
 
@@ -51,12 +63,23 @@ export interface LineApiClient {
 
 const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
+const sanitizedCause = (cause: unknown): Error => {
+  if (typeof cause === "object" && cause !== null && "reason" in cause) {
+    const reason = cause.reason;
+    if (typeof reason === "object" && reason !== null && "_tag" in reason) {
+      return new Error(String(reason._tag));
+    }
+  }
+  return new Error("UnknownHttpError");
+};
+
 export const makeLineApiClient = (
   httpClient: HttpClient.HttpClient,
   channelAccessToken: Redacted.Redacted<string>,
-  baseUrl = defaultBaseUrl,
+  config: LineApiClientConfig = {},
 ): LineApiClient => {
-  const rootUrl = withoutTrailingSlash(baseUrl);
+  const rootUrl = withoutTrailingSlash(config.baseUrl ?? defaultBaseUrl);
+  const requestTimeout = config.requestTimeout ?? defaultRequestTimeout;
 
   const execute = <S extends Schema.Top & { readonly EncodingServices: never }>(
     operation: LineApiOperation,
@@ -64,72 +87,84 @@ export const makeLineApiClient = (
     schema: S,
     body: S["Type"],
     retryKey?: string,
-  ): Effect.Effect<void, LineApiClientError> => {
-    const request = HttpClientRequest.post(`${rootUrl}${path}`).pipe(
-      HttpClientRequest.bearerToken(channelAccessToken),
-      HttpClientRequest.schemaBodyJson(schema)(body),
-      Effect.map((request) =>
-        retryKey === undefined
-          ? request
-          : HttpClientRequest.setHeader(request, "X-Line-Retry-Key", retryKey),
-      ),
-      Effect.mapError(
-        (error) =>
-          new LineRequestEncodingError({
-            operation,
-            causeDescription: error.reason._tag,
-          }),
-      ),
-    );
+  ): Effect.Effect<void, LineApiClientError> =>
+    Effect.gen(function* () {
+      yield* Effect.annotateCurrentSpan({ operation });
 
-    return request.pipe(
-      Effect.flatMap((encodedRequest) =>
-        httpClient.execute(encodedRequest).pipe(
-          Effect.mapError(
-            (error) =>
-              new LineApiTransportError({
-                operation,
-                causeDescription: error.reason._tag,
-              }),
-          ),
+      const request = yield* HttpClientRequest.post(`${rootUrl}${path}`).pipe(
+        HttpClientRequest.bearerToken(channelAccessToken),
+        HttpClientRequest.schemaBodyJson(schema)(body),
+        Effect.map((request) =>
+          retryKey === undefined
+            ? request
+            : HttpClientRequest.setHeader(request, "X-Line-Retry-Key", retryKey),
         ),
-      ),
-      Effect.flatMap((response) => {
-        if (response.status >= 200 && response.status < 300) {
-          return Effect.void;
-        }
+        Effect.mapError(
+          (cause) =>
+            new LineRequestEncodingError({
+              operation,
+              cause: sanitizedCause(cause),
+            }),
+        ),
+      );
 
-        return response.text.pipe(
+      const response = yield* httpClient
+        .execute(request)
+        .pipe(
           Effect.mapError(
-            (error) =>
-              new LineApiTransportError({
-                operation,
-                causeDescription: error.reason._tag,
-              }),
+            (cause) => new LineApiTransportError({ operation, cause: sanitizedCause(cause) }),
           ),
-          Effect.flatMap((body) => {
-            const requestId = response.headers["x-line-request-id"];
-            const acceptedRequestId = response.headers["x-line-accepted-request-id"];
-            const token = Redacted.value(channelAccessToken);
-            const sanitizedBody = token.length === 0 ? body : body.replaceAll(token, "[REDACTED]");
-            return Effect.fail(
-              new LineApiResponseError({
-                operation,
-                status: response.status,
-                body: sanitizedBody,
-                ...(requestId === undefined ? {} : { requestId }),
-                ...(acceptedRequestId === undefined ? {} : { acceptedRequestId }),
-              }),
-            );
-          }),
         );
-      }),
+
+      if (response.status >= 200 && response.status < 300) {
+        return;
+      }
+
+      const responseBody = yield* response.text.pipe(
+        Effect.mapError(
+          (cause) => new LineApiTransportError({ operation, cause: sanitizedCause(cause) }),
+        ),
+      );
+      const requestId = response.headers["x-line-request-id"];
+      const acceptedRequestId = response.headers["x-line-accepted-request-id"];
+      const token = Redacted.value(channelAccessToken);
+      const sanitizedBody =
+        token.length === 0 ? responseBody : responseBody.replaceAll(token, "[REDACTED]");
+      const responseFields = {
+        operation,
+        body: sanitizedBody,
+        ...(requestId === undefined ? {} : { requestId }),
+        ...(acceptedRequestId === undefined ? {} : { acceptedRequestId }),
+      };
+
+      if (response.status === 401 || response.status === 403) {
+        return yield* new LineApiAuthenticationError({
+          ...responseFields,
+          status: response.status,
+        });
+      }
+      if (response.status === 429) {
+        const retryAfter = response.headers["retry-after"];
+        return yield* new LineApiRateLimitError({
+          ...responseFields,
+          status: 429,
+          ...(retryAfter === undefined ? {} : { retryAfter }),
+        });
+      }
+      return yield* new LineApiResponseError({
+        ...responseFields,
+        status: response.status,
+      });
+    }).pipe(
+      Effect.timeout(requestTimeout),
+      Effect.mapError((cause) =>
+        Cause.isTimeoutError(cause) ? new LineApiTimeoutError({ operation }) : cause,
+      ),
     );
-  };
 
   return {
-    pushMessage: (recipientId, messages, options) =>
-      execute(
+    pushMessage: Effect.fn("LineApiClient.pushMessage")(function* (recipientId, messages, options) {
+      return yield* execute(
         "pushMessage",
         "/v2/bot/message/push",
         PushMessageBody,
@@ -141,14 +176,18 @@ export const makeLineApiClient = (
             : { notificationDisabled: options.notificationDisabled }),
         },
         options?.retryKey,
-      ),
-    replyMessage: (replyToken, messages, options) =>
-      execute("replyMessage", "/v2/bot/message/reply", ReplyMessageBody, {
-        replyToken,
-        messages,
-        ...(options?.notificationDisabled === undefined
-          ? {}
-          : { notificationDisabled: options.notificationDisabled }),
-      }),
+      );
+    }),
+    replyMessage: Effect.fn("LineApiClient.replyMessage")(
+      function* (replyToken, messages, options) {
+        return yield* execute("replyMessage", "/v2/bot/message/reply", ReplyMessageBody, {
+          replyToken,
+          messages,
+          ...(options?.notificationDisabled === undefined
+            ? {}
+            : { notificationDisabled: options.notificationDisabled }),
+        });
+      },
+    ),
   };
 };
