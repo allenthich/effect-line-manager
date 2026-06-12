@@ -105,7 +105,7 @@ const toUpdateRecordInput = (input: UpdateLineAccountInput): UpdateLineAccountRe
   ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
 });
 
-const makeLineAccountManagement = Effect.gen(function* () {
+export const makeLineAccountManagement = Effect.gen(function* () {
   const repository = yield* LineRepository;
   const registry = yield* LineClientRegistry;
 
