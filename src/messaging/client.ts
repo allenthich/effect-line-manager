@@ -94,12 +94,15 @@ export interface LineMulticastOptions {
 export interface LineNarrowcastOptions {
   readonly retryKey?: string | undefined;
   readonly notificationDisabled?: boolean | undefined;
-  readonly limit?: { readonly max: number; readonly remaining?: boolean } | undefined;
-  readonly recipient?:
-    | { readonly type: "operator" }
-    | { readonly type: "audience"; readonly audienceGroupId: number }
+  readonly limit?:
+    | {
+        readonly max: number;
+        readonly upToRemainingQuota?: boolean | undefined;
+        readonly forbidPartialDelivery?: boolean | undefined;
+      }
     | undefined;
-  readonly filter?: { readonly demographic?: Record<string, string> } | undefined;
+  readonly recipient?: unknown;
+  readonly filter?: unknown;
 }
 
 export interface LineApiClient {

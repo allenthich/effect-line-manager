@@ -311,4 +311,33 @@ describe("LINE Messaging API client", () => {
       }
     }
   });
+
+  test("sends an authenticated narrowcast message with options", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.narrowcastMessage([{ type: "text", text: "hello" }], {
+        retryKey: "retry-1",
+        notificationDisabled: true,
+        limit: { max: 100, upToRemainingQuota: true, forbidPartialDelivery: false },
+        recipient: { type: "operator" },
+        filter: { demographic: { gender: "male" } },
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const request = requests[0]!;
+    expect(request.method).toBe("POST");
+    expect(request.url).toBe(`${baseUrl}/v2/bot/message/narrowcast`);
+    expect(request.headers.authorization).toBe("Bearer access-token");
+    expect(request.headers["x-line-retry-key"]).toBe("retry-1");
+    await expect(requestJson(request)).resolves.toEqual({
+      messages: [{ type: "text", text: "hello" }],
+      notificationDisabled: true,
+      limit: { max: 100, upToRemainingQuota: true, forbidPartialDelivery: false },
+      recipient: { type: "operator" },
+      filter: { demographic: { gender: "male" } },
+    });
+  });
 });
