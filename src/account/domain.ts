@@ -98,14 +98,25 @@ export const LineAccountView = Schema.Struct({
 });
 export type LineAccountView = typeof LineAccountView.Type;
 
+export const LineAccountListPage = Schema.Struct({
+  data: Schema.Array(LineAccountView),
+  pagination: Schema.Struct({
+    page: Schema.Finite,
+    pageSize: Schema.Finite,
+    totalItems: Schema.Finite,
+    totalPages: Schema.Finite,
+  }),
+});
+export type LineAccountListPage = typeof LineAccountListPage.Type;
+
 export const CreateLineAccountInput = Schema.Struct({
   name: NonEmptyTrimmedString,
   channelId: NonEmptyTrimmedString,
   channelSecret: NonEmptyTrimmedString,
   channelAccessToken: NonEmptyTrimmedString,
-  loginChannelId: Schema.NullOr(NonEmptyTrimmedString),
-  loginChannelSecret: Schema.NullOr(NonEmptyTrimmedString),
-  liffId: Schema.NullOr(NonEmptyTrimmedString),
+  loginChannelId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  loginChannelSecret: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  liffId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
 });
 export type CreateLineAccountInput = typeof CreateLineAccountInput.Type;
 
@@ -122,7 +133,7 @@ export const UpdateLineAccountInput = Schema.Struct({
 export type UpdateLineAccountInput = typeof UpdateLineAccountInput.Type;
 
 export interface LineAccountManagementAdapter {
-  readonly list: () => Promise<ReadonlyArray<LineAccountView>>;
+  readonly list: () => Promise<LineAccountListPage>;
   readonly create: (input: CreateLineAccountInput) => Promise<LineAccountView>;
   readonly update: (id: string, input: UpdateLineAccountInput) => Promise<LineAccountView>;
   readonly delete: (id: string) => Promise<void>;

@@ -252,7 +252,7 @@ Effect.gen(function* () {
 
 ### 5. Service Override Pattern: User-Scoped Account Listing
 
-The library exports `LineAccountManagement` as an Effect `Context.Service`. Consumers can override individual CRUD methods (e.g., `list()` for user-scoped filtering) by composing with the exported `makeLineAccountManagement` factory.
+The library exports `LineAccountManagement` as an Effect `Context.Service`. Consumers can override individual CRUD members (e.g., `list` for user-scoped filtering) by composing with the exported `makeLineAccountManagement` factory.
 
 **Use case:** A store assigns LINE channels to specific managers. The `list()` endpoint should only return channels assigned to the authenticated user.
 
@@ -284,15 +284,22 @@ const userScopedManagementLayer = Layer.effect(LineAccountManagement)(
     return LineAccountManagement.of({
       // Spread the base: create, update, and delete passthrough unchanged
       ...base,
-      // Override only list() with user-scoped filtering
-      list: Effect.fn("UserScopedManagement.list")(() =>
-        Effect.gen(function* () {
-          const userId = "current-user-id"; // from auth context
-          const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
-          const all = yield* base.list();
-          return all.filter((a) => assignedIds.has(a.channelId));
-        }),
-      ),
+      // Override only list with user-scoped filtering
+      list: Effect.gen(function* () {
+        const userId = "current-user-id"; // from auth context
+        const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
+        const all = yield* base.list;
+        const data = all.data.filter((a) => assignedIds.has(a.channelId));
+        return {
+          data,
+          pagination: {
+            page: 1,
+            pageSize: data.length,
+            totalItems: data.length,
+            totalPages: data.length === 0 ? 0 : 1,
+          },
+        };
+      }),
     });
   }),
 ).pipe(

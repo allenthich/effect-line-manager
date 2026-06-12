@@ -3,6 +3,7 @@ import { Redacted, Schema } from "effect";
 import { inspect } from "node:util";
 import {
   CreateLineAccountRecordInput,
+  CreateLineAccountInput,
   LineAccount,
   LineChannelId,
   LineChannelRecordId,
@@ -107,5 +108,17 @@ describe("LINE account domain schemas", () => {
         liffId: null,
       }),
     ).toThrow();
+  });
+  test("allows optional create fields to be omitted", () => {
+    const input = Schema.decodeUnknownSync(CreateLineAccountInput)({
+      name: "Primary",
+      channelId: "channel-1",
+      channelSecret: "channel-secret",
+      channelAccessToken: "access-token",
+    });
+
+    expect(input.loginChannelId).toBeUndefined();
+    expect(input.loginChannelSecret).toBeUndefined();
+    expect(input.liffId).toBeUndefined();
   });
 });

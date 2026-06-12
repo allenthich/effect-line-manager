@@ -7,6 +7,7 @@ import type {
 export type {
   CreateLineAccountInput,
   LineAccountManagementAdapter,
+  LineAccountListPage,
   LineAccountView,
   UpdateLineAccountInput,
 } from "../account/domain.ts";

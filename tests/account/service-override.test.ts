@@ -60,8 +60,14 @@ describe("LineAccountManagement service override", () => {
       Effect.flatMap(LineAccountManagement, (m) => m.list).pipe(Effect.provide(layer)),
     );
 
-    expect(accounts).toHaveLength(2);
-    expect(accounts.map((a) => a.name)).toEqual(["Alpha", "Beta"]);
+    expect(accounts.data).toHaveLength(2);
+    expect(accounts.data.map((a) => a.name)).toEqual(["Alpha", "Beta"]);
+    expect(accounts.pagination).toEqual({
+      page: 1,
+      pageSize: 2,
+      totalItems: 2,
+      totalPages: 1,
+    });
   });
 
   test("consumer can override list to apply user-scoped filtering", async () => {
@@ -95,7 +101,16 @@ describe("LineAccountManagement service override", () => {
             const userId = "alice"; // in real app, from auth context
             const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
             const all = yield* base.list;
-            return all.filter((a) => assignedIds.has(a.channelId));
+            const data = all.data.filter((a) => assignedIds.has(a.channelId));
+            return {
+              data,
+              pagination: {
+                page: 1,
+                pageSize: data.length,
+                totalItems: data.length,
+                totalPages: data.length === 0 ? 0 : 1,
+              },
+            };
           }).pipe(Effect.withSpan("UserScopedManagement.list")),
         });
       }),
@@ -108,8 +123,8 @@ describe("LineAccountManagement service override", () => {
     );
 
     // Alice only sees channel-1 (Alpha)
-    expect(accounts).toHaveLength(1);
-    expect(accounts[0]!.name).toBe("Alpha");
+    expect(accounts.data).toHaveLength(1);
+    expect(accounts.data[0]!.name).toBe("Alpha");
   });
 
   test("consumer retains original delete when overriding list()", async () => {
@@ -132,7 +147,17 @@ describe("LineAccountManagement service override", () => {
         const base = yield* makeLineAccountManagement;
         return LineAccountManagement.of({
           ...base,
-          list: base.list.pipe(Effect.map((a) => a.slice(0, 1))),
+          list: base.list.pipe(
+            Effect.map((page) => ({
+              data: page.data.slice(0, 1),
+              pagination: {
+                page: 1,
+                pageSize: 1,
+                totalItems: 1,
+                totalPages: 1,
+              },
+            })),
+          ),
         });
       }),
     ).pipe(Layer.provide(testBaseLayer));

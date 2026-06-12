@@ -1,7 +1,7 @@
-import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 import {
   CreateLineAccountInput,
+  LineAccountListPage,
   LineAccountView,
   LineChannelRecordId,
   UpdateLineAccountInput,
@@ -13,11 +13,10 @@ import {
   LineAccountValidationMiddleware,
 } from "./errors.ts";
 
-const ListLineAccounts = Schema.Array(LineAccountView);
 const CreatedLineAccount = LineAccountView.pipe(HttpApiSchema.status(201));
 
 const listLineAccounts = HttpApiEndpoint.get("list", "/line-accounts", {
-  success: ListLineAccounts,
+  success: LineAccountListPage,
   error: LineAccountPersistenceHttpError,
 });
 

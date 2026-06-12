@@ -3,6 +3,7 @@ import {
   type CreateLineAccountInput,
   type CreateLineAccountRecordInput,
   type LineAccount,
+  type LineAccountListPage,
   type LineAccountView,
   type LineChannelId,
   type LineChannelRecordId,
@@ -21,7 +22,7 @@ import { LineClientRegistry } from "./registry.ts";
 import { LineRepository } from "./repository.ts";
 
 export interface LineAccountManagementService {
-  readonly list: Effect.Effect<ReadonlyArray<LineAccountView>, LineAccountPersistenceError>;
+  readonly list: Effect.Effect<LineAccountListPage, LineAccountPersistenceError>;
   readonly create: (
     input: CreateLineAccountInput,
   ) => Effect.Effect<
@@ -67,6 +68,18 @@ export const toLineAccountView = (account: LineAccount): LineAccountView => ({
   hasLoginChannelSecret: account.loginChannelSecret !== null,
 });
 
+export const toLineAccountListPage = (
+  accounts: ReadonlyArray<LineAccount>,
+): LineAccountListPage => ({
+  data: accounts.map(toLineAccountView),
+  pagination: {
+    page: 1,
+    pageSize: accounts.length,
+    totalItems: accounts.length,
+    totalPages: accounts.length === 0 ? 0 : 1,
+  },
+});
+
 const persistenceFailure = (error: LineRepositoryError) =>
   Effect.logError("LINE account repository operation failed", error).pipe(
     Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
@@ -77,10 +90,13 @@ const toCreateRecordInput = (input: CreateLineAccountInput): CreateLineAccountRe
   channelId: input.channelId as LineChannelId,
   channelSecret: Redacted.make(input.channelSecret),
   channelAccessToken: Redacted.make(input.channelAccessToken),
-  loginChannelId: input.loginChannelId as LineLoginChannelId | null,
+  loginChannelId:
+    input.loginChannelId === undefined ? null : (input.loginChannelId as LineLoginChannelId | null),
   loginChannelSecret:
-    input.loginChannelSecret === null ? null : Redacted.make(input.loginChannelSecret),
-  liffId: input.liffId as LineLiffId | null,
+    input.loginChannelSecret === undefined || input.loginChannelSecret === null
+      ? null
+      : Redacted.make(input.loginChannelSecret),
+  liffId: input.liffId === undefined ? null : (input.liffId as LineLiffId | null),
 });
 
 const toUpdateRecordInput = (input: UpdateLineAccountInput): UpdateLineAccountRecordInput => ({
@@ -112,7 +128,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
   return LineAccountManagement.of({
     list: repository.listAll.pipe(
       Effect.catchTag("LineRepositoryError", persistenceFailure),
-      Effect.map((accounts) => accounts.map(toLineAccountView)),
+      Effect.map(toLineAccountListPage),
       Effect.withSpan("LineAccountManagement.list"),
     ),
     create: Effect.fn("LineAccountManagement.create")((input: CreateLineAccountInput) =>
