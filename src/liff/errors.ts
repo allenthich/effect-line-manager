@@ -51,7 +51,7 @@ export class LineLiffApiResponseError extends Schema.TaggedErrorClass<LineLiffAp
   "LineLiffApiResponseError",
   {
     ...LineLiffApiResponseFields,
-    status: Schema.Number,
+    status: Schema.Finite,
   },
 ) {}
 

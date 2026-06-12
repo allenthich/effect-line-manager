@@ -258,8 +258,9 @@ describe("LineClientRegistry", () => {
         yield* TestClock.adjust("6 seconds");
         yield* registry.getMessagingClient(recordId);
       }).pipe(
-        Effect.provide(makeLayer(repository, httpClient, config)),
-        Effect.provide(TestClock.layer()),
+        Effect.provide(
+          Layer.mergeAll(makeLayer(repository, httpClient, config), TestClock.layer()),
+        ),
       ),
     );
 
