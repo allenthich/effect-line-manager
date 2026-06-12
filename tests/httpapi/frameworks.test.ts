@@ -83,10 +83,14 @@ const requestJson = (
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
         response.on("end", () => {
           const text = Buffer.concat(chunks).toString("utf8");
-          resolve({
-            status: response.statusCode ?? 0,
-            body: text === "" ? undefined : JSON.parse(text),
-          });
+          try {
+            resolve({
+              status: response.statusCode ?? 0,
+              body: text === "" ? undefined : JSON.parse(text),
+            });
+          } catch (error) {
+            reject(error);
+          }
         });
       },
     );
@@ -96,6 +100,17 @@ const requestJson = (
   });
 
 describe("HTTP API framework examples", () => {
+  test("rejects malformed JSON responses from the request helper", async () => {
+    const app = express4();
+    app.get("/broken-json", (_request, response) => {
+      response.type("application/json").send("{");
+    });
+
+    const baseUrl = await listen(app);
+
+    await expect(requestJson(`${baseUrl}/broken-json`, {})).rejects.toBeInstanceOf(SyntaxError);
+  });
+
   test("mounts the Fetch handler in Hono after consumer auth middleware and disposes resources", async () => {
     let authorized = false;
     let disposed = false;
