@@ -27,7 +27,7 @@ export class TodoApi extends Context.Service<
   static readonly layer = Layer.effect(
     TodoApi,
     Effect.gen(function* () {
-      const client = (yield* HttpClient.HttpClient).pipe(
+      const client = (yield* HttpClient).pipe(
         HttpClient.mapRequest(
           flow(HttpClientRequest.prependUrl("https://example.com"), HttpClientRequest.acceptJson),
         ),
