@@ -310,8 +310,8 @@ describe("dialogs and mutations", () => {
     setFormValue(form, "channelId", " channel-new ");
     setFormValue(form, "channelAccessToken", " token ");
     setFormValue(form, "channelSecret", " secret ");
-    submitForm(form);
-    submitForm(form);
+    click(element, 'line-account-dialog[data-kind="create"] [part="submit-button"]');
+    click(element, 'line-account-dialog[data-kind="create"] [part="submit-button"]');
     expect(state.createCalls).toHaveLength(1);
 
     const result = { ...firstAccount, id: "created", name: "New account" };
@@ -319,6 +319,17 @@ describe("dialogs and mutations", () => {
     await settle(element);
     expect(getDialog(element, "create").open).toBe(false);
     expect(created).toEqual([result]);
+  });
+
+  test("keeps split details in sync with filtered accounts", async () => {
+    const element = await mount(makeAdapter([firstAccount, secondAccount]).adapter);
+    element.variant = "split";
+    element.selectedListAccountId = firstAccount.id;
+    element.searchQuery = "Second";
+    await element.updateComplete;
+
+    expect(element.shadowRoot?.textContent).toContain("Second account");
+    expect(element.shadowRoot?.textContent).not.toContain("First account");
   });
 
   test("closes an unchanged edit without calling the adapter", async () => {
@@ -363,7 +374,7 @@ describe("dialogs and mutations", () => {
     const form = getForm(element, "edit");
     await form.updateComplete;
     setFormValue(form, "name", "Unsaved name");
-    submitForm(form);
+    click(element, 'line-account-dialog[data-kind="edit"] [part="submit-button"]');
     await settle(element);
 
     expect(getDialog(element, "edit").open).toBe(true);

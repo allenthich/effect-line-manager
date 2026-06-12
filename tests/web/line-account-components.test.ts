@@ -38,7 +38,9 @@ describe("line-account-card", () => {
 
     expect(element.shadowRoot?.textContent).toContain("LINE Store");
     expect(element.shadowRoot?.textContent).toContain("@line-store");
-    expect(element.shadowRoot?.textContent).toContain("Active");
+    expect(
+      element.shadowRoot?.querySelector('[part="status-button"]')?.getAttribute("aria-checked"),
+    ).toBe("true");
     expect(element.shadowRoot?.textContent).toContain("LINE Login");
     expect(element.shadowRoot?.textContent).toContain("LIFF");
     expect(element.shadowRoot?.querySelector('[part="card"]')).not.toBeNull();
@@ -87,6 +89,32 @@ describe("line-account-card", () => {
         (button) => button.disabled,
       ),
     ).toBe(true);
+  });
+
+  test("makes split cards selectable with keyboard semantics", async () => {
+    const element = document.createElement("line-account-card") as LineAccountCard;
+    element.account = account;
+    element.variant = "split";
+    element.selected = true;
+    document.body.append(element);
+    await element.updateComplete;
+
+    const article = element.shadowRoot?.querySelector<HTMLElement>('[part="card"]');
+    expect(article).not.toBeNull();
+    expect(article?.getAttribute("tabindex")).toBe("0");
+    expect(article?.getAttribute("role")).toBe("button");
+    expect(article?.getAttribute("aria-pressed")).toBe("true");
+
+    let selected: CustomEvent | undefined;
+    element.addEventListener("line-account-select-request", (event) => {
+      selected = event as CustomEvent;
+    });
+
+    article?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+    expect(selected?.detail.account).toBe(account);
+    expect(selected?.bubbles).toBe(true);
+    expect(selected?.composed).toBe(true);
   });
 
   test("renders an action error inside the affected card", async () => {

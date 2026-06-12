@@ -11,6 +11,8 @@ export class LineAccountList extends LitElement {
     disabled: { type: Boolean, reflect: true },
     disabledAccountIds: { attribute: false },
     accountErrors: { attribute: false },
+    variant: { type: String, reflect: true },
+    selectedAccountId: { type: String, reflect: true },
   };
 
   static styles = css`
@@ -24,6 +26,13 @@ export class LineAccountList extends LitElement {
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
       gap: var(--line-account-space-5, 1.5rem);
       padding: 0.25rem;
+    }
+
+    :host([variant="list"]) .grid,
+    :host([variant="split"]) .grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
     }
 
     .empty {
@@ -71,6 +80,8 @@ export class LineAccountList extends LitElement {
   declare disabled: boolean;
   declare disabledAccountIds: ReadonlySet<string>;
   declare accountErrors: ReadonlyMap<string, string>;
+  declare variant: string;
+  declare selectedAccountId: string | undefined;
 
   constructor() {
     super();
@@ -79,6 +90,8 @@ export class LineAccountList extends LitElement {
     this.disabled = false;
     this.disabledAccountIds = new Set();
     this.accountErrors = new Map();
+    this.variant = "grid";
+    this.selectedAccountId = undefined;
   }
 
   protected render() {
@@ -113,6 +126,8 @@ export class LineAccountList extends LitElement {
               .messages=${this.messages}
               .disabled=${this.disabled || this.disabledAccountIds.has(account.id)}
               .error=${this.accountErrors.get(account.id)}
+              .variant=${this.variant}
+              ?selected=${account.id === this.selectedAccountId}
             ></line-account-card>
           `,
         )}

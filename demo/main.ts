@@ -68,3 +68,21 @@ page.addEventListener("line-account-error", (event) => {
   const { operation } = (event as CustomEvent<{ operation: string }>).detail;
   announce(`The demo ${operation} operation failed.`);
 });
+
+// Theme toggle logic
+const themeToggle = document.querySelector<HTMLButtonElement>("#theme-toggle");
+if (themeToggle) {
+  const savedTheme = localStorage.getItem("theme");
+  if (
+    savedTheme === "dark" ||
+    (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  ) {
+    document.body.classList.add("dark-mode");
+  }
+
+  themeToggle.addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  });
+}

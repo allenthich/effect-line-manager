@@ -231,14 +231,20 @@ describe("edit mode", () => {
 
   test("disables submission and shows an external error without clearing values", async () => {
     const element = await makeForm("edit", account);
+    let submitted = false;
+    element.addEventListener("line-account-form-submit", () => {
+      submitted = true;
+    });
     setValue(element, "name", "Unsaved value");
     element.submitting = true;
     element.error = "The LINE account could not be updated.";
     await element.updateComplete;
 
     expect(
-      element.shadowRoot?.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled,
-    ).toBe(true);
+      element.shadowRoot?.querySelector<HTMLButtonElement>('button[type="submit"]'),
+    ).toBeNull();
+    element.submit();
+    expect(submitted).toBe(false);
     expect(element.shadowRoot?.querySelector('[role="alert"]')?.textContent).toContain(
       "The LINE account could not be updated.",
     );

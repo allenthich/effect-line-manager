@@ -1,4 +1,4 @@
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
@@ -305,12 +305,13 @@ export class LineAccountForm extends LitElement {
     return html`
       <form
         part="form"
-        aria-describedby=${visibleError ? "form-error" : nothing}
+        id="line-account-form"
+        aria-describedby=${visibleError ? "form-error" : undefined}
         @submit=${this.#handleSubmit}
       >
         ${visibleError
           ? html`<p class="error" id="form-error" role="alert">${visibleError}</p>`
-          : nothing}
+          : ""}
         <fieldset>
           <legend>${this.messages.messagingApiGroup}</legend>
           <div class="grid-2col">
@@ -364,19 +365,12 @@ export class LineAccountForm extends LitElement {
           <legend>${this.messages.liffGroup}</legend>
           ${this.#renderField("liffId", this.messages.liffIdLabel, "text", false)}
         </fieldset>
-        <div class="actions">
-          <button part="submit-button" type="submit" ?disabled=${this.submitting}>
-            ${this.submitting
-              ? editing
-                ? this.messages.savingAccount
-                : this.messages.creatingAccount
-              : editing
-                ? this.messages.saveChanges
-                : this.messages.createAccount}
-          </button>
-        </div>
       </form>
     `;
+  }
+
+  submit(): void {
+    this.shadowRoot?.querySelector("form")?.requestSubmit();
   }
 
   #renderField(
@@ -425,7 +419,7 @@ export class LineAccountForm extends LitElement {
               ? html`<span style="color:var(--line-account-danger-color, #c62828);margin-left:2px"
                   >*</span
                 >`
-              : nothing}</label
+              : ""}</label
           >
         </div>
         <div class="input-wrapper">
@@ -437,7 +431,7 @@ export class LineAccountForm extends LitElement {
             ?required=${required}
             ?readonly=${readOnly}
             ?disabled=${this.submitting}
-            aria-describedby=${describedBy || nothing}
+            aria-describedby=${describedBy || undefined}
             aria-invalid=${isInvalid ? "true" : "false"}
             autocomplete="off"
             @input=${this.#handleInput}
@@ -484,14 +478,14 @@ export class LineAccountForm extends LitElement {
                       `}
                 </button>
               `
-            : nothing}
+            : ""}
         </div>
         ${isInvalid
           ? html`<span class="field-error-msg" id=${fieldErrorId} role="alert"
               >${this.#validationError}</span
             >`
-          : nothing}
-        ${hint === undefined ? nothing : html`<span class="hint" id=${hintId}>${hint}</span>`}
+          : ""}
+        ${hint === undefined ? "" : html`<span class="hint" id=${hintId}>${hint}</span>`}
       </div>
     `;
   }
