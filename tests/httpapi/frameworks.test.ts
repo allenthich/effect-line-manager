@@ -11,6 +11,10 @@ import {
 import { createHonoLineAccountManagementApp } from "../../examples/httpapi/hono.ts";
 import { createExpressLineAccountManagementMiddleware } from "../../examples/httpapi/express.ts";
 
+class SetupError extends Error {
+  readonly _tag = "SetupError";
+}
+
 const account = {
   id: "record-1",
   name: "Primary",
@@ -178,7 +182,9 @@ describe("HTTP API framework examples", () => {
   test("forwards asynchronous setup failures to Express next", async () => {
     const app = express4();
     const mounted = createExpressLineAccountManagementMiddleware({
-      managementLayer: Layer.effect(LineAccountManagement)(Effect.fail(new Error("setup failed"))),
+      managementLayer: Layer.effect(LineAccountManagement)(
+        Effect.fail(new SetupError("setup failed")),
+      ),
     });
     app.use("/api/admin", mounted.middleware);
     app.use(

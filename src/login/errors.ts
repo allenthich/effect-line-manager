@@ -46,7 +46,7 @@ export class LineLoginApiResponseError extends Schema.TaggedErrorClass<LineLogin
   "LineLoginApiResponseError",
   {
     ...LineLoginApiResponseFields,
-    status: Schema.Number,
+    status: Schema.Finite,
   },
 ) {}
 

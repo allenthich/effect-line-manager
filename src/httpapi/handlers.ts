@@ -18,45 +18,47 @@ export const LineAccountManagementHandlers = HttpApiBuilder.group(
 
       return handlers
         .handle("list", () =>
-          management
-            .list()
-            .pipe(
-              Effect.catchTag("LineAccountPersistenceError", (error) =>
+          management.list().pipe(
+            Effect.catchTags({
+              LineAccountPersistenceError: (error) =>
                 Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-              ),
-            ),
+            }),
+          ),
         )
         .handle("create", ({ payload }) =>
           management.create(payload).pipe(
-            Effect.catchTag("LineAccountDuplicateChannelError", (error) =>
-              Effect.fail(new LineAccountDuplicateChannelHttpError({ channelId: error.channelId })),
-            ),
-            Effect.catchTag("LineAccountPersistenceError", (error) =>
-              Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            ),
+            Effect.catchTags({
+              LineAccountDuplicateChannelError: (error) =>
+                Effect.fail(
+                  new LineAccountDuplicateChannelHttpError({ channelId: error.channelId }),
+                ),
+              LineAccountPersistenceError: (error) =>
+                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
+            }),
           ),
         )
         .handle("update", ({ params, payload }) =>
           management.update(params.id, payload).pipe(
-            Effect.catchTag("LineAccountNotFoundError", (error) =>
-              Effect.fail(new LineAccountNotFoundHttpError({ recordId: error.recordId })),
-            ),
-            Effect.catchTag("LineAccountDuplicateChannelError", (error) =>
-              Effect.fail(new LineAccountDuplicateChannelHttpError({ channelId: error.channelId })),
-            ),
-            Effect.catchTag("LineAccountPersistenceError", (error) =>
-              Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            ),
+            Effect.catchTags({
+              LineAccountNotFoundError: (error) =>
+                Effect.fail(new LineAccountNotFoundHttpError({ recordId: error.recordId })),
+              LineAccountDuplicateChannelError: (error) =>
+                Effect.fail(
+                  new LineAccountDuplicateChannelHttpError({ channelId: error.channelId }),
+                ),
+              LineAccountPersistenceError: (error) =>
+                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
+            }),
           ),
         )
         .handle("delete", ({ params }) =>
           management.delete(params.id).pipe(
-            Effect.catchTag("LineAccountNotFoundError", (error) =>
-              Effect.fail(new LineAccountNotFoundHttpError({ recordId: error.recordId })),
-            ),
-            Effect.catchTag("LineAccountPersistenceError", (error) =>
-              Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            ),
+            Effect.catchTags({
+              LineAccountNotFoundError: (error) =>
+                Effect.fail(new LineAccountNotFoundHttpError({ recordId: error.recordId })),
+              LineAccountPersistenceError: (error) =>
+                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
+            }),
           ),
         );
     }),

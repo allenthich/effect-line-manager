@@ -16,17 +16,21 @@ export const verifyLineSignature = Effect.fn("LineSignature.verify")(function* (
     return yield* new LineSignatureError({ reason: "malformed" });
   }
 
-  try {
-    const actual = Buffer.from(signature, "base64");
-    const expected = createHmac("sha256", Redacted.value(channelSecret)).update(body).digest();
+  const matches = yield* Effect.try({
+    try: () => {
+      const actual = Buffer.from(signature, "base64");
+      const expected = createHmac("sha256", Redacted.value(channelSecret)).update(body).digest();
 
-    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-      return yield* new LineSignatureError({ reason: "mismatch" });
-    }
-    return yield* Effect.void;
-  } catch {
-    return yield* new LineSignatureError({ reason: "malformed" });
+      return actual.length === expected.length && timingSafeEqual(actual, expected);
+    },
+    catch: () => new LineSignatureError({ reason: "malformed" }),
+  });
+
+  if (!matches) {
+    return yield* new LineSignatureError({ reason: "mismatch" });
   }
+
+  return yield* Effect.void;
 });
 
 export const verifyLineSignatureString = Effect.fn("LineSignature.verifyString")(function* (
