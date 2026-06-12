@@ -1,7 +1,13 @@
 import { expect, test } from "vite-plus/test";
 import {
   CreateLineAccountInput,
+  CreateLineAccountRecordInput,
   LineAccount,
+  LineAccountDuplicateChannelError,
+  LineAccountManagement,
+  LineAccountNotFoundError,
+  LineAccountPersistenceError,
+  LineAccountView,
   LineChannelRecordId,
   LineChannelId,
   LineLoginChannelId,
@@ -29,7 +35,13 @@ import {
 test("exports the stable LINE manager API", () => {
   expect([
     CreateLineAccountInput,
+    CreateLineAccountRecordInput,
     LineAccount,
+    LineAccountDuplicateChannelError,
+    LineAccountManagement,
+    LineAccountNotFoundError,
+    LineAccountPersistenceError,
+    LineAccountView,
     LineChannelRecordId,
     LineChannelId,
     LineLoginChannelId,

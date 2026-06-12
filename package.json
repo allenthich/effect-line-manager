@@ -9,6 +9,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
+    "./httpapi": "./dist/httpapi/index.mjs",
     "./web": "./dist/web/index.mjs",
     "./package.json": "./package.json"
   },
@@ -29,11 +30,16 @@
   },
   "devDependencies": {
     "@effect/language-service": "^0.86.2",
+    "@effect/platform-node": "4.0.0-beta.78",
     "@effect/tsgo": "0.14.2",
+    "@types/express": "^5.0.6",
     "@types/node": "^25.6.2",
     "@typescript/native-preview": "7.0.0-dev.20260509.2",
     "bumpp": "^11.1.0",
+    "express": "^4.22.2",
+    "express5": "npm:express@^5.2.1",
     "happy-dom": "^20.10.2",
+    "hono": "^4.12.25",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
   },

@@ -11,9 +11,18 @@ const account: LineAccountView = {
   id: "account-1",
   name: "Store account",
   channelId: "1234567890",
+  botUserId: null,
+  basicId: null,
+  displayName: null,
+  pictureUrl: null,
   isActive: true,
   loginChannelId: "login-old",
   liffId: "liff-old",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+  hasChannelAccessToken: true,
+  hasChannelSecret: true,
+  hasLoginChannelSecret: true,
 };
 
 beforeAll(() => {
@@ -117,8 +126,8 @@ describe("edit mode", () => {
 
     expect(input(element, "channelId").readOnly).toBe(false);
     expect(input(element, "channelId").value).toBe(account.channelId);
-    expect(input(element, "channelAccessToken").value).toBe("");
-    expect(input(element, "channelSecret").value).toBe("");
+    expect(input(element, "channelAccessToken").value).toBe("••••••••••••••••");
+    expect(input(element, "channelSecret").value).toBe("••••••••••••••••");
     expect(submit(element)).toEqual({ mode: "edit", input: {} });
   });
 
@@ -182,20 +191,17 @@ describe("edit mode", () => {
     expect(input(element, "channelId").value).toBe("channel-2");
   });
 
-  test("populates password fields with hints, allows eye toggle reveal, and excludes unmodified hints from payload", async () => {
-    const accountWithHints: LineAccountView = {
+  test("uses generic password placeholders and excludes unmodified credentials from payload", async () => {
+    const accountWithCredentials: LineAccountView = {
       ...account,
       hasChannelAccessToken: true,
       hasChannelSecret: true,
       hasLoginChannelSecret: true,
-      channelAccessTokenHint: "20010••••••••••••••••",
-      channelSecretHint: "e3b0c••••••••••••••••",
-      loginChannelSecretHint: "f9afb••••••••••••••••",
     };
-    const element = await makeForm("edit", accountWithHints);
+    const element = await makeForm("edit", accountWithCredentials);
 
     const accessTokenInput = input(element, "channelAccessToken");
-    expect(accessTokenInput.value).toBe("20010••••••••••••••••");
+    expect(accessTokenInput.value).toBe("••••••••••••••••");
     expect(accessTokenInput.type).toBe("password");
 
     // Click the eye toggle to reveal

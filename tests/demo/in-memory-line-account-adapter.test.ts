@@ -6,15 +6,18 @@ const seed: LineAccountView = {
   id: "seed-1",
   name: "Seed account",
   channelId: "channel-seed",
+  botUserId: null,
+  basicId: null,
+  displayName: null,
+  pictureUrl: null,
   isActive: true,
   loginChannelId: null,
   liffId: null,
   hasChannelAccessToken: true,
   hasChannelSecret: true,
   hasLoginChannelSecret: false,
-  channelAccessTokenHint: "20010••••••••••••••••",
-  channelSecretHint: "e3b0c••••••••••••••••",
-  loginChannelSecretHint: null,
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
 
 test("provides isolated in-memory CRUD behavior for the demo page", async () => {

@@ -13,11 +13,17 @@ const account: LineAccountView = {
   name: "Internal name",
   displayName: "LINE Store",
   channelId: "1234567890",
+  botUserId: null,
   pictureUrl: null,
   basicId: "@line-store",
   isActive: true,
   loginChannelId: "login-1",
   liffId: null,
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+  hasChannelAccessToken: true,
+  hasChannelSecret: true,
+  hasLoginChannelSecret: true,
 };
 
 beforeAll(() => {

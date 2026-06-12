@@ -495,15 +495,10 @@ export class LineAccountForm extends LitElement {
     return {
       name: account?.name ?? "",
       channelId: account?.channelId ?? "",
-      channelAccessToken:
-        account?.channelAccessTokenHint ??
-        (account?.hasChannelAccessToken ? "••••••••••••••••" : ""),
-      channelSecret:
-        account?.channelSecretHint ?? (account?.hasChannelSecret ? "••••••••••••••••" : ""),
+      channelAccessToken: account?.hasChannelAccessToken ? "••••••••••••••••" : "",
+      channelSecret: account?.hasChannelSecret ? "••••••••••••••••" : "",
       loginChannelId: account?.loginChannelId ?? "",
-      loginChannelSecret:
-        account?.loginChannelSecretHint ??
-        (account?.hasLoginChannelSecret ? "••••••••••••••••" : ""),
+      loginChannelSecret: account?.hasLoginChannelSecret ? "••••••••••••••••" : "",
       liffId: account?.liffId ?? "",
     };
   }

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { Redacted, Schema } from "effect";
 import { inspect } from "node:util";
 import {
-  CreateLineAccountInput,
+  CreateLineAccountRecordInput,
   LineAccount,
   LineChannelId,
   LineChannelRecordId,
@@ -60,7 +60,7 @@ describe("LINE account domain schemas", () => {
   });
 
   test("models mutable account creation fields", () => {
-    const input = Schema.decodeUnknownSync(CreateLineAccountInput)({
+    const input = Schema.decodeUnknownSync(CreateLineAccountRecordInput)({
       name: "Primary",
       channelId: "1234567890",
       channelSecret: Redacted.make("channel-secret"),
@@ -86,7 +86,7 @@ describe("LINE account domain schemas", () => {
 
   test("rejects blank names and credentials", () => {
     expect(() =>
-      Schema.decodeUnknownSync(CreateLineAccountInput)({
+      Schema.decodeUnknownSync(CreateLineAccountRecordInput)({
         name: "   ",
         channelId: "channel-1",
         channelSecret: Redacted.make("channel-secret"),
@@ -97,7 +97,7 @@ describe("LINE account domain schemas", () => {
       }),
     ).toThrow();
     expect(() =>
-      Schema.decodeUnknownSync(CreateLineAccountInput)({
+      Schema.decodeUnknownSync(CreateLineAccountRecordInput)({
         name: "Primary",
         channelId: "channel-1",
         channelSecret: Redacted.make("   "),

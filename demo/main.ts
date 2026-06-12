@@ -5,34 +5,60 @@ import {
   type LineAccountView,
 } from "../src/web/index.ts";
 
+const createdAt = new Date("2026-06-01T00:00:00.000Z");
+const updatedAt = new Date("2026-06-10T00:00:00.000Z");
+
 const seedAccounts: readonly LineAccountView[] = [
   {
     id: "demo-account-1",
     name: "Customer Support",
     displayName: "LINE Support",
     channelId: "2001043291",
+    botUserId: null,
     basicId: "@line-support",
+    pictureUrl: null,
     isActive: true,
     loginChannelId: "2001043310",
     liffId: "2001043291-AbCdEf12",
+    createdAt,
+    updatedAt,
+    hasChannelAccessToken: true,
+    hasChannelSecret: true,
+    hasLoginChannelSecret: true,
   },
   {
     id: "demo-account-2",
     name: "Order Notifications",
     displayName: "LINE Orders",
     channelId: "2002098741",
+    botUserId: null,
     basicId: "@line-orders",
+    pictureUrl: null,
     isActive: true,
     loginChannelId: null,
     liffId: null,
+    createdAt,
+    updatedAt,
+    hasChannelAccessToken: true,
+    hasChannelSecret: true,
+    hasLoginChannelSecret: false,
   },
   {
     id: "demo-account-3",
     name: "Seasonal Campaign",
     channelId: "2003184427",
+    botUserId: null,
+    basicId: null,
+    displayName: null,
+    pictureUrl: null,
     isActive: false,
     loginChannelId: "2003184499",
     liffId: null,
+    createdAt,
+    updatedAt,
+    hasChannelAccessToken: true,
+    hasChannelSecret: true,
+    hasLoginChannelSecret: true,
   },
 ];
 
