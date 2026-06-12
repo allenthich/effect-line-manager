@@ -369,6 +369,10 @@ export class LineAccountForm extends LitElement {
     `;
   }
 
+  submit(): void {
+    this.shadowRoot?.querySelector("form")?.requestSubmit();
+  }
+
   #renderField(
     name: keyof FormValues,
     label: string,

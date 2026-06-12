@@ -749,7 +749,7 @@ export class LineAccountManagement extends LitElement {
       );
     });
 
-    let activeAccount = this.accounts.find((a) => a.id === this.selectedListAccountId);
+    let activeAccount = filtered.find((a) => a.id === this.selectedListAccountId);
     if (!activeAccount && filtered.length > 0) {
       activeAccount = filtered[0];
     }
@@ -865,9 +865,9 @@ export class LineAccountManagement extends LitElement {
           class="primary"
           part="submit-button"
           slot="footer"
-          type="submit"
-          form="line-account-form"
+          type="button"
           ?disabled=${this.createPending}
+          @click=${() => this.#submitDialogForm("create")}
         >
           ${this.createPending ? messages.creatingAccount : messages.createAccount}
         </button>
@@ -899,9 +899,9 @@ export class LineAccountManagement extends LitElement {
           class="primary"
           part="submit-button"
           slot="footer"
-          type="submit"
-          form="line-account-form"
+          type="button"
           ?disabled=${this.editPending}
+          @click=${() => this.#submitDialogForm("edit")}
         >
           ${this.editPending ? messages.savingAccount : messages.saveChanges}
         </button>
@@ -1002,9 +1002,20 @@ export class LineAccountManagement extends LitElement {
             title="Grid view"
             @click=${() => this.#setVariant("grid")}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.9rem;height:0.9rem;flex-shrink:0">
-              <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              style="width:0.9rem;height:0.9rem;flex-shrink:0"
+            >
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
             </svg>
             Grid
           </button>
@@ -1014,10 +1025,22 @@ export class LineAccountManagement extends LitElement {
             title="Table view"
             @click=${() => this.#setVariant("list")}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.9rem;height:0.9rem;flex-shrink:0">
-              <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line>
-              <line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line>
-              <line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              style="width:0.9rem;height:0.9rem;flex-shrink:0"
+            >
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
             </svg>
             List
           </button>
@@ -1027,7 +1050,16 @@ export class LineAccountManagement extends LitElement {
             title="Split pane view"
             @click=${() => this.#setVariant("split")}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.9rem;height:0.9rem;flex-shrink:0">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              style="width:0.9rem;height:0.9rem;flex-shrink:0"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="9" y1="3" x2="9" y2="21"></line>
             </svg>
@@ -1441,6 +1473,12 @@ export class LineAccountManagement extends LitElement {
     this.selectedAccount = undefined;
     this.mutationError = undefined;
   };
+
+  #submitDialogForm(kind: "create" | "edit"): void {
+    this.shadowRoot
+      ?.querySelector<LineAccountForm>(`line-account-dialog[data-kind="${kind}"] line-account-form`)
+      ?.submit();
+  }
 
   #handleFormSubmit = (event: CustomEvent<LineAccountFormSubmitDetail>): void => {
     if (event.detail.mode === "create") void this.#createAccount(event.detail.input);

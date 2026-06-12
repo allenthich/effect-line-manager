@@ -388,9 +388,17 @@ export class LineAccountCard extends LitElement {
 
     const displayName = account.displayName?.trim() || account.name;
     const initial = displayName.trim().charAt(0).toUpperCase();
+    const selectable = this.variant === "split";
 
     return html`
-      <article part="card" @click=${this.#handleCardClick}>
+      <article
+        part="card"
+        tabindex=${selectable ? "0" : nothing}
+        role=${selectable ? "button" : nothing}
+        aria-pressed=${selectable ? (this.selected ? "true" : "false") : nothing}
+        @click=${this.#handleCardClick}
+        @keydown=${this.#handleCardKeyDown}
+      >
         <div class="card-header">
           <div class="identity">
             ${account.pictureUrl
@@ -519,24 +527,35 @@ export class LineAccountCard extends LitElement {
   }
 
   #handleCardClick = (event: Event): void => {
-    if (this.variant === "split") {
-      const path = event.composedPath();
-      const isSwitch = path.some(
-        (el) => el instanceof HTMLElement && el.classList.contains("switch"),
-      );
-      if (isSwitch) return;
-
-      if (this.account !== undefined) {
-        this.dispatchEvent(
-          new CustomEvent("line-account-select-request", {
-            bubbles: true,
-            composed: true,
-            detail: { account: this.account },
-          }),
-        );
-      }
-    }
+    this.#selectAccount(event);
   };
+
+  #handleCardKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    this.#selectAccount(event);
+  };
+
+  #selectAccount(event: Event): void {
+    if (this.variant !== "split") return;
+
+    const path = event.composedPath();
+    const isSwitch = path.some(
+      (el) => el instanceof HTMLElement && el.classList.contains("switch"),
+    );
+    if (isSwitch) return;
+
+    if (this.account !== undefined) {
+      this.dispatchEvent(
+        new CustomEvent("line-account-select-request", {
+          bubbles: true,
+          composed: true,
+          detail: { account: this.account },
+        }),
+      );
+    }
+  }
 
   #requestEdit = (): void => {
     if (this.account !== undefined)
