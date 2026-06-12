@@ -1,6 +1,11 @@
 import { Schema } from "effect";
 
-export const LineLoginOperation = Schema.Literals(["getAccessToken", "getProfile"]);
+export const LineLoginOperation = Schema.Literals([
+  "getAccessToken",
+  "getProfile",
+  "refreshAccessToken",
+  "verifyIdToken",
+]);
 
 export type LineLoginOperation = typeof LineLoginOperation.Type;
 

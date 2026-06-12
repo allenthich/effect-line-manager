@@ -34,7 +34,15 @@ const account = {
 };
 
 const management: LineAccountManagementService = {
-  list: () => Effect.succeed([account]),
+  list: Effect.succeed({
+    data: [account],
+    pagination: {
+      page: 1,
+      pageSize: 1,
+      totalItems: 1,
+      totalPages: 1,
+    },
+  }),
   create: (input) => Effect.succeed({ ...account, name: input.name }),
   update: (_id, input) => Effect.succeed({ ...account, ...input }),
   delete: () => Effect.void,
@@ -136,13 +144,21 @@ describe("HTTP API framework examples", () => {
 
     expect(response.status).toBe(200);
     expect(authorized).toBe(true);
-    expect(await response.json()).toEqual([
-      {
-        ...account,
-        createdAt: account.createdAt.toISOString(),
-        updatedAt: account.updatedAt.toISOString(),
+    expect(await response.json()).toEqual({
+      data: [
+        {
+          ...account,
+          createdAt: account.createdAt.toISOString(),
+          updatedAt: account.updatedAt.toISOString(),
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        totalItems: 1,
+        totalPages: 1,
       },
-    ]);
+    });
     await mounted.dispose();
     expect(disposed).toBe(true);
   });

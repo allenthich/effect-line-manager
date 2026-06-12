@@ -72,8 +72,41 @@ export type LineApiClientError =
   | LineApiResponseError
   | LineRequestEncodingError;
 
+const MulticastMessageBody = Schema.Struct({
+  to: Schema.Array(Schema.String),
+  messages: LineMessages,
+  notificationDisabled: Schema.optional(Schema.Boolean),
+});
+
+const NarrowcastMessageBody = Schema.Struct({
+  messages: LineMessages,
+  notificationDisabled: Schema.optional(Schema.Boolean),
+  recipient: Schema.optional(Schema.Unknown),
+  filter: Schema.optional(Schema.Unknown),
+  limit: Schema.optional(Schema.Unknown),
+});
+
+export interface LineMulticastOptions {
+  readonly retryKey?: string | undefined;
+  readonly notificationDisabled?: boolean | undefined;
+}
+
+export interface LineNarrowcastOptions {
+  readonly retryKey?: string | undefined;
+  readonly notificationDisabled?: boolean | undefined;
+  readonly limit?:
+    | {
+        readonly max: number;
+        readonly upToRemainingQuota?: boolean | undefined;
+        readonly forbidPartialDelivery?: boolean | undefined;
+      }
+    | undefined;
+  readonly recipient?: unknown;
+  readonly filter?: unknown;
+}
+
 export interface LineApiClient {
-  readonly getBotInfo: () => Effect.Effect<
+  readonly getBotInfo: Effect.Effect<
     {
       readonly userId: string;
       readonly basicId: string;
@@ -91,6 +124,17 @@ export interface LineApiClient {
     replyToken: string,
     messages: LineMessageTuple,
     options?: LineReplyOptions,
+  ) => Effect.Effect<void, LineApiClientError>;
+
+  readonly multicastMessage: (
+    recipientIds: readonly string[],
+    messages: LineMessageTuple,
+    options?: LineMulticastOptions,
+  ) => Effect.Effect<void, LineApiClientError>;
+
+  readonly narrowcastMessage: (
+    messages: LineMessageTuple,
+    options?: LineNarrowcastOptions,
   ) => Effect.Effect<void, LineApiClientError>;
 }
 
@@ -277,9 +321,9 @@ export const makeLineApiClient = (
     );
 
   return {
-    getBotInfo: Effect.fn("LineApiClient.getBotInfo")(function* () {
-      return yield* executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse);
-    }),
+    getBotInfo: executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse).pipe(
+      Effect.withSpan("LineApiClient.getBotInfo"),
+    ),
     pushMessage: Effect.fn("LineApiClient.pushMessage")(function* (recipientId, messages, options) {
       return yield* executePost(
         "pushMessage",
@@ -306,5 +350,39 @@ export const makeLineApiClient = (
         });
       },
     ),
+    multicastMessage: Effect.fn("LineApiClient.multicastMessage")(
+      function* (recipientIds, messages, options) {
+        return yield* executePost(
+          "multicastMessage",
+          "/v2/bot/message/multicast",
+          MulticastMessageBody,
+          {
+            to: [...recipientIds],
+            messages,
+            ...(options?.notificationDisabled === undefined
+              ? {}
+              : { notificationDisabled: options.notificationDisabled }),
+          },
+          options?.retryKey,
+        );
+      },
+    ),
+    narrowcastMessage: Effect.fn("LineApiClient.narrowcastMessage")(function* (messages, options) {
+      return yield* executePost(
+        "narrowcastMessage",
+        "/v2/bot/message/narrowcast",
+        NarrowcastMessageBody,
+        {
+          messages,
+          ...(options?.notificationDisabled === undefined
+            ? {}
+            : { notificationDisabled: options.notificationDisabled }),
+          ...(options?.recipient === undefined ? {} : { recipient: options.recipient }),
+          ...(options?.filter === undefined ? {} : { filter: options.filter }),
+          ...(options?.limit === undefined ? {} : { limit: options.limit }),
+        },
+        options?.retryKey,
+      );
+    }),
   };
 };

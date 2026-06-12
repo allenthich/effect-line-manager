@@ -709,9 +709,9 @@ export class LineAccountManagement extends LitElement {
 
     this.loading = true;
     try {
-      const accounts = await adapter.list();
+      const page = await adapter.list();
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
-      this.accounts = [...accounts];
+      this.accounts = [...page.data];
       if (
         this.accounts.length > 0 &&
         !this.accounts.some((acc) => acc.id === this.selectedListAccountId)

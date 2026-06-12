@@ -49,7 +49,7 @@ const makeRepository = (overrides: Partial<LineRepositoryService> = {}): LineRep
   findById: () => Effect.succeed(Option.some(makeAccount())),
   findByChannelId: () => Effect.succeedNone,
   findByBotUserId: () => Effect.succeedNone,
-  listAll: () => Effect.succeed([makeAccount()]),
+  listAll: Effect.succeed([makeAccount()]),
   deleteById: () => Effect.void,
   ...overrides,
 });
@@ -60,7 +60,7 @@ const makeRegistry = (invalidated: string[]): LineClientRegistryService => ({
   getLiffClient: () => Effect.die("unused"),
   syncBotProfile: () => Effect.die("unused"),
   invalidate: (id) => Effect.sync(() => invalidated.push(id)),
-  invalidateAll: () => Effect.void,
+  invalidateAll: Effect.void,
 });
 
 const run = <A, E>(

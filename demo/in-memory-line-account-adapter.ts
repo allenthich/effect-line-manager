@@ -18,7 +18,15 @@ export const createInMemoryLineAccountAdapter = (
   let nextId = accounts.length + 1;
 
   return {
-    list: async () => accounts.map(copyAccount),
+    list: async () => ({
+      data: accounts.map(copyAccount),
+      pagination: {
+        page: 1,
+        pageSize: accounts.length,
+        totalItems: accounts.length,
+        totalPages: accounts.length === 0 ? 0 : 1,
+      },
+    }),
     create: async (input) => {
       const now = new Date();
       const account: LineAccountView = {
@@ -30,8 +38,8 @@ export const createInMemoryLineAccountAdapter = (
         displayName: null,
         pictureUrl: null,
         isActive: true,
-        loginChannelId: input.loginChannelId,
-        liffId: input.liffId,
+        loginChannelId: input.loginChannelId ?? null,
+        liffId: input.liffId ?? null,
         createdAt: now,
         updatedAt: now,
         hasChannelAccessToken: true,

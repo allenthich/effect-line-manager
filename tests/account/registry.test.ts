@@ -61,7 +61,7 @@ const makeRepository = (
   findById,
   findByChannelId: () => Effect.succeedNone,
   findByBotUserId: () => Effect.succeedNone,
-  listAll: () => Effect.succeed([]),
+  listAll: Effect.succeed([]),
   deleteById: () => Effect.void,
 });
 
@@ -213,7 +213,7 @@ describe("LineClientRegistry", () => {
         const rotated = yield* registry.getMessagingClient(recordId);
         yield* rotated.pushMessage("U123", [{ type: "text", text: "rotated" }]);
 
-        yield* registry.invalidateAll();
+        yield* registry.invalidateAll;
         yield* registry.getMessagingClient(recordId);
       }),
       repository,

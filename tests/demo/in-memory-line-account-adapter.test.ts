@@ -23,7 +23,15 @@ const seed: LineAccountView = {
 test("provides isolated in-memory CRUD behavior for the demo page", async () => {
   const adapter = createInMemoryLineAccountAdapter([seed]);
 
-  expect(await adapter.list()).toEqual([seed]);
+  expect(await adapter.list()).toEqual({
+    data: [seed],
+    pagination: {
+      page: 1,
+      pageSize: 1,
+      totalItems: 1,
+      totalPages: 1,
+    },
+  });
 
   const created = await adapter.create({
     name: "Created account",
@@ -57,8 +65,24 @@ test("provides isolated in-memory CRUD behavior for the demo page", async () => 
   });
 
   await adapter.delete(seed.id);
-  expect(await adapter.list()).toEqual([updated]);
+  expect(await adapter.list()).toEqual({
+    data: [updated],
+    pagination: {
+      page: 1,
+      pageSize: 1,
+      totalItems: 1,
+      totalPages: 1,
+    },
+  });
 
   const secondAdapter = createInMemoryLineAccountAdapter([seed]);
-  expect(await secondAdapter.list()).toEqual([seed]);
+  expect(await secondAdapter.list()).toEqual({
+    data: [seed],
+    pagination: {
+      page: 1,
+      pageSize: 1,
+      totalItems: 1,
+      totalPages: 1,
+    },
+  });
 });

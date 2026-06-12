@@ -33,10 +33,25 @@ describe("generated LINE account client", () => {
       const response =
         request.method === "DELETE"
           ? new Response(null, { status: 204 })
-          : new Response(JSON.stringify(request.method === "GET" ? [accountJson] : accountJson), {
-              status: request.method === "POST" ? 201 : 200,
-              headers: { "content-type": "application/json" },
-            });
+          : new Response(
+              JSON.stringify(
+                request.method === "GET"
+                  ? {
+                      data: [accountJson],
+                      pagination: {
+                        page: 1,
+                        pageSize: 1,
+                        totalItems: 1,
+                        totalPages: 1,
+                      },
+                    }
+                  : accountJson,
+              ),
+              {
+                status: request.method === "POST" ? 201 : 200,
+                headers: { "content-type": "application/json" },
+              },
+            );
       return Effect.succeed(HttpClientResponse.fromWeb(request, response));
     });
 
@@ -78,7 +93,19 @@ describe("generated LINE account client", () => {
     const calls: unknown[] = [];
     const fakeClient = {
       lineAccounts: {
-        list: () => Effect.sync(() => (calls.push("list"), [accountJson])),
+        list: () =>
+          Effect.sync(() => {
+            calls.push("list");
+            return {
+              data: [accountJson],
+              pagination: {
+                page: 1,
+                pageSize: 1,
+                totalItems: 1,
+                totalPages: 1,
+              },
+            };
+          }),
         create: ({ payload }: { readonly payload: unknown }) =>
           Effect.sync(() => (calls.push(["create", payload]), accountJson)),
         update: ({ params, payload }: { readonly params: unknown; readonly payload: unknown }) =>

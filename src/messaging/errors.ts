@@ -1,6 +1,12 @@
 import { Schema } from "effect";
 
-export const LineApiOperation = Schema.Literals(["pushMessage", "replyMessage", "getBotInfo"]);
+export const LineApiOperation = Schema.Literals([
+  "pushMessage",
+  "replyMessage",
+  "getBotInfo",
+  "multicastMessage",
+  "narrowcastMessage",
+]);
 
 export type LineApiOperation = typeof LineApiOperation.Type;
 

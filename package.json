@@ -25,8 +25,7 @@
     "prepare": "vp config && effect-tsgo patch"
   },
   "dependencies": {
-    "effect": "4.0.0-beta.78",
-    "lit": "^3.3.3"
+    "effect": "4.0.0-beta.78"
   },
   "devDependencies": {
     "@effect/language-service": "^0.86.2",
@@ -40,8 +39,17 @@
     "express5": "npm:express@^5.2.1",
     "happy-dom": "^20.10.2",
     "hono": "^4.12.25",
+    "lit": "^3.3.3",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "lit": "^3.3.3"
+  },
+  "peerDependenciesMeta": {
+    "lit": {
+      "optional": true
+    }
   },
   "packageManager": "pnpm@11.5.2"
 }

@@ -9,6 +9,7 @@ import {
   defineLineAccountManagementElements,
   type CreateLineAccountInput,
   type LineAccountErrorEventDetail,
+  type LineAccountListPage,
   type LineAccountManagementAdapter,
   type LineAccountView,
   type UpdateLineAccountInput,
@@ -44,6 +45,16 @@ type MutableAdapter = {
   -readonly [Key in keyof LineAccountManagementAdapter]: LineAccountManagementAdapter[Key];
 };
 
+const pageOf = (accounts: ReadonlyArray<LineAccountView>): LineAccountListPage => ({
+  data: [...accounts],
+  pagination: {
+    page: 1,
+    pageSize: accounts.length,
+    totalItems: accounts.length,
+    totalPages: accounts.length === 0 ? 0 : 1,
+  },
+});
+
 beforeAll(() => {
   defineLineAccountManagementElements();
 });
@@ -75,7 +86,7 @@ const makeAdapter = (initial: readonly LineAccountView[] = []) => {
   const updateCalls: { id: string; input: UpdateLineAccountInput }[] = [];
   const deleteCalls: string[] = [];
   const adapter: MutableAdapter = {
-    list: async () => accounts,
+    list: async () => pageOf(accounts),
     create: async (input) => {
       createCalls.push(input);
       const account = { ...firstAccount, id: `account-${accounts.length + 1}`, name: input.name };
@@ -163,7 +174,7 @@ describe("loading and localization", () => {
   });
 
   test("loads on connection and renders loading, empty, and success states", async () => {
-    const pending = deferred<readonly LineAccountView[]>();
+    const pending = deferred<LineAccountListPage>();
     const adapter = makeAdapter().adapter;
     adapter.list = () => pending.promise;
     const element = document.createElement("line-account-management") as LineAccountManagement;
@@ -176,13 +187,13 @@ describe("loading and localization", () => {
     );
     expect(element.shadowRoot?.querySelector('[role="status"]')).not.toBeNull();
 
-    pending.resolve([]);
+    pending.resolve(pageOf([]));
     await settle(element);
     expect(getList(element).shadowRoot?.textContent).toContain(
       defaultLineAccountManagementMessages.emptyHeading,
     );
 
-    adapter.list = async () => [firstAccount];
+    adapter.list = async () => pageOf([firstAccount]);
     await element.reload();
     await element.updateComplete;
     expect(getCards(element)).toHaveLength(1);
@@ -209,14 +220,14 @@ describe("loading and localization", () => {
     expect(element.shadowRoot?.textContent).not.toContain("private backend details");
     expect(errors).toEqual([{ operation: "list", error: originalError }]);
 
-    adapter.list = async () => [firstAccount];
+    adapter.list = async () => pageOf([firstAccount]);
     click(element, '[part="retry-button"]');
     await settle(element);
     expect(getCards(element)).toHaveLength(1);
   });
 
   test("reloads when the adapter property is reassigned and ignores stale results", async () => {
-    const stale = deferred<readonly LineAccountView[]>();
+    const stale = deferred<LineAccountListPage>();
     const first = makeAdapter().adapter;
     first.list = () => stale.promise;
     const element = await mount(first);
@@ -224,7 +235,7 @@ describe("loading and localization", () => {
     const next = makeAdapter([secondAccount]).adapter;
     element.adapter = next;
     await settle(element);
-    stale.resolve([firstAccount]);
+    stale.resolve(pageOf([firstAccount]));
     await settle(element);
 
     expect(getCards(element)[0]?.account).toEqual(secondAccount);

@@ -159,6 +159,11 @@ PATCH  /line-accounts/:id
 DELETE /line-accounts/:id
 ```
 
+`GET /line-accounts` returns `{ data, pagination }`. The default implementation
+currently returns a single page backed by the host repository's full account
+list; host applications can override `LineAccountManagement.list` for tenant-
+or user-scoped listing.
+
 The API accepts credentials only in create or update payloads. Responses
 contain credential-presence booleans but never credential values, prefixes,
 suffixes, or masked hints. Omitting a credential during update preserves the
