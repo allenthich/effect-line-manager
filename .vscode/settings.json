@@ -42,6 +42,11 @@
   },
   "peacock.color": "#7c5315",
   "js/ts.experimental.useTsgo": true,
+  "editor.inlayHints.enabled": "on",
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.parameterTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
   "typescript.experimental.useTsgo": true,
   "typescript.native-preview.tsdk": "node_modules/@typescript/native-preview"
 }
