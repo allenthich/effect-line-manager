@@ -65,5 +65,9 @@ const callProvider = request.pipe(Effect.timeout("30 seconds"), Effect.retry(pol
 Use bounded concurrency for external calls. Reserve `concurrency: "unbounded"` for proven in-memory work.
 
 ```ts
+<<<<<<< docs(effect-v4)-add-best-practice-guidlines
+const results = yield* Effect.forEach(items, processItem, { concurrency: 8 });
+=======
 const results = yield * Effect.forEach(items, processItem, { concurrency: 8 });
+>>>>>>> main
 ```
