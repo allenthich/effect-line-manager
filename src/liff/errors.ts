@@ -2,7 +2,6 @@ import { Schema } from "effect";
 
 export const LineLiffOperation = Schema.Literals([
   "getLiffApps",
-  "getLiffApp",
   "createLiffApp",
   "updateLiffApp",
   "deleteLiffApp",

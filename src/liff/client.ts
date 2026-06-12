@@ -58,18 +58,6 @@ export interface LineLiffClient {
     LineLiffClientError
   >;
 
-  readonly getLiffApp: (liffId: string) => Effect.Effect<
-    {
-      readonly liffId: string;
-      readonly view: {
-        readonly type: "compact" | "tall" | "full";
-        readonly url: string;
-      };
-      readonly description?: string | undefined;
-    },
-    LineLiffClientError
-  >;
-
   readonly createLiffApp: (app: {
     readonly view: {
       readonly type: "compact" | "tall" | "full";
@@ -205,61 +193,6 @@ export const makeLineLiffClient = (
           : cause,
       ),
     ),
-
-    getLiffApp: (liffId) =>
-      Effect.gen(function* () {
-        const operation: LineLiffOperation = "getLiffApp";
-        yield* Effect.annotateCurrentSpan({ operation });
-
-        const request = HttpClientRequest.get(`${rootUrl}/liff/v1/apps/${liffId}`).pipe(
-          HttpClientRequest.bearerToken(channelAccessToken),
-        );
-
-        const response = yield* httpClient
-          .execute(request)
-          .pipe(
-            Effect.mapError(
-              (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
-            ),
-          );
-
-        if (response.status >= 200 && response.status < 300) {
-          const bodyJson = yield* response.json.pipe(
-            Effect.mapError(
-              (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
-            ),
-          );
-          return yield* Schema.decodeUnknownEffect(LiffAppSchema)(bodyJson).pipe(
-            Effect.mapError(
-              (cause) =>
-                new LineLiffRequestEncodingError({
-                  operation,
-                  cause: sanitizedCause(cause),
-                }),
-            ),
-          );
-        }
-
-        const responseBody = yield* response.text.pipe(
-          Effect.mapError(
-            (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
-          ),
-        );
-
-        return yield* handleFailureResponse(
-          operation,
-          response.status,
-          responseBody,
-          response.headers,
-        );
-      }).pipe(
-        Effect.timeout(requestTimeout),
-        Effect.mapError((cause) =>
-          Cause.isTimeoutError(cause)
-            ? new LineLiffApiTimeoutError({ operation: "getLiffApp" })
-            : cause,
-        ),
-      ),
 
     createLiffApp: (app) =>
       Effect.gen(function* () {
