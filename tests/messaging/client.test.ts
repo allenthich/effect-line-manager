@@ -94,7 +94,7 @@ describe("LINE Messaging API client", () => {
     );
     const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
 
-    const info = await Effect.runPromise(client.getBotInfo());
+    const info = await Effect.runPromise(client.getBotInfo);
     expect(info).toEqual({
       userId: "U-bot-id",
       basicId: "@basic-id",

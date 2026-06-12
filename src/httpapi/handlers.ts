@@ -18,7 +18,7 @@ export const LineAccountManagementHandlers = HttpApiBuilder.group(
 
       return handlers
         .handle("list", () =>
-          management.list().pipe(
+          management.list.pipe(
             Effect.catchTags({
               LineAccountPersistenceError: (error) =>
                 Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),

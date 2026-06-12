@@ -21,7 +21,7 @@ import { LineClientRegistry } from "./registry.ts";
 import { LineRepository } from "./repository.ts";
 
 export interface LineAccountManagementService {
-  readonly list: () => Effect.Effect<ReadonlyArray<LineAccountView>, LineAccountPersistenceError>;
+  readonly list: Effect.Effect<ReadonlyArray<LineAccountView>, LineAccountPersistenceError>;
   readonly create: (
     input: CreateLineAccountInput,
   ) => Effect.Effect<
@@ -110,11 +110,10 @@ export const makeLineAccountManagement = Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
 
   return LineAccountManagement.of({
-    list: Effect.fn("LineAccountManagement.list")(() =>
-      repository.listAll().pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.map((accounts) => accounts.map(toLineAccountView)),
-      ),
+    list: repository.listAll.pipe(
+      Effect.catchTag("LineRepositoryError", persistenceFailure),
+      Effect.map((accounts) => accounts.map(toLineAccountView)),
+      Effect.withSpan("LineAccountManagement.list"),
     ),
     create: Effect.fn("LineAccountManagement.create")((input: CreateLineAccountInput) =>
       repository.create(toCreateRecordInput(input)).pipe(

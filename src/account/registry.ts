@@ -63,7 +63,7 @@ export class LineClientRegistry extends Context.Service<
     >;
 
     readonly invalidate: (recordId: LineChannelRecordId) => Effect.Effect<void>;
-    readonly invalidateAll: () => Effect.Effect<void>;
+    readonly invalidateAll: Effect.Effect<void>;
   }
 >()("effect-line-manager/LineClientRegistry") {
   static layer(config: LineClientRegistryConfig = {}) {
@@ -135,7 +135,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       (recordId: LineChannelRecordId) =>
         Effect.gen(function* () {
           const messagingClient = yield* getMessagingClient(recordId);
-          const botInfo = yield* messagingClient.getBotInfo();
+          const botInfo = yield* messagingClient.getBotInfo;
 
           const updated = yield* repository.update(recordId, {
             botUserId: botInfo.userId,
@@ -156,8 +156,8 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       invalidate: Effect.fn("LineClientRegistry.invalidate")((recordId: LineChannelRecordId) =>
         Cache.invalidate(cache, recordId),
       ),
-      invalidateAll: Effect.fn("LineClientRegistry.invalidateAll")(() =>
-        Cache.invalidateAll(cache),
+      invalidateAll: Cache.invalidateAll(cache).pipe(
+        Effect.withSpan("LineClientRegistry.invalidateAll"),
       ),
     });
   });

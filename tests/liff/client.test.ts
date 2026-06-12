@@ -31,7 +31,7 @@ describe("LINE LIFF API client", () => {
 
     const client = makeLineLiffClient(httpClient, Redacted.make("access-token-123"), { baseUrl });
 
-    const apps = await Effect.runPromise(client.getLiffApps());
+    const apps = await Effect.runPromise(client.getLiffApps);
     expect(apps).toEqual([
       {
         liffId: "liff-id-1",

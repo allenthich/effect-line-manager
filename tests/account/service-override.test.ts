@@ -34,7 +34,7 @@ const makeRepository = (): LineRepositoryService => ({
   findById: () => Effect.succeedNone,
   findByChannelId: () => Effect.succeedNone,
   findByBotUserId: () => Effect.succeedNone,
-  listAll: () => Effect.succeed([account1, account2]),
+  listAll: Effect.succeed([account1, account2]),
   deleteById: () => Effect.die("unused"),
 });
 
@@ -44,7 +44,7 @@ const makeRegistry = (): LineClientRegistryService => ({
   getLiffClient: () => Effect.die("unused"),
   syncBotProfile: () => Effect.die("unused"),
   invalidate: () => Effect.void,
-  invalidateAll: () => Effect.void,
+  invalidateAll: Effect.void,
 });
 
 const baseLayer = Layer.mergeAll(
@@ -53,18 +53,18 @@ const baseLayer = Layer.mergeAll(
 );
 
 describe("LineAccountManagement service override", () => {
-  test("default list() returns all accounts", async () => {
+  test("default list returns all accounts", async () => {
     const layer = LineAccountManagement.layer.pipe(Layer.provide(baseLayer));
 
     const accounts = await Effect.runPromise(
-      Effect.flatMap(LineAccountManagement, (m) => m.list()).pipe(Effect.provide(layer)),
+      Effect.flatMap(LineAccountManagement, (m) => m.list).pipe(Effect.provide(layer)),
     );
 
     expect(accounts).toHaveLength(2);
     expect(accounts.map((a) => a.name)).toEqual(["Alpha", "Beta"]);
   });
 
-  test("consumer can override list() to apply user-scoped filtering", async () => {
+  test("consumer can override list to apply user-scoped filtering", async () => {
     // Simulate a consumer's user-channel assignment service
     class UserChannelStore extends Context.Service<
       UserChannelStore,
@@ -83,7 +83,7 @@ describe("LineAccountManagement service override", () => {
     );
 
     // Consumer creates their own management layer that wraps the default
-    // and overrides only list() with user-scoped filtering
+    // and overrides only list with user-scoped filtering
     const userScopedManagementLayer = Layer.effect(LineAccountManagement)(
       Effect.gen(function* () {
         const base = yield* makeLineAccountManagement;
@@ -91,20 +91,18 @@ describe("LineAccountManagement service override", () => {
 
         return LineAccountManagement.of({
           ...base,
-          list: Effect.fn("UserScopedManagement.list")(() =>
-            Effect.gen(function* () {
-              const userId = "alice"; // in real app, from auth context
-              const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
-              const all = yield* base.list();
-              return all.filter((a) => assignedIds.has(a.channelId));
-            }),
-          ),
+          list: Effect.gen(function* () {
+            const userId = "alice"; // in real app, from auth context
+            const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
+            const all = yield* base.list;
+            return all.filter((a) => assignedIds.has(a.channelId));
+          }).pipe(Effect.withSpan("UserScopedManagement.list")),
         });
       }),
     ).pipe(Layer.provide(baseLayer), Layer.provide(userChannelLayer));
 
     const accounts = await Effect.runPromise(
-      Effect.flatMap(LineAccountManagement, (m) => m.list()).pipe(
+      Effect.flatMap(LineAccountManagement, (m) => m.list).pipe(
         Effect.provide(userScopedManagementLayer),
       ),
     );
@@ -134,7 +132,7 @@ describe("LineAccountManagement service override", () => {
         const base = yield* makeLineAccountManagement;
         return LineAccountManagement.of({
           ...base,
-          list: () => base.list().pipe(Effect.map((a) => a.slice(0, 1))),
+          list: base.list.pipe(Effect.map((a) => a.slice(0, 1))),
         });
       }),
     ).pipe(Layer.provide(testBaseLayer));

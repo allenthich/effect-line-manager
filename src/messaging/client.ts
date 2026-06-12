@@ -103,7 +103,7 @@ export interface LineNarrowcastOptions {
 }
 
 export interface LineApiClient {
-  readonly getBotInfo: () => Effect.Effect<
+  readonly getBotInfo: Effect.Effect<
     {
       readonly userId: string;
       readonly basicId: string;
@@ -318,9 +318,9 @@ export const makeLineApiClient = (
     );
 
   return {
-    getBotInfo: Effect.fn("LineApiClient.getBotInfo")(function* () {
-      return yield* executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse);
-    }),
+    getBotInfo: executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse).pipe(
+      Effect.withSpan("LineApiClient.getBotInfo"),
+    ),
     pushMessage: Effect.fn("LineApiClient.pushMessage")(function* (recipientId, messages, options) {
       return yield* executePost(
         "pushMessage",

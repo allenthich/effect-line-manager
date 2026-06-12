@@ -34,7 +34,7 @@ const account = {
 };
 
 const management: LineAccountManagementService = {
-  list: () => Effect.succeed([account]),
+  list: Effect.succeed([account]),
   create: (input) => Effect.succeed({ ...account, name: input.name }),
   update: (_id, input) => Effect.succeed({ ...account, ...input }),
   delete: () => Effect.void,

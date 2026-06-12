@@ -46,7 +46,7 @@ const CreateLiffAppResponseSchema = Schema.Struct({
 });
 
 export interface LineLiffClient {
-  readonly getLiffApps: () => Effect.Effect<
+  readonly getLiffApps: Effect.Effect<
     ReadonlyArray<{
       readonly liffId: string;
       readonly view: {
@@ -150,63 +150,61 @@ export const makeLineLiffClient = (
     });
 
   return {
-    getLiffApps: () =>
-      Effect.gen(function* () {
-        const operation: LineLiffOperation = "getLiffApps";
-        yield* Effect.annotateCurrentSpan({ operation });
+    getLiffApps: Effect.gen(function* () {
+      const operation: LineLiffOperation = "getLiffApps";
+      yield* Effect.annotateCurrentSpan({ operation });
 
-        const request = HttpClientRequest.get(`${rootUrl}/liff/v1/apps`).pipe(
-          HttpClientRequest.bearerToken(channelAccessToken),
-        );
+      const request = HttpClientRequest.get(`${rootUrl}/liff/v1/apps`).pipe(
+        HttpClientRequest.bearerToken(channelAccessToken),
+      );
 
-        const response = yield* httpClient
-          .execute(request)
-          .pipe(
-            Effect.mapError(
-              (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
-            ),
-          );
-
-        if (response.status >= 200 && response.status < 300) {
-          const bodyJson = yield* response.json.pipe(
-            Effect.mapError(
-              (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
-            ),
-          );
-          const parsed = yield* Schema.decodeUnknownEffect(GetLiffAppsResponseSchema)(
-            bodyJson,
-          ).pipe(
-            Effect.mapError(
-              (cause) =>
-                new LineLiffRequestEncodingError({
-                  operation,
-                  cause: sanitizedCause(cause),
-                }),
-            ),
-          );
-          return parsed.apps;
-        }
-
-        const responseBody = yield* response.text.pipe(
+      const response = yield* httpClient
+        .execute(request)
+        .pipe(
           Effect.mapError(
             (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
           ),
         );
 
-        return yield* handleFailureResponse(
-          operation,
-          response.status,
-          responseBody,
-          response.headers,
+      if (response.status >= 200 && response.status < 300) {
+        const bodyJson = yield* response.json.pipe(
+          Effect.mapError(
+            (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
+          ),
         );
-      }).pipe(
-        Effect.timeout(requestTimeout),
-        Effect.mapError((cause) =>
-          Cause.isTimeoutError(cause)
-            ? new LineLiffApiTimeoutError({ operation: "getLiffApps" })
-            : cause,
+        const parsed = yield* Schema.decodeUnknownEffect(GetLiffAppsResponseSchema)(bodyJson).pipe(
+          Effect.mapError(
+            (cause) =>
+              new LineLiffRequestEncodingError({
+                operation,
+                cause: sanitizedCause(cause),
+              }),
+          ),
+        );
+        return parsed.apps;
+      }
+
+      const responseBody = yield* response.text.pipe(
+        Effect.mapError(
+          (cause) => new LineLiffApiTransportError({ operation, cause: sanitizedCause(cause) }),
         ),
+      );
+
+      return yield* handleFailureResponse(
+        operation,
+        response.status,
+        responseBody,
+        response.headers,
+      );
+    }).pipe(
+      Effect.withSpan("LineLiffClient.getLiffApps"),
+      Effect.timeout(requestTimeout),
+      Effect.mapError((cause) =>
+        Cause.isTimeoutError(cause)
+          ? new LineLiffApiTimeoutError({ operation: "getLiffApps" })
+          : cause,
       ),
+    ),
 
     getLiffApp: (liffId) =>
       Effect.gen(function* () {

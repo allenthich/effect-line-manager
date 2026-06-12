@@ -39,7 +39,7 @@ export class LineRepository extends Context.Service<
       botUserId: string,
     ) => Effect.Effect<Option.Option<LineAccount>, LineRepositoryError>;
 
-    readonly listAll: () => Effect.Effect<ReadonlyArray<LineAccount>, LineRepositoryError>;
+    readonly listAll: Effect.Effect<ReadonlyArray<LineAccount>, LineRepositoryError>;
 
     readonly deleteById: (
       id: LineChannelRecordId,

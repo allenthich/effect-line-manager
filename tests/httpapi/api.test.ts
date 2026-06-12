@@ -59,7 +59,7 @@ const makeClient = (management: LineAccountManagementService) =>
   );
 
 const baseManagement = (): LineAccountManagementService => ({
-  list: () => Effect.succeed([account]),
+  list: Effect.succeed([account]),
   create: () => Effect.succeed(account),
   update: () => Effect.succeed(account),
   delete: () => Effect.void,
@@ -78,7 +78,7 @@ describe("LineAccountManagementApi", () => {
   test("exercises all four credential-safe endpoints through HttpApiTest", async () => {
     const calls: Array<unknown> = [];
     const management: LineAccountManagementService = {
-      list: () => Effect.sync(() => (calls.push("list"), [account])),
+      list: Effect.sync(() => (calls.push("list"), [account])),
       create: (input) => Effect.sync(() => (calls.push(["create", input]), account)),
       update: (id, input) => Effect.sync(() => (calls.push(["update", id, input]), account)),
       delete: (id) => Effect.sync(() => void calls.push(["delete", id])),
@@ -186,7 +186,7 @@ describe("LineAccountManagementApi", () => {
   test("sanitizes persistence failures", async () => {
     const management: LineAccountManagementService = {
       ...baseManagement(),
-      list: () => Effect.fail(new LineAccountPersistenceError({ operation: "listAll" })),
+      list: Effect.fail(new LineAccountPersistenceError({ operation: "listAll" })),
     };
 
     await Effect.runPromise(
@@ -258,7 +258,7 @@ describe("LineAccountManagementApi", () => {
     const notFound = new LineAccountNotFoundError({ recordId });
     const web = makeWebHandler({
       ...baseManagement(),
-      list: () => Effect.fail(new LineAccountPersistenceError({ operation: "listAll" })),
+      list: Effect.fail(new LineAccountPersistenceError({ operation: "listAll" })),
       create: () => Effect.fail(duplicate),
       update: () => Effect.fail(notFound),
       delete: () => Effect.fail(notFound),
