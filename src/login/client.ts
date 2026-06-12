@@ -172,7 +172,7 @@ export const makeLineLoginClient = (
           );
           const schema = Schema.Struct({
             access_token: Schema.String,
-            expires_in: Schema.Number,
+            expires_in: Schema.Finite,
             id_token: Schema.optional(Schema.String),
             refresh_token: Schema.String,
             scope: Schema.String,

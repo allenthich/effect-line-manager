@@ -23,7 +23,7 @@ export const LineTextMessageEvent = Schema.Struct({
   type: Schema.Literal("message"),
   replyToken: Schema.String,
   source: LineEventSource,
-  timestamp: Schema.Number,
+  timestamp: Schema.Finite,
   mode: Schema.Literals(["active", "standby"]),
   webhookEventId: Schema.String,
   message: Schema.Struct({
@@ -37,7 +37,7 @@ export const LineFollowEvent = Schema.Struct({
   type: Schema.Literal("follow"),
   replyToken: Schema.String,
   source: LineEventSource,
-  timestamp: Schema.Number,
+  timestamp: Schema.Finite,
   mode: Schema.Literals(["active", "standby"]),
   webhookEventId: Schema.String,
 });
@@ -45,7 +45,7 @@ export const LineFollowEvent = Schema.Struct({
 export const LineUnfollowEvent = Schema.Struct({
   type: Schema.Literal("unfollow"),
   source: LineEventSource,
-  timestamp: Schema.Number,
+  timestamp: Schema.Finite,
   mode: Schema.Literals(["active", "standby"]),
   webhookEventId: Schema.String,
 });
@@ -54,7 +54,7 @@ export const LinePostbackEvent = Schema.Struct({
   type: Schema.Literal("postback"),
   replyToken: Schema.String,
   source: LineEventSource,
-  timestamp: Schema.Number,
+  timestamp: Schema.Finite,
   mode: Schema.Literals(["active", "standby"]),
   webhookEventId: Schema.String,
   postback: Schema.Struct({

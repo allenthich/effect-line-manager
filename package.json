@@ -20,7 +20,7 @@
     "build": "vp pack",
     "dev": "vp pack --watch",
     "test": "vp test",
-    "check": "vp check",
+    "check": "vp check && vpx tsgo --noEmit",
     "prepublishOnly": "vp run build",
     "prepare": "vp config && effect-tsgo patch"
   },

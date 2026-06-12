@@ -47,12 +47,14 @@ const account = Schema.decodeUnknownSync(LineAccountView)({
 const makeClient = (management: LineAccountManagementService) =>
   HttpApiTest.groups(LineAccountManagementApi, ["lineAccounts"]).pipe(
     Effect.provide(
-      LineAccountManagementHandlers.pipe(
-        Layer.provide(Layer.succeed(LineAccountManagement)(management)),
+      Layer.mergeAll(
+        LineAccountManagementHandlers.pipe(
+          Layer.provide(Layer.succeed(LineAccountManagement)(management)),
+        ),
+        LineAccountValidationMiddlewareLayer,
+        NodeHttpServer.layerHttpServices,
       ),
     ),
-    Effect.provide(LineAccountValidationMiddlewareLayer),
-    Effect.provide(NodeHttpServer.layerHttpServices),
     Effect.scoped,
   );
 
@@ -86,16 +88,17 @@ describe("LineAccountManagementApi", () => {
       Effect.gen(function* () {
         const client = yield* makeClient(management);
         const listed = yield* client.lineAccounts.list();
+        const payload = yield* Schema.decodeUnknownEffect(CreateLineAccountInput)({
+          name: "Primary",
+          channelId: "channel-1",
+          channelSecret: "secret",
+          channelAccessToken: "token",
+          loginChannelId: null,
+          loginChannelSecret: null,
+          liffId: null,
+        });
         const created = yield* client.lineAccounts.create({
-          payload: Schema.decodeUnknownSync(CreateLineAccountInput)({
-            name: "Primary",
-            channelId: "channel-1",
-            channelSecret: "secret",
-            channelAccessToken: "token",
-            loginChannelId: null,
-            loginChannelSecret: null,
-            liffId: null,
-          }),
+          payload,
         });
         const updated = yield* client.lineAccounts.update({
           params: { id: recordId },
