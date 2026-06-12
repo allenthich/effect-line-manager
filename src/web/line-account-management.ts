@@ -1,4 +1,4 @@
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
@@ -838,7 +838,7 @@ export class LineAccountManagement extends LitElement {
               </div>
             </div>
           `
-        : nothing}
+        : ""}
 
       <line-account-dialog
         data-kind="create"
@@ -922,7 +922,7 @@ export class LineAccountManagement extends LitElement {
         </p>
         ${this.dialogKind === "delete" && this.mutationError
           ? html`<p class="error" role="alert">${this.mutationError}</p>`
-          : nothing}
+          : ""}
         <button
           slot="footer"
           type="button"
@@ -993,7 +993,7 @@ export class LineAccountManagement extends LitElement {
                   </svg>
                 </button>
               `
-            : nothing}
+            : ""}
         </div>
         <div class="variant-switcher">
           <button
@@ -1200,9 +1200,7 @@ export class LineAccountManagement extends LitElement {
             : html`<span class="details-initial">${initial}</span>`}
           <div class="details-title-group">
             <h2>${displayName}</h2>
-            ${account.basicId
-              ? html`<div class="details-basic-id">${account.basicId}</div>`
-              : nothing}
+            ${account.basicId ? html`<div class="details-basic-id">${account.basicId}</div>` : ""}
           </div>
         </div>
         <button

@@ -393,9 +393,9 @@ export class LineAccountCard extends LitElement {
     return html`
       <article
         part="card"
-        tabindex=${selectable ? "0" : nothing}
-        role=${selectable ? "button" : nothing}
-        aria-pressed=${selectable ? (this.selected ? "true" : "false") : nothing}
+        tabindex=${selectable ? "0" : undefined}
+        role=${selectable ? "button" : undefined}
+        aria-pressed=${selectable ? (this.selected ? "true" : "false") : undefined}
         @click=${this.#handleCardClick}
         @keydown=${this.#handleCardKeyDown}
       >
@@ -413,7 +413,7 @@ export class LineAccountCard extends LitElement {
                 ? html`<p style="color:var(--line-account-muted-color, #52606d);font-size:0.875rem">
                     ${account.basicId}
                   </p>`
-                : nothing}
+                : ""}
             </div>
           </div>
           <button
@@ -501,7 +501,7 @@ export class LineAccountCard extends LitElement {
                 `}
           </span>
         </div>
-        ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
+        ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : ""}
         <div class="actions">
           <button
             class="action-btn"
