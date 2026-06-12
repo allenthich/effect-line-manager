@@ -196,11 +196,16 @@ describe("LINE Messaging API client", () => {
     const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
     const invalidMessages = [{ type: "text", text: 42 }] as unknown as LineMessageTuple;
 
-    await expect(failure(client.pushMessage("U123", invalidMessages))).resolves.toMatchObject({
+    const error = await failure(client.pushMessage("U123", invalidMessages));
+
+    expect(error).toMatchObject({
       _tag: "LineRequestEncodingError",
       operation: "pushMessage",
-      cause: expect.anything(),
     });
+    const cause = error.cause;
+    expect(cause).toBeInstanceOf(Error);
+    if (!(cause instanceof Error)) throw new Error("Expected sanitized cause to be an Error");
+    expect(cause.message).not.toBe("UnknownHttpError");
     expect(executed).toBe(false);
   });
 

@@ -97,12 +97,21 @@ export interface LineApiClient {
 const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
 const sanitizedCause = (cause: unknown): Error => {
-  if (typeof cause === "object" && cause !== null && "reason" in cause) {
+  if (typeof cause !== "object" || cause === null) {
+    return new Error("UnknownHttpError");
+  }
+
+  if ("reason" in cause) {
     const reason = cause.reason;
     if (typeof reason === "object" && reason !== null && "_tag" in reason) {
       return new Error(String(reason._tag));
     }
   }
+
+  if ("_tag" in cause) {
+    return new Error(String(cause._tag));
+  }
+
   return new Error("UnknownHttpError");
 };
 
@@ -172,10 +181,10 @@ export const makeLineApiClient = (
             : HttpClientRequest.setHeader(request, "X-Line-Retry-Key", retryKey),
         ),
         Effect.mapError(
-          (cause) =>
+          (error) =>
             new LineRequestEncodingError({
               operation,
-              cause: sanitizedCause(cause),
+              cause: sanitizedCause(error),
             }),
         ),
       );
@@ -206,8 +215,8 @@ export const makeLineApiClient = (
       );
     }).pipe(
       Effect.timeout(requestTimeout),
-      Effect.mapError((cause) =>
-        Cause.isTimeoutError(cause) ? new LineApiTimeoutError({ operation }) : cause,
+      Effect.mapError((error) =>
+        Cause.isTimeoutError(error) ? new LineApiTimeoutError({ operation }) : error,
       ),
     );
 
@@ -239,10 +248,10 @@ export const makeLineApiClient = (
         );
         return yield* Schema.decodeUnknownEffect(schema)(bodyJson).pipe(
           Effect.mapError(
-            (cause) =>
+            (error) =>
               new LineRequestEncodingError({
                 operation,
-                cause: sanitizedCause(cause),
+                cause: sanitizedCause(error),
               }),
           ),
         );
@@ -262,8 +271,8 @@ export const makeLineApiClient = (
       );
     }).pipe(
       Effect.timeout(requestTimeout),
-      Effect.mapError((cause) =>
-        Cause.isTimeoutError(cause) ? new LineApiTimeoutError({ operation }) : cause,
+      Effect.mapError((error) =>
+        Cause.isTimeoutError(error) ? new LineApiTimeoutError({ operation }) : error,
       ),
     );
 
