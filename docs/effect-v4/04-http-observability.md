@@ -42,7 +42,6 @@ export class TodoApi extends Context.Service<
         return yield* client.get(`/todos/${id}`).pipe(
           Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo)),
           Effect.mapError((cause) => new TodoApiError({ cause })),
-          Effect.withSpan("TodoApi.getTodo"),
         );
       });
 
