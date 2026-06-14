@@ -56,7 +56,7 @@ Timeouts and retries should be explicit near the boundary that can hang or fail 
 import { Duration, Effect, Schedule } from "effect";
 
 const policy = Schedule.exponential(Duration.millis(100)).pipe(
-  Schedule.compose(Schedule.recurs(3)),
+  Schedule.both(Schedule.recurs(3)),
 );
 
 const callProvider = request.pipe(Effect.timeout("30 seconds"), Effect.retry(policy));
@@ -65,9 +65,5 @@ const callProvider = request.pipe(Effect.timeout("30 seconds"), Effect.retry(pol
 Use bounded concurrency for external calls. Reserve `concurrency: "unbounded"` for proven in-memory work.
 
 ```ts
-<<<<<<< docs(effect-v4)-add-best-practice-guidlines
 const results = yield* Effect.forEach(items, processItem, { concurrency: 8 });
-=======
-const results = yield * Effect.forEach(items, processItem, { concurrency: 8 });
->>>>>>> main
 ```
