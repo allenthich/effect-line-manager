@@ -1,3 +1,22 @@
+/**
+ * Supported webhook event subset:
+ * - Text message events
+ * - Follow events
+ * - Unfollow events
+ * - Postback events
+ *
+ * Intentional SDK differences vs @line/bot-sdk 11.0.1:
+ * - EventBase.deliveryContext: SDK requires it; local subset omits it.
+ * - EventBase.source: SDK makes it optional; local subset requires it.
+ * - UserSource.userId: SDK makes it optional; local subset requires it.
+ * - Text messages: SDK includes quoteToken, emojis, mention, quotedMessageId, markAsReadToken; local subset keeps only id, type, text.
+ * - FollowEvent: SDK includes follow.isUnblocked; local subset omits it.
+ * - PostbackEvent.replyToken: SDK makes it optional; local subset requires it.
+ * - Only text message, follow, unfollow, and postback events are supported. All other SDK event/message types are intentionally rejected.
+ *
+ * This is a stable external boundary. Do not widen without a separate design decision.
+ */
+
 import { Schema } from "effect";
 
 export const LineUserSource = Schema.Struct({
