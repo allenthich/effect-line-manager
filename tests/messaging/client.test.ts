@@ -10,11 +10,13 @@ import {
 import {
   LineEmoji,
   LineEmojiSubstitutionObject,
+  LineMessages,
   LineMentionSubstitutionObject,
   LineQuickReply,
   LineQuickReplyItem,
   LineSender,
   LineSubstitutionObject,
+  LineTextMessageV2,
   makeLineApiClient,
   type LineMessageTuple,
 } from "../../src/messaging/client.ts";
@@ -567,6 +569,47 @@ describe("LINE Messaging API client — LineOutboundMessage wiring", () => {
     });
     expect(body.messages[0].quickReply).toEqual({
       items: [{ type: "action", action: { type: "message", label: "Yes", text: "Yes" } }],
+    });
+  });
+});
+
+describe("LINE Messaging API — validation", () => {
+  test("LineMessages rejects an empty array", () => {
+    expect(() => Schema.decodeUnknownSync(LineMessages)([])).toThrow();
+  });
+
+  test("LineMessages rejects more than 5 messages", () => {
+    const baseMessage = { type: "text" as const, text: "msg" };
+    const messages = [baseMessage, baseMessage, baseMessage, baseMessage, baseMessage, baseMessage];
+    expect(() => Schema.decodeUnknownSync(LineMessages)(messages)).toThrow();
+  });
+
+  test("TextV2 substitution field is validated by Schema", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(LineTextMessageV2)({
+        type: "textV2",
+        text: "hello",
+        substitution: { type: "invalid", foo: "bar" },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(LineTextMessageV2)({
+        type: "textV2",
+        text: "hello",
+        substitution: { productId: "p1", emojiId: "001" },
+      }),
+    ).toThrow();
+
+    const valid = Schema.decodeUnknownSync(LineTextMessageV2)({
+      type: "textV2",
+      text: "hello",
+      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+    });
+    expect(valid).toMatchObject({
+      type: "textV2",
+      text: "hello",
+      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
     });
   });
 });
