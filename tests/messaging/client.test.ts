@@ -772,7 +772,7 @@ describe("LINE Messaging API — adversarial edge cases", () => {
   test("LineOutboundMessage rejects unknown message type", () => {
     expect(() =>
       Schema.decodeUnknownSync(LineOutboundMessage)({
-        type: "image",
+        type: "unsupported_type_xyz",
         originalContentUrl: "https://example.com/img.jpg",
         previewImageUrl: "https://example.com/preview.jpg",
       }),
@@ -1049,5 +1049,563 @@ describe("LINE Messaging API — customAggregationUnits", () => {
     expect(requests).toHaveLength(1);
     const body = await requestJson(requests[0]!);
     expect(body.customAggregationUnits).toBeUndefined();
+  });
+
+  describe("LINE Messaging API — Additional Message Types", () => {
+    test("sends an image message with required fields", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "image",
+            originalContentUrl: "https://example.com/image.jpg",
+            previewImageUrl: "https://example.com/preview.jpg",
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "image",
+            originalContentUrl: "https://example.com/image.jpg",
+            previewImageUrl: "https://example.com/preview.jpg",
+          },
+        ],
+      });
+    });
+
+    test("sends a flex message with altText and contents", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "flex",
+            altText: "Flex message",
+            contents: {
+              type: "bubble",
+              body: { type: "box", layout: "vertical", contents: [] },
+            },
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "flex",
+            altText: "Flex message",
+            contents: expect.objectContaining({ type: "bubble" }),
+          },
+        ],
+      });
+    });
+
+    test("sends a sticker message with packageId and stickerId", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "sticker",
+            packageId: "6325",
+            stickerId: "10979904",
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "sticker",
+            packageId: "6325",
+            stickerId: "10979904",
+          },
+        ],
+      });
+    });
+
+    test("sends a video message with required fields", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "video",
+            originalContentUrl: "https://example.com/video.mp4",
+            previewImageUrl: "https://example.com/preview.jpg",
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "video",
+            originalContentUrl: "https://example.com/video.mp4",
+            previewImageUrl: "https://example.com/preview.jpg",
+          },
+        ],
+      });
+    });
+
+    test("sends an audio message with required fields", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "audio",
+            originalContentUrl: "https://example.com/audio.mp3",
+            duration: 5000,
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "audio",
+            originalContentUrl: "https://example.com/audio.mp3",
+            duration: 5000,
+          },
+        ],
+      });
+    });
+
+    test("sends a location message with coordinates", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "location",
+            title: "Tokyo",
+            address: "Shibuya",
+            latitude: 35.659,
+            longitude: 139.701,
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "location",
+            title: "Tokyo",
+            address: "Shibuya",
+            latitude: 35.659,
+            longitude: 139.701,
+          },
+        ],
+      });
+    });
+
+    test("sends an imagemap message with baseSize and actions", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "imagemap",
+            baseUrl: "https://example.com/map",
+            altText: "Map",
+            baseSize: { width: 1040, height: 1040 },
+            actions: [{ type: "uri", linkUri: "https://example.com" }],
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "imagemap",
+            baseUrl: "https://example.com/map",
+            altText: "Map",
+            baseSize: { width: 1040, height: 1040 },
+            actions: [{ type: "uri", linkUri: "https://example.com" }],
+          },
+        ],
+      });
+    });
+
+    test("sends a template message with template object", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "template",
+            altText: "Buttons template",
+            template: {
+              type: "buttons",
+              text: "Choose an option",
+              actions: [{ type: "postback", label: "Buy", data: "action=buy" }],
+            },
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "template",
+            altText: "Buttons template",
+            template: expect.objectContaining({ type: "buttons" }),
+          },
+        ],
+      });
+    });
+
+    test("sends a coupon message with optional deliveryTag", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          {
+            type: "coupon",
+            couponId: "COUPON_001",
+            deliveryTag: "summer-sale",
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      await expect(requestJson(requests[0]!)).resolves.toMatchObject({
+        to: "U123",
+        messages: [
+          {
+            type: "coupon",
+            couponId: "COUPON_001",
+            deliveryTag: "summer-sale",
+          },
+        ],
+      });
+    });
+
+    test("sends mixed message types in a single push request", async () => {
+      const { client: httpClient, requests } = makeCapturingClient();
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+      await Effect.runPromise(
+        client.pushMessage("U123", [
+          { type: "text", text: "Check this out" },
+          {
+            type: "image",
+            originalContentUrl: "https://example.com/img.jpg",
+            previewImageUrl: "https://example.com/preview.jpg",
+          },
+          {
+            type: "sticker",
+            packageId: "6325",
+            stickerId: "10979904",
+          },
+        ]),
+      );
+
+      expect(requests).toHaveLength(1);
+      const json = await requestJson(requests[0]!);
+      expect(json.to).toBe("U123");
+      expect(json.messages).toHaveLength(3);
+      expect(json.messages[0].type).toBe("text");
+      expect(json.messages[1].type).toBe("image");
+      expect(json.messages[2].type).toBe("sticker");
+    });
+
+    test("rejects a malformed sticker message missing packageId before HTTP execution", async () => {
+      let executed = false;
+      const httpClient = HttpClient.make((request) => {
+        executed = true;
+        return Effect.succeed(
+          HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })),
+        );
+      });
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+      const invalidMessages = [{ type: "sticker", stickerId: "2" }] as unknown as LineMessageTuple;
+
+      await expect(failure(client.pushMessage("U123", invalidMessages))).resolves.toMatchObject({
+        _tag: "LineRequestEncodingError",
+        operation: "pushMessage",
+      });
+      expect(executed).toBe(false);
+    });
+
+    test("rejects a malformed audio message missing duration before HTTP execution", async () => {
+      let executed = false;
+      const httpClient = HttpClient.make((request) => {
+        executed = true;
+        return Effect.succeed(
+          HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })),
+        );
+      });
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+      const invalidMessages = [
+        { type: "audio", originalContentUrl: "https://example.com/audio.mp3" },
+      ] as unknown as LineMessageTuple;
+
+      await expect(failure(client.pushMessage("U123", invalidMessages))).resolves.toMatchObject({
+        _tag: "LineRequestEncodingError",
+        operation: "pushMessage",
+      });
+      expect(executed).toBe(false);
+    });
+
+    test("rejects a malformed location message missing latitude before HTTP execution", async () => {
+      let executed = false;
+      const httpClient = HttpClient.make((request) => {
+        executed = true;
+        return Effect.succeed(
+          HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })),
+        );
+      });
+      const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+      const invalidMessages = [
+        { type: "location", title: "Tokyo", address: "Shibuya", longitude: 139.701 },
+      ] as unknown as LineMessageTuple;
+
+      await expect(failure(client.pushMessage("U123", invalidMessages))).resolves.toMatchObject({
+        _tag: "LineRequestEncodingError",
+        operation: "pushMessage",
+      });
+      expect(executed).toBe(false);
+    });
+  });
+
+  describe("LINE Messaging API — Additional Message Types Validation", () => {
+    test("accepts a text message with quickReply containing imageUrl", () => {
+      const messages = [
+        {
+          type: "text" as const,
+          text: "hello",
+          quickReply: {
+            items: [
+              {
+                imageUrl: "https://example.com/icon.png",
+                action: { type: "message", label: "Yes", text: "yes" },
+              },
+            ],
+          },
+        },
+      ];
+
+      const decoded = Schema.decodeUnknownSync(LineMessages)(messages);
+      expect(decoded).toEqual(messages);
+    });
+
+    test("accepts a text message with sender", () => {
+      const messages = [
+        {
+          type: "text" as const,
+          text: "hello",
+          sender: {
+            name: "Bot",
+            iconUrl: "https://example.com/bot.png",
+          },
+        },
+      ];
+
+      const decoded = Schema.decodeUnknownSync(LineMessages)(messages);
+      expect(decoded).toEqual(messages);
+    });
+
+    test("accepts an image message in the message collection", () => {
+      const messages = [
+        {
+          type: "image" as const,
+          originalContentUrl: "https://example.com/image.jpg",
+          previewImageUrl: "https://example.com/preview.jpg",
+        },
+      ];
+
+      const decoded = Schema.decodeUnknownSync(LineMessages)(messages);
+      expect(decoded).toEqual(messages);
+    });
+
+    test("accepts a sticker message in the message collection", () => {
+      const messages = [
+        {
+          type: "sticker" as const,
+          packageId: "1",
+          stickerId: "1",
+        },
+      ];
+
+      const decoded = Schema.decodeUnknownSync(LineMessages)(messages);
+      expect(decoded).toEqual(messages);
+    });
+
+    test("rejects an unsupported message type", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([{ type: "unknown_type", data: "test" }]),
+      ).toThrow();
+    });
+
+    test("rejects a malformed image message missing required fields", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([
+          { type: "image", originalContentUrl: "https://example.com/image.jpg" },
+        ]),
+      ).toThrow();
+    });
+
+    test.each([
+      {
+        label: "video",
+        payload: {
+          type: "video" as const,
+          originalContentUrl: "https://example.com/video.mp4",
+          previewImageUrl: "https://example.com/thumb.jpg",
+        },
+      },
+      {
+        label: "audio",
+        payload: {
+          type: "audio" as const,
+          originalContentUrl: "https://example.com/audio.mp3",
+          duration: 5000,
+        },
+      },
+      {
+        label: "location",
+        payload: {
+          type: "location" as const,
+          title: "Tokyo",
+          address: "Shibuya",
+          latitude: 35.659,
+          longitude: 139.701,
+        },
+      },
+      {
+        label: "textV2",
+        payload: { type: "textV2" as const, text: "Hello" },
+      },
+      {
+        label: "textV2 with substitution",
+        payload: {
+          type: "textV2" as const,
+          text: "Hello {name}",
+          substitution: { name: { type: "emoji", productId: "123", emojiId: "456" } },
+        },
+      },
+      {
+        label: "imagemap",
+        payload: {
+          type: "imagemap" as const,
+          baseUrl: "https://example.com/map",
+          altText: "Map",
+          baseSize: { width: 1040, height: 1040 },
+          actions: [{ type: "uri", linkUri: "https://example.com" }],
+        },
+      },
+      {
+        label: "template",
+        payload: {
+          type: "template" as const,
+          altText: "Buttons",
+          template: { type: "buttons", text: "Choose", actions: [] },
+        },
+      },
+      {
+        label: "coupon",
+        payload: { type: "coupon" as const, couponId: "COUPON_001" },
+      },
+    ])("accepts a $label message in the message collection", ({ payload }) => {
+      const messages = [payload];
+      const decoded = Schema.decodeUnknownSync(LineMessages)(messages);
+      expect(decoded).toEqual(messages);
+    });
+
+    test("accepts a collection containing 3 different message types", () => {
+      const messages = [
+        { type: "text" as const, text: "hello" },
+        {
+          type: "sticker" as const,
+          packageId: "1",
+          stickerId: "2",
+        },
+        {
+          type: "image" as const,
+          originalContentUrl: "https://example.com/a.jpg",
+          previewImageUrl: "https://example.com/b.jpg",
+        },
+      ];
+
+      const decoded = Schema.decodeUnknownSync(LineMessages)(messages);
+      expect(decoded).toEqual(messages);
+      expect(decoded).toHaveLength(3);
+      expect(decoded[0]!.type).toBe("text");
+      expect(decoded[1]!.type).toBe("sticker");
+      expect(decoded[2]!.type).toBe("image");
+    });
+
+    test("rejects a malformed sticker message missing packageId", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([{ type: "sticker", stickerId: "2" }]),
+      ).toThrow();
+    });
+
+    test("rejects a malformed audio message missing duration", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([
+          { type: "audio", originalContentUrl: "https://example.com/audio.mp3" },
+        ]),
+      ).toThrow();
+    });
+
+    test("rejects a malformed location message missing latitude", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([
+          { type: "location", title: "Tokyo", address: "Shibuya", longitude: 139.701 },
+        ]),
+      ).toThrow();
+    });
+
+    test("rejects a malformed video message missing previewImageUrl", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([
+          { type: "video", originalContentUrl: "https://example.com/video.mp4" },
+        ]),
+      ).toThrow();
+    });
+
+    test("rejects a malformed imagemap message missing baseSize", () => {
+      expect(() =>
+        Schema.decodeUnknownSync(LineMessages)([
+          {
+            type: "imagemap",
+            baseUrl: "https://example.com/map",
+            altText: "Map",
+            actions: [],
+          },
+        ]),
+      ).toThrow();
+    });
   });
 });
