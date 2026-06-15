@@ -267,7 +267,7 @@ describe("LineClientRegistry", () => {
     expect(lookups).toBe(4);
   });
 
-  test("syncs bot profile from LINE API to database", async () => {
+  test("syncs bot profile from LINE API to database, stripping unknown official fields", async () => {
     const repository = makeRepository(
       () => Effect.succeed(Option.some(makeAccount("token-1"))),
       (id, input) => {
@@ -278,6 +278,9 @@ describe("LineClientRegistry", () => {
           displayName: "Synced Bot",
           pictureUrl: "https://sync.test/pic.png",
         });
+        expect(input).not.toHaveProperty("premiumId");
+        expect(input).not.toHaveProperty("chatMode");
+        expect(input).not.toHaveProperty("markAsReadMode");
         const original = makeAccount("token-1");
         return Effect.succeed(
           new LineAccount({
@@ -308,6 +311,9 @@ describe("LineClientRegistry", () => {
         basicId: "@sync-basic",
         displayName: "Synced Bot",
         pictureUrl: "https://sync.test/pic.png",
+        premiumId: "P-sync-premium",
+        chatMode: "chat",
+        markAsReadMode: "auto",
       }),
     );
 
@@ -316,6 +322,61 @@ describe("LineClientRegistry", () => {
         const registry = yield* LineClientRegistry;
         const synced = yield* registry.syncBotProfile(recordId);
         expect(synced.displayName).toBe("Synced Bot");
+      }),
+      repository,
+      httpClient,
+    );
+  });
+
+  test("syncs bot profile with missing pictureUrl, passing null to repository", async () => {
+    const repository = makeRepository(
+      () => Effect.succeed(Option.some(makeAccount("token-1"))),
+      (id, input) => {
+        expect(id).toBe(recordId);
+        expect(input).toEqual({
+          botUserId: "U-sync-bot",
+          basicId: "@sync-basic",
+          displayName: "Synced Bot",
+          pictureUrl: null,
+        });
+        const original = makeAccount("token-1");
+        return Effect.succeed(
+          new LineAccount({
+            id: original.id,
+            name: original.name,
+            channelId: original.channelId,
+            channelSecret: original.channelSecret,
+            channelAccessToken: original.channelAccessToken,
+            isActive: original.isActive,
+            loginChannelId: original.loginChannelId,
+            loginChannelSecret: original.loginChannelSecret,
+            liffId: original.liffId,
+            createdAt: original.createdAt,
+            updatedAt: original.updatedAt,
+            botUserId: "U-sync-bot",
+            basicId: "@sync-basic",
+            displayName: "Synced Bot",
+            pictureUrl: null,
+          }),
+        );
+      },
+    );
+
+    const { client: httpClient } = makeCapturingHttpClient(
+      200,
+      JSON.stringify({
+        userId: "U-sync-bot",
+        basicId: "@sync-basic",
+        displayName: "Synced Bot",
+        // pictureUrl intentionally absent
+      }),
+    );
+
+    await run(
+      Effect.gen(function* () {
+        const registry = yield* LineClientRegistry;
+        const synced = yield* registry.syncBotProfile(recordId);
+        expect(synced.pictureUrl).toBeNull();
       }),
       repository,
       httpClient,

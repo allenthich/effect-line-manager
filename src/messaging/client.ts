@@ -22,14 +22,15 @@ export const LineEmoji = Schema.Struct({
 export type LineEmoji = typeof LineEmoji.Type;
 
 export const LineQuickReplyItem = Schema.Struct({
-  type: Schema.Literal("action"),
+  type: Schema.optional(Schema.Literal("action")),
   action: Schema.Unknown,
+  imageUrl: Schema.optional(Schema.String),
 });
 
 export type LineQuickReplyItem = typeof LineQuickReplyItem.Type;
 
 export const LineQuickReply = Schema.Struct({
-  items: Schema.Array(LineQuickReplyItem),
+  items: Schema.optional(Schema.Array(LineQuickReplyItem)),
 });
 
 export type LineQuickReply = typeof LineQuickReply.Type;
@@ -102,7 +103,119 @@ export const LineTextMessageV2 = Schema.Struct({
 
 export type LineTextMessageV2 = typeof LineTextMessageV2.Type;
 
-export const LineOutboundMessage = Schema.Union([LineTextMessage, LineTextMessageV2]);
+export const LineStickerMessage = Schema.Struct({
+  type: Schema.Literal("sticker"),
+  packageId: Schema.String,
+  stickerId: Schema.String,
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+  quoteToken: Schema.optional(Schema.String),
+});
+
+export type LineStickerMessage = typeof LineStickerMessage.Type;
+
+export const LineImageMessage = Schema.Struct({
+  type: Schema.Literal("image"),
+  originalContentUrl: Schema.String,
+  previewImageUrl: Schema.String,
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineImageMessage = typeof LineImageMessage.Type;
+
+export const LineVideoMessage = Schema.Struct({
+  type: Schema.Literal("video"),
+  originalContentUrl: Schema.String,
+  previewImageUrl: Schema.String,
+  trackingId: Schema.optional(Schema.String),
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineVideoMessage = typeof LineVideoMessage.Type;
+
+export const LineAudioMessage = Schema.Struct({
+  type: Schema.Literal("audio"),
+  originalContentUrl: Schema.String,
+  duration: Schema.Number,
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineAudioMessage = typeof LineAudioMessage.Type;
+
+export const LineLocationMessage = Schema.Struct({
+  type: Schema.Literal("location"),
+  title: Schema.String,
+  address: Schema.String,
+  latitude: Schema.Number,
+  longitude: Schema.Number,
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineLocationMessage = typeof LineLocationMessage.Type;
+
+export const LineImagemapMessage = Schema.Struct({
+  type: Schema.Literal("imagemap"),
+  baseUrl: Schema.String,
+  altText: Schema.String,
+  baseSize: Schema.Struct({
+    width: Schema.Number,
+    height: Schema.Number,
+  }),
+  actions: Schema.Array(Schema.Unknown),
+  video: Schema.optional(Schema.Unknown),
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineImagemapMessage = typeof LineImagemapMessage.Type;
+
+export const LineTemplateMessage = Schema.Struct({
+  type: Schema.Literal("template"),
+  altText: Schema.String,
+  template: Schema.Unknown,
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineTemplateMessage = typeof LineTemplateMessage.Type;
+
+export const LineFlexMessage = Schema.Struct({
+  type: Schema.Literal("flex"),
+  altText: Schema.String,
+  contents: Schema.Unknown,
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineFlexMessage = typeof LineFlexMessage.Type;
+
+export const LineCouponMessage = Schema.Struct({
+  type: Schema.Literal("coupon"),
+  couponId: Schema.String,
+  deliveryTag: Schema.optional(Schema.String),
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
+
+export type LineCouponMessage = typeof LineCouponMessage.Type;
+
+export const LineOutboundMessage = Schema.Union([
+  LineTextMessage,
+  LineTextMessageV2,
+  LineStickerMessage,
+  LineImageMessage,
+  LineVideoMessage,
+  LineAudioMessage,
+  LineLocationMessage,
+  LineImagemapMessage,
+  LineTemplateMessage,
+  LineFlexMessage,
+  LineCouponMessage,
+]);
 
 export type LineOutboundMessage = typeof LineOutboundMessage.Type;
 
@@ -136,7 +249,13 @@ const ReplyMessageBody = Schema.Struct({
   notificationDisabled: Schema.optional(Schema.Boolean),
 });
 
-const BotInfoResponse = Schema.Struct({
+/**
+ * App-level bot profile subset projected from the official
+ * `@line/bot-sdk` `BotInfoResponse`. Only the fields consumed by
+ * account registry are kept; `premiumId`, `chatMode`, and
+ * `markAsReadMode` are intentionally excluded.
+ */
+const BotProfile = Schema.Struct({
   userId: Schema.String,
   basicId: Schema.String,
   displayName: Schema.String,
@@ -417,7 +536,7 @@ export const makeLineApiClient = (
     );
 
   return {
-    getBotInfo: executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse).pipe(
+    getBotInfo: executeGet("getBotInfo", "/v2/bot/info", BotProfile).pipe(
       Effect.withSpan("LineApiClient.getBotInfo"),
     ),
     pushMessage: Effect.fn("LineApiClient.pushMessage")(function* (recipientId, messages, options) {
