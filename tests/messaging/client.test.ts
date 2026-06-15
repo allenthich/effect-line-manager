@@ -450,3 +450,123 @@ describe("LINE Messaging API nested schemas", () => {
     });
   });
 });
+
+describe("LINE Messaging API client — LineOutboundMessage wiring", () => {
+  test("encodes a textV2 message with substitution through pushMessage", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [
+        {
+          type: "textV2",
+          text: "Hello ${user}!",
+          substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+        },
+      ]),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.messages).toHaveLength(1);
+    expect(body.messages[0]).toMatchObject({
+      type: "textV2",
+      text: "Hello ${user}!",
+      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+    });
+  });
+
+  test("encodes a mixed tuple of classic text and textV2 through pushMessage", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [
+        { type: "text", text: "classic" },
+        { type: "textV2", text: "v2", substitution: { type: "mention", mentioneeId: "U1" } },
+      ]),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0]).toEqual({ type: "text", text: "classic" });
+    expect(body.messages[1]).toMatchObject({
+      type: "textV2",
+      text: "v2",
+      substitution: { type: "mention", mentioneeId: "U1" },
+    });
+  });
+
+  test("encodes a textV2 message through replyMessage", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.replyMessage("reply-token", [{ type: "textV2", text: "reply v2" }]),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.replyToken).toBe("reply-token");
+    expect(body.messages[0]).toMatchObject({ type: "textV2", text: "reply v2" });
+  });
+
+  test("encodes a textV2 message through multicastMessage", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.multicastMessage(["U1", "U2"], [{ type: "textV2", text: "multicast v2" }]),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.to).toEqual(["U1", "U2"]);
+    expect(body.messages[0]).toMatchObject({ type: "textV2", text: "multicast v2" });
+  });
+
+  test("encodes a textV2 message through narrowcastMessage", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(client.narrowcastMessage([{ type: "textV2", text: "narrowcast v2" }]));
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.messages[0]).toMatchObject({ type: "textV2", text: "narrowcast v2" });
+  });
+
+  test("preserves optional classic text fields through pushMessage encoding", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [
+        {
+          type: "text",
+          text: "hello",
+          emojis: [{ index: 0, productId: "p1", emojiId: "001" }],
+          quoteToken: "qt-1",
+          quickReply: {
+            items: [{ type: "action", action: { type: "message", label: "Yes", text: "Yes" } }],
+          },
+          sender: { name: "Bot", iconUrl: "https://example.com/icon.png" },
+        },
+      ]),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.messages[0]).toMatchObject({
+      type: "text",
+      text: "hello",
+      emojis: [{ index: 0, productId: "p1", emojiId: "001" }],
+      quoteToken: "qt-1",
+      sender: { name: "Bot", iconUrl: "https://example.com/icon.png" },
+    });
+    expect(body.messages[0].quickReply).toEqual({
+      items: [{ type: "action", action: { type: "message", label: "Yes", text: "Yes" } }],
+    });
+  });
+});
