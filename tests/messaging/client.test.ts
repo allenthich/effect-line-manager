@@ -508,7 +508,7 @@ describe("LINE Messaging API client", () => {
         notificationDisabled: true,
         limit: { max: 100, upToRemainingQuota: true, forbidPartialDelivery: false },
         recipient: { type: "operator" },
-        filter: { demographic: { gender: "male" } },
+        filter: { demographic: { type: "gender", oneOf: ["male"] } },
       }),
     );
 
@@ -523,7 +523,7 @@ describe("LINE Messaging API client", () => {
       notificationDisabled: true,
       limit: { max: 100, upToRemainingQuota: true, forbidPartialDelivery: false },
       recipient: { type: "operator" },
-      filter: { demographic: { gender: "male" } },
+      filter: { demographic: { type: "gender", oneOf: ["male"] } },
     });
   });
 });

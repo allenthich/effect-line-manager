@@ -43,25 +43,48 @@ const makeAccount = (overrides: Partial<LineAccount> = {}) =>
     ...overrides,
   });
 
-const makeRepository = (overrides: Partial<LineRepositoryService> = {}): LineRepositoryService => ({
-  create: () => Effect.succeed(makeAccount()),
-  update: () => Effect.succeed(makeAccount()),
-  findById: () => Effect.succeed(Option.some(makeAccount())),
-  findByChannelId: () => Effect.succeedNone,
-  findByBotUserId: () => Effect.succeedNone,
-  listAll: Effect.succeed([makeAccount()]),
-  deleteById: () => Effect.void,
-  ...overrides,
-});
+const makeRepository = (overrides: Partial<LineRepositoryService> = {}): LineRepositoryService =>
+  ({
+    // Deprecated
+    create: () => Effect.succeed(makeAccount()),
+    update: () => Effect.succeed(makeAccount()),
+    findById: () => Effect.succeed(Option.some(makeAccount())),
+    findByChannelId: () => Effect.succeedNone,
+    findByBotUserId: () => Effect.succeedNone,
+    listAll: Effect.succeed([makeAccount()]),
+    deleteById: () => Effect.void,
+    // New methods (unused in deprecated tests)
+    createProvider: () => Effect.die("unused"),
+    updateProvider: () => Effect.die("unused"),
+    findProviderById: () => Effect.die("unused"),
+    listProviders: Effect.die("unused"),
+    deleteProvider: () => Effect.die("unused"),
+    createChannel: () => Effect.die("unused"),
+    updateChannel: () => Effect.die("unused"),
+    findChannelById: () => Effect.die("unused"),
+    findChannelByMessagingId: () => Effect.die("unused"),
+    findChannelByBotUserId: () => Effect.die("unused"),
+    listChannelsByProvider: () => Effect.die("unused"),
+    deleteChannel: () => Effect.die("unused"),
+    createLiffApp: () => Effect.die("unused"),
+    updateLiffApp: () => Effect.die("unused"),
+    findLiffAppById: () => Effect.die("unused"),
+    listLiffAppsByChannel: () => Effect.die("unused"),
+    deleteLiffApp: () => Effect.die("unused"),
+    ...overrides,
+  }) as LineRepositoryService;
 
-const makeRegistry = (invalidated: string[]): LineClientRegistryService => ({
-  getMessagingClient: () => Effect.die("unused"),
-  getLoginClient: () => Effect.die("unused"),
-  getLiffClient: () => Effect.die("unused"),
-  syncBotProfile: () => Effect.die("unused"),
-  invalidate: (id) => Effect.sync(() => invalidated.push(id)),
-  invalidateAll: Effect.void,
-});
+const makeRegistry = (invalidated: string[]): LineClientRegistryService =>
+  ({
+    getMessagingClient: () => Effect.die("unused"),
+    getLoginClient: () => Effect.die("unused"),
+    getLiffClient: () => Effect.die("unused"),
+    syncBotProfile: () => Effect.die("unused"),
+    invalidateChannel: (id) => Effect.sync(() => invalidated.push(id)),
+    invalidateLiff: (id) => Effect.sync(() => invalidated.push(id)),
+    invalidate: (id) => Effect.sync(() => invalidated.push(id)),
+    invalidateAll: Effect.void,
+  }) as LineClientRegistryService;
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineAccountManagement>,

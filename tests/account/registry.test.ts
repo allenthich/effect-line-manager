@@ -3,10 +3,10 @@ import { Deferred, Effect, Fiber, Layer, Option, Redacted, Schema, type Duration
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 import {
-  LineAccount,
   LineChannelId,
   LineChannelRecordId,
-  LineLoginChannelId,
+  LineProviderId,
+  MessagingChannel,
 } from "../../src/account/domain.ts";
 import { LineRepositoryError } from "../../src/account/errors.ts";
 import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/account/registry.ts";
@@ -17,52 +17,58 @@ const channelId = decodeChannelId("channel-1");
 const recordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
 const missingRecordId = Schema.decodeUnknownSync(LineChannelRecordId)("missing-record");
 
-const makeAccount = (token: string) =>
-  new LineAccount({
+const makeMessagingChannel = (token: string) =>
+  new MessagingChannel({
+    channelType: "messaging" as const,
     id: recordId,
+    providerId: Schema.decodeUnknownSync(LineProviderId)("provider-1"),
     name: "Primary",
     channelId,
     channelSecret: Redacted.make("channel-secret"),
     channelAccessToken: Redacted.make(token),
     isActive: true,
-    loginChannelId: Schema.decodeUnknownSync(LineLoginChannelId)("login-channel-1"),
-    loginChannelSecret: Redacted.make("login-secret"),
-    liffId: null,
     createdAt: new Date("2026-06-10T00:00:00.000Z"),
     updatedAt: new Date("2026-06-10T00:00:00.000Z"),
   });
 
 const makeRepository = (
-  findById: LineRepositoryService["findById"],
-  update?: LineRepositoryService["update"],
+  findChannelById: LineRepositoryService["findChannelById"],
+  updateChannel?: LineRepositoryService["updateChannel"],
 ): LineRepositoryService => ({
-  create: (input) =>
-    Effect.succeed(
-      new LineAccount({
-        id: Schema.decodeUnknownSync(LineChannelRecordId)("created-record"),
-        name: input.name,
-        channelId: input.channelId,
-        channelSecret: input.channelSecret,
-        channelAccessToken: input.channelAccessToken,
-        isActive: true,
-        loginChannelId: input.loginChannelId,
-        loginChannelSecret: input.loginChannelSecret,
-        liffId: input.liffId,
-        createdAt: new Date("2026-06-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-06-10T00:00:00.000Z"),
-      }),
-    ),
-  update:
-    update ??
+  // New methods
+  createProvider: () => Effect.die("unused"),
+  updateProvider: () => Effect.die("unused"),
+  findProviderById: () => Effect.die("unused"),
+  listProviders: Effect.die("unused"),
+  deleteProvider: () => Effect.die("unused"),
+  createChannel: () => Effect.die("unused"),
+  updateChannel:
+    updateChannel ??
     (() =>
       Effect.fail(
-        new LineRepositoryError({ operation: "update", cause: new Error("unimplemented") }),
+        new LineRepositoryError({
+          operation: "updateChannel",
+          cause: new Error("unimplemented"),
+        }),
       )),
-  findById,
-  findByChannelId: () => Effect.succeedNone,
-  findByBotUserId: () => Effect.succeedNone,
-  listAll: Effect.succeed([]),
-  deleteById: () => Effect.void,
+  findChannelById,
+  findChannelByMessagingId: () => Effect.succeedNone,
+  findChannelByBotUserId: () => Effect.succeedNone,
+  listChannelsByProvider: () => Effect.die("unused"),
+  deleteChannel: () => Effect.die("unused"),
+  createLiffApp: () => Effect.die("unused"),
+  updateLiffApp: () => Effect.die("unused"),
+  findLiffAppById: () => Effect.die("unused"),
+  listLiffAppsByChannel: () => Effect.die("unused"),
+  deleteLiffApp: () => Effect.die("unused"),
+  // Legacy methods — kept for backward compat, unused by new registry
+  create: () => Effect.die("unused"),
+  update: () => Effect.die("unused"),
+  findById: () => Effect.die("unused"),
+  findByChannelId: () => Effect.die("unused"),
+  findByBotUserId: () => Effect.die("unused"),
+  listAll: Effect.die("unused"),
+  deleteById: () => Effect.die("unused"),
 });
 
 const makeCapturingHttpClient = (status = 200, body: string | null = null) => {
@@ -103,7 +109,7 @@ describe("LineClientRegistry", () => {
     const repository = makeRepository(() =>
       Effect.sync(() => {
         lookups += 1;
-        return Option.some(makeAccount("token-1"));
+        return Option.some(makeMessagingChannel("token-1"));
       }),
     );
     const { client: httpClient } = makeCapturingHttpClient();
@@ -115,10 +121,9 @@ describe("LineClientRegistry", () => {
         const msg2 = yield* registry.getMessagingClient(recordId);
         expect(msg2).toBe(msg1);
 
-        const login1 = yield* registry.getLoginClient(recordId);
-        const liff1 = yield* registry.getLiffClient(recordId);
-        expect(login1).toBeDefined();
-        expect(liff1).toBeDefined();
+        // MessagingChannel has no login config — getLoginClient should fail
+        const loginResult = yield* Effect.exit(registry.getLoginClient(recordId));
+        expect(loginResult._tag).toBe("Failure");
       }),
       repository,
       httpClient,
@@ -134,7 +139,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         lookups += 1;
         yield* Deferred.await(gate);
-        return Option.some(makeAccount("token-1"));
+        return Option.some(makeMessagingChannel("token-1"));
       }),
     );
     const { client: httpClient } = makeCapturingHttpClient();
@@ -174,7 +179,7 @@ describe("LineClientRegistry", () => {
         }).pipe(Effect.provide(makeLayer(missingRepository, httpClient))),
       ),
     ).resolves.toMatchObject({
-      _tag: "LineChannelNotFoundError",
+      _tag: "ChannelNotFoundError",
       recordId: "missing-record",
     });
 
@@ -189,12 +194,12 @@ describe("LineClientRegistry", () => {
   });
 
   test("reloads rotated credentials after invalidation", async () => {
-    let account = makeAccount("token-1");
+    let channel = makeMessagingChannel("token-1");
     let lookups = 0;
     const repository = makeRepository(() =>
       Effect.sync(() => {
         lookups += 1;
-        return Option.some(account);
+        return Option.some(channel);
       }),
     );
     const { client: httpClient, requests } = makeCapturingHttpClient();
@@ -205,7 +210,7 @@ describe("LineClientRegistry", () => {
         const initial = yield* registry.getMessagingClient(recordId);
         yield* initial.pushMessage("U123", [{ type: "text", text: "initial" }]);
 
-        account = makeAccount("token-2");
+        channel = makeMessagingChannel("token-2");
         const cached = yield* registry.getMessagingClient(recordId);
         yield* cached.pushMessage("U123", [{ type: "text", text: "cached" }]);
 
@@ -229,12 +234,12 @@ describe("LineClientRegistry", () => {
   });
 
   test("reloads successful and failed lookups after their configured TTL", async () => {
-    let account: Option.Option<LineAccount> = Option.some(makeAccount("token-1"));
+    let channel: Option.Option<MessagingChannel> = Option.some(makeMessagingChannel("token-1"));
     let lookups = 0;
     const repository = makeRepository(() =>
       Effect.sync(() => {
         lookups += 1;
-        return account;
+        return channel;
       }),
     );
     const { client: httpClient } = makeCapturingHttpClient();
@@ -250,10 +255,10 @@ describe("LineClientRegistry", () => {
         yield* TestClock.adjust("2 minutes");
         yield* registry.getMessagingClient(recordId);
 
-        account = Option.none();
+        channel = Option.none();
         yield* registry.invalidate(recordId);
         yield* Effect.exit(registry.getMessagingClient(recordId));
-        account = Option.some(makeAccount("token-2"));
+        channel = Option.some(makeMessagingChannel("token-2"));
         yield* Effect.exit(registry.getMessagingClient(recordId));
         yield* TestClock.adjust("6 seconds");
         yield* registry.getMessagingClient(recordId);
@@ -269,7 +274,7 @@ describe("LineClientRegistry", () => {
 
   test("syncs bot profile from LINE API to database, stripping unknown official fields", async () => {
     const repository = makeRepository(
-      () => Effect.succeed(Option.some(makeAccount("token-1"))),
+      () => Effect.succeed(Option.some(makeMessagingChannel("token-1"))),
       (id, input) => {
         expect(id).toBe(recordId);
         expect(input).toEqual({
@@ -281,18 +286,17 @@ describe("LineClientRegistry", () => {
         expect(input).not.toHaveProperty("premiumId");
         expect(input).not.toHaveProperty("chatMode");
         expect(input).not.toHaveProperty("markAsReadMode");
-        const original = makeAccount("token-1");
+        const original = makeMessagingChannel("token-1");
         return Effect.succeed(
-          new LineAccount({
+          new MessagingChannel({
+            channelType: "messaging" as const,
             id: original.id,
+            providerId: original.providerId,
             name: original.name,
             channelId: original.channelId,
             channelSecret: original.channelSecret,
             channelAccessToken: original.channelAccessToken,
             isActive: original.isActive,
-            loginChannelId: original.loginChannelId,
-            loginChannelSecret: original.loginChannelSecret,
-            liffId: original.liffId,
             createdAt: original.createdAt,
             updatedAt: original.updatedAt,
             botUserId: "U-sync-bot",
@@ -330,7 +334,7 @@ describe("LineClientRegistry", () => {
 
   test("syncs bot profile with missing pictureUrl, passing null to repository", async () => {
     const repository = makeRepository(
-      () => Effect.succeed(Option.some(makeAccount("token-1"))),
+      () => Effect.succeed(Option.some(makeMessagingChannel("token-1"))),
       (id, input) => {
         expect(id).toBe(recordId);
         expect(input).toEqual({
@@ -339,18 +343,17 @@ describe("LineClientRegistry", () => {
           displayName: "Synced Bot",
           pictureUrl: null,
         });
-        const original = makeAccount("token-1");
+        const original = makeMessagingChannel("token-1");
         return Effect.succeed(
-          new LineAccount({
+          new MessagingChannel({
+            channelType: "messaging" as const,
             id: original.id,
+            providerId: original.providerId,
             name: original.name,
             channelId: original.channelId,
             channelSecret: original.channelSecret,
             channelAccessToken: original.channelAccessToken,
             isActive: original.isActive,
-            loginChannelId: original.loginChannelId,
-            loginChannelSecret: original.loginChannelSecret,
-            liffId: original.liffId,
             createdAt: original.createdAt,
             updatedAt: original.updatedAt,
             botUserId: "U-sync-bot",

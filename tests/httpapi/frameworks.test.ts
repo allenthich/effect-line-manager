@@ -8,6 +8,29 @@ import {
   LineAccountManagement,
   type LineAccountManagementService,
 } from "../../src/account/management.ts";
+
+const unusedManagementMethods: Omit<
+  LineAccountManagementService,
+  "list" | "create" | "update" | "delete"
+> = {
+  listProviders: Effect.die("unused"),
+  getProvider: () => Effect.die("unused"),
+  createProvider: () => Effect.die("unused"),
+  updateProvider: () => Effect.die("unused"),
+  deleteProvider: () => Effect.die("unused"),
+  listChannels: () => Effect.die("unused"),
+  getChannel: () => Effect.die("unused"),
+  findChannelByBotUserId: () => Effect.die("unused"),
+  createChannel: () => Effect.die("unused"),
+  updateChannel: () => Effect.die("unused"),
+  deleteChannel: () => Effect.die("unused"),
+  listLiffApps: () => Effect.die("unused"),
+  getLiffApp: () => Effect.die("unused"),
+  createLiffApp: () => Effect.die("unused"),
+  updateLiffApp: () => Effect.die("unused"),
+  deleteLiffApp: () => Effect.die("unused"),
+};
+
 import { createHonoLineAccountManagementApp } from "../../examples/httpapi/hono.ts";
 import { createExpressLineAccountManagementMiddleware } from "../../examples/httpapi/express.ts";
 
@@ -34,6 +57,7 @@ const account = {
 };
 
 const management: LineAccountManagementService = {
+  ...unusedManagementMethods,
   list: Effect.succeed({
     data: [account],
     pagination: {

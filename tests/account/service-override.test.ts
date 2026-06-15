@@ -28,24 +28,47 @@ const makeAccount = (id: LineChannelRecordId, channelId: LineChannelId, name: st
 const account1 = makeAccount(recordId1, channelId1, "Alpha");
 const account2 = makeAccount(recordId2, channelId2, "Beta");
 
-const makeRepository = (): LineRepositoryService => ({
-  create: () => Effect.die("unused"),
-  update: () => Effect.die("unused"),
-  findById: () => Effect.succeedNone,
-  findByChannelId: () => Effect.succeedNone,
-  findByBotUserId: () => Effect.succeedNone,
-  listAll: Effect.succeed([account1, account2]),
-  deleteById: () => Effect.die("unused"),
-});
+const makeRepository = (): LineRepositoryService =>
+  ({
+    // Deprecated
+    create: () => Effect.die("unused"),
+    update: () => Effect.die("unused"),
+    findById: () => Effect.succeedNone,
+    findByChannelId: () => Effect.succeedNone,
+    findByBotUserId: () => Effect.succeedNone,
+    listAll: Effect.succeed([account1, account2]),
+    deleteById: () => Effect.die("unused"),
+    // New methods
+    createProvider: () => Effect.die("unused"),
+    updateProvider: () => Effect.die("unused"),
+    findProviderById: () => Effect.succeedNone,
+    listProviders: Effect.succeed([]),
+    deleteProvider: () => Effect.die("unused"),
+    createChannel: () => Effect.die("unused"),
+    updateChannel: () => Effect.die("unused"),
+    findChannelById: () => Effect.succeedNone,
+    findChannelByMessagingId: () => Effect.succeedNone,
+    findChannelByBotUserId: () => Effect.succeedNone,
+    listChannelsByProvider: () => Effect.succeed([]),
+    deleteChannel: () => Effect.die("unused"),
+    createLiffApp: () => Effect.die("unused"),
+    updateLiffApp: () => Effect.die("unused"),
+    findLiffAppById: () => Effect.succeedNone,
+    listLiffAppsByChannel: () => Effect.succeed([]),
+    deleteLiffApp: () => Effect.die("unused"),
+  }) as LineRepositoryService;
 
-const makeRegistry = (): LineClientRegistryService => ({
-  getMessagingClient: () => Effect.die("unused"),
-  getLoginClient: () => Effect.die("unused"),
-  getLiffClient: () => Effect.die("unused"),
-  syncBotProfile: () => Effect.die("unused"),
-  invalidate: () => Effect.void,
-  invalidateAll: Effect.void,
-});
+const makeRegistry = (): LineClientRegistryService =>
+  ({
+    getMessagingClient: () => Effect.die("unused"),
+    getLoginClient: () => Effect.die("unused"),
+    getLiffClient: () => Effect.die("unused"),
+    syncBotProfile: () => Effect.die("unused"),
+    invalidateChannel: () => Effect.void,
+    invalidateLiff: () => Effect.void,
+    invalidate: () => Effect.void,
+    invalidateAll: Effect.void,
+  }) as LineClientRegistryService;
 
 const baseLayer = Layer.mergeAll(
   Layer.succeed(LineRepository)(makeRepository()),
