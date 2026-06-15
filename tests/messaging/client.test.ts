@@ -12,10 +12,12 @@ import {
   LineEmojiSubstitutionObject,
   LineMessages,
   LineMentionSubstitutionObject,
+  LineOutboundMessage,
   LineQuickReply,
   LineQuickReplyItem,
   LineSender,
   LineSubstitutionObject,
+  LineTextMessage,
   LineTextMessageV2,
   makeLineApiClient,
   type LineMessageTuple,
@@ -611,5 +613,157 @@ describe("LINE Messaging API — validation", () => {
       text: "hello",
       substitution: { type: "emoji", productId: "p1", emojiId: "001" },
     });
+  });
+});
+
+describe("LINE Messaging API — adversarial edge cases", () => {
+  test("LineTextMessage accepts empty emojis array", () => {
+    const result = Schema.decodeUnknownSync(LineTextMessage)({
+      type: "text",
+      text: "hello",
+      emojis: [],
+    });
+    expect(result.emojis).toEqual([]);
+  });
+
+  test("LineTextMessageV2 encodes with no optional fields (minimal case)", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(client.pushMessage("U123", [{ type: "textV2", text: "bare minimum" }]));
+
+    const body = await requestJson(requests[0]!);
+    expect(body.messages[0]).toEqual({ type: "textV2", text: "bare minimum" });
+  });
+
+  test("LineTextMessageV2 encodes with all optional fields (maximum case)", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [
+        {
+          type: "textV2",
+          text: "full featured",
+          substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+          quoteToken: "qt-full",
+          quickReply: {
+            items: [{ type: "action", action: { type: "message", label: "OK", text: "OK" } }],
+          },
+          sender: { name: "Bot", iconUrl: "https://example.com/icon.png" },
+        },
+      ]),
+    );
+
+    const body = await requestJson(requests[0]!);
+    expect(body.messages[0]).toMatchObject({
+      type: "textV2",
+      text: "full featured",
+      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+      quoteToken: "qt-full",
+      sender: { name: "Bot", iconUrl: "https://example.com/icon.png" },
+    });
+    expect(body.messages[0].quickReply).toEqual({
+      items: [{ type: "action", action: { type: "message", label: "OK", text: "OK" } }],
+    });
+  });
+
+  test("preserves unicode and special characters in text field", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const specialText = "Hello 👋 world! こんにちは 🌍 \\n\\t\\r <\"&'>";
+    await Effect.runPromise(client.pushMessage("U123", [{ type: "text", text: specialText }]));
+
+    const body = await requestJson(requests[0]!);
+    expect(body.messages[0].text).toBe(specialText);
+  });
+
+  test("encodes a 5-message mixed tuple through pushMessage (max boundary)", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [
+        { type: "text", text: "msg1" },
+        { type: "textV2", text: "msg2" },
+        { type: "text", text: "msg3" },
+        { type: "textV2", text: "msg4" },
+        { type: "text", text: "msg5" },
+      ]),
+    );
+
+    const body = await requestJson(requests[0]!);
+    expect(body.messages).toHaveLength(5);
+    expect(body.messages[0].type).toBe("text");
+    expect(body.messages[1].type).toBe("textV2");
+    expect(body.messages[4].type).toBe("text");
+  });
+
+  test("LineMessages accepts exactly 1 message", () => {
+    const result = Schema.decodeUnknownSync(LineMessages)([{ type: "text", text: "solo" }]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({ type: "text", text: "solo" });
+  });
+
+  test("LineMessages accepts exactly 5 messages", () => {
+    const messages = [
+      { type: "text" as const, text: "1" },
+      { type: "text" as const, text: "2" },
+      { type: "text" as const, text: "3" },
+      { type: "text" as const, text: "4" },
+      { type: "text" as const, text: "5" },
+    ];
+    const result = Schema.decodeUnknownSync(LineMessages)(messages);
+    expect(result).toHaveLength(5);
+  });
+
+  test("LineTextMessageV2 rejects missing required text field", () => {
+    expect(() => Schema.decodeUnknownSync(LineTextMessageV2)({ type: "textV2" })).toThrow();
+  });
+
+  test("LineTextMessageV2 rejects wrong type literal", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(LineTextMessageV2)({ type: "text", text: "hello" }),
+    ).toThrow();
+  });
+
+  test("LineOutboundMessage rejects unknown message type", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(LineOutboundMessage)({
+        type: "image",
+        originalContentUrl: "https://example.com/img.jpg",
+        previewImageUrl: "https://example.com/preview.jpg",
+      }),
+    ).toThrow();
+  });
+
+  test("LineSubstitutionObject rejects unknown discriminator type", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(LineSubstitutionObject)({
+        type: "sticker",
+        packageId: "1",
+        stickerId: "1",
+      }),
+    ).toThrow();
+  });
+
+  test("LineEmoji rejects missing required fields", () => {
+    expect(() => Schema.decodeUnknownSync(LineEmoji)({ index: 0 })).toThrow();
+  });
+
+  test("LineEmoji rejects index with wrong type (string instead of number)", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(LineEmoji)({
+        index: "0",
+        productId: "p1",
+        emojiId: "001",
+      }),
+    ).toThrow();
+  });
+
+  test("LineQuickReply with empty items array is accepted by schema", () => {
+    const result = Schema.decodeUnknownSync(LineQuickReply)({ items: [] });
+    expect(result).toEqual({ items: [] });
   });
 });
