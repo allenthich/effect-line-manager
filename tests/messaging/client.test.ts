@@ -89,7 +89,7 @@ describe("LINE Messaging API client", () => {
     });
   });
 
-  test("fetches authenticated bot info details", async () => {
+  test("fetches authenticated bot info and strips unknown official fields", async () => {
     const httpClient = HttpClient.make((request) =>
       Effect.succeed(
         HttpClientResponse.fromWeb(
@@ -100,6 +100,9 @@ describe("LINE Messaging API client", () => {
               basicId: "@basic-id",
               displayName: "My Bot",
               pictureUrl: "https://example.com/pic.png",
+              premiumId: "P-premium",
+              chatMode: "chat",
+              markAsReadMode: "auto",
             }),
             { status: 200 },
           ),
@@ -115,6 +118,175 @@ describe("LINE Messaging API client", () => {
       displayName: "My Bot",
       pictureUrl: "https://example.com/pic.png",
     });
+    expect(info).not.toHaveProperty("premiumId");
+    expect(info).not.toHaveProperty("chatMode");
+    expect(info).not.toHaveProperty("markAsReadMode");
+  });
+
+  test("strips extra fields beyond the official 7-field shape", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              userId: "U-bot-id",
+              basicId: "@basic-id",
+              displayName: "My Bot",
+              pictureUrl: "https://example.com/pic.png",
+              premiumId: "P-premium",
+              chatMode: "chat",
+              markAsReadMode: "auto",
+              someFutureField: "should-be-stripped",
+              anotherExtra: 42,
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const info = await Effect.runPromise(client.getBotInfo);
+    expect(info).toEqual({
+      userId: "U-bot-id",
+      basicId: "@basic-id",
+      displayName: "My Bot",
+      pictureUrl: "https://example.com/pic.png",
+    });
+    expect(info).not.toHaveProperty("someFutureField");
+    expect(info).not.toHaveProperty("anotherExtra");
+  });
+
+  test("handles missing optional pictureUrl gracefully", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              userId: "U-bot-id",
+              basicId: "@basic-id",
+              displayName: "My Bot",
+              premiumId: "P-premium",
+              chatMode: "chat",
+              markAsReadMode: "auto",
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const info = await Effect.runPromise(client.getBotInfo);
+    expect(info).toEqual({
+      userId: "U-bot-id",
+      basicId: "@basic-id",
+      displayName: "My Bot",
+    });
+    expect(info.pictureUrl).toBeUndefined();
+  });
+
+  test("rejects response with missing required userId field", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              basicId: "@basic-id",
+              displayName: "My Bot",
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const error = await failure(client.getBotInfo);
+    expect(error).toMatchObject({
+      _tag: "LineRequestEncodingError",
+      operation: "getBotInfo",
+    });
+  });
+
+  test("rejects response with null pictureUrl (not a valid string)", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              userId: "U-bot-id",
+              basicId: "@basic-id",
+              displayName: "My Bot",
+              pictureUrl: null,
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const error = await failure(client.getBotInfo);
+    expect(error).toMatchObject({
+      _tag: "LineRequestEncodingError",
+      operation: "getBotInfo",
+    });
+  });
+
+  test("accepts empty string displayName", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              userId: "U-bot-id",
+              basicId: "@basic-id",
+              displayName: "",
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const info = await Effect.runPromise(client.getBotInfo);
+    expect(info.displayName).toBe("");
+  });
+
+  test("accepts response with only required fields and no extras", async () => {
+    const httpClient = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(
+          request,
+          new Response(
+            JSON.stringify({
+              userId: "U-bot-id",
+              basicId: "@basic-id",
+              displayName: "My Bot",
+            }),
+            { status: 200 },
+          ),
+        ),
+      ),
+    );
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const info = await Effect.runPromise(client.getBotInfo);
+    expect(info).toEqual({
+      userId: "U-bot-id",
+      basicId: "@basic-id",
+      displayName: "My Bot",
+    });
+    expect(info).not.toHaveProperty("premiumId");
+    expect(info).not.toHaveProperty("chatMode");
+    expect(info).not.toHaveProperty("markAsReadMode");
   });
 
   test.each([200, 201, 204, 299])("accepts status %i as success", async (status) => {

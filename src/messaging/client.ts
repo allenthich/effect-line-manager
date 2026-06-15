@@ -249,7 +249,13 @@ const ReplyMessageBody = Schema.Struct({
   notificationDisabled: Schema.optional(Schema.Boolean),
 });
 
-const BotInfoResponse = Schema.Struct({
+/**
+ * App-level bot profile subset projected from the official
+ * `@line/bot-sdk` `BotInfoResponse`. Only the fields consumed by
+ * account registry are kept; `premiumId`, `chatMode`, and
+ * `markAsReadMode` are intentionally excluded.
+ */
+const BotProfile = Schema.Struct({
   userId: Schema.String,
   basicId: Schema.String,
   displayName: Schema.String,
@@ -530,7 +536,7 @@ export const makeLineApiClient = (
     );
 
   return {
-    getBotInfo: executeGet("getBotInfo", "/v2/bot/info", BotInfoResponse).pipe(
+    getBotInfo: executeGet("getBotInfo", "/v2/bot/info", BotProfile).pipe(
       Effect.withSpan("LineApiClient.getBotInfo"),
     ),
     pushMessage: Effect.fn("LineApiClient.pushMessage")(function* (recipientId, messages, options) {
