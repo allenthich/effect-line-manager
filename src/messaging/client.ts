@@ -49,9 +49,26 @@ export const LineEmojiSubstitutionObject = Schema.Struct({
 
 export type LineEmojiSubstitutionObject = typeof LineEmojiSubstitutionObject.Type;
 
+export const LineUserMentionee = Schema.Struct({
+  type: Schema.Literal("user"),
+  userId: Schema.String,
+});
+
+export type LineUserMentionee = typeof LineUserMentionee.Type;
+
+export const LineAllMentionee = Schema.Struct({
+  type: Schema.Literal("all"),
+});
+
+export type LineAllMentionee = typeof LineAllMentionee.Type;
+
+export const LineMentionee = Schema.Union([LineUserMentionee, LineAllMentionee]);
+
+export type LineMentionee = typeof LineMentionee.Type;
+
 export const LineMentionSubstitutionObject = Schema.Struct({
   type: Schema.Literal("mention"),
-  mentioneeId: Schema.String,
+  mentionee: LineMentionee,
 });
 
 export type LineMentionSubstitutionObject = typeof LineMentionSubstitutionObject.Type;
@@ -77,7 +94,7 @@ export type LineTextMessage = typeof LineTextMessage.Type;
 export const LineTextMessageV2 = Schema.Struct({
   type: Schema.Literal("textV2"),
   text: Schema.String,
-  substitution: Schema.optional(LineSubstitutionObject),
+  substitution: Schema.optional(Schema.Record(Schema.String, LineSubstitutionObject)),
   quoteToken: Schema.optional(Schema.String),
   quickReply: Schema.optional(LineQuickReply),
   sender: Schema.optional(LineSender),
@@ -110,6 +127,7 @@ const PushMessageBody = Schema.Struct({
   to: Schema.String,
   messages: LineMessages,
   notificationDisabled: Schema.optional(Schema.Boolean),
+  customAggregationUnits: Schema.optional(Schema.Array(Schema.String)),
 });
 
 const ReplyMessageBody = Schema.Struct({
@@ -128,6 +146,7 @@ const BotInfoResponse = Schema.Struct({
 export interface LinePushOptions {
   readonly retryKey?: string | undefined;
   readonly notificationDisabled?: boolean | undefined;
+  readonly customAggregationUnits?: readonly string[] | undefined;
 }
 
 export interface LineReplyOptions {
@@ -151,6 +170,7 @@ const MulticastMessageBody = Schema.Struct({
   to: Schema.Array(Schema.String),
   messages: LineMessages,
   notificationDisabled: Schema.optional(Schema.Boolean),
+  customAggregationUnits: Schema.optional(Schema.Array(Schema.String)),
 });
 
 const NarrowcastMessageBody = Schema.Struct({
@@ -164,6 +184,7 @@ const NarrowcastMessageBody = Schema.Struct({
 export interface LineMulticastOptions {
   readonly retryKey?: string | undefined;
   readonly notificationDisabled?: boolean | undefined;
+  readonly customAggregationUnits?: readonly string[] | undefined;
 }
 
 export interface LineNarrowcastOptions {
@@ -410,6 +431,9 @@ export const makeLineApiClient = (
           ...(options?.notificationDisabled === undefined
             ? {}
             : { notificationDisabled: options.notificationDisabled }),
+          ...(options?.customAggregationUnits === undefined
+            ? {}
+            : { customAggregationUnits: options.customAggregationUnits }),
         },
         options?.retryKey,
       );
@@ -437,6 +461,9 @@ export const makeLineApiClient = (
             ...(options?.notificationDisabled === undefined
               ? {}
               : { notificationDisabled: options.notificationDisabled }),
+            ...(options?.customAggregationUnits === undefined
+              ? {}
+              : { customAggregationUnits: options.customAggregationUnits }),
           },
           options?.retryKey,
         );
