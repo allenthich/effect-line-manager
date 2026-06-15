@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Cause, Effect, Fiber, Option, Redacted } from "effect";
+import { Cause, Effect, Fiber, Option, Redacted, Schema } from "effect";
 import { TestClock } from "effect/testing";
 import {
   HttpClient,
@@ -7,7 +7,17 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "effect/unstable/http";
-import { makeLineApiClient, type LineMessageTuple } from "../../src/messaging/client.ts";
+import {
+  LineEmoji,
+  LineEmojiSubstitutionObject,
+  LineMentionSubstitutionObject,
+  LineQuickReply,
+  LineQuickReplyItem,
+  LineSender,
+  LineSubstitutionObject,
+  makeLineApiClient,
+  type LineMessageTuple,
+} from "../../src/messaging/client.ts";
 
 const baseUrl = "https://line.test";
 
@@ -338,6 +348,105 @@ describe("LINE Messaging API client", () => {
       limit: { max: 100, upToRemainingQuota: true, forbidPartialDelivery: false },
       recipient: { type: "operator" },
       filter: { demographic: { gender: "male" } },
+    });
+  });
+});
+
+describe("LINE Messaging API nested schemas", () => {
+  test("LineEmoji decodes a valid emoji object", () => {
+    const result = Schema.decodeUnknownSync(LineEmoji)({
+      index: 0,
+      productId: "5ac1bfd5040ab15980c9b435",
+      emojiId: "001",
+    });
+    expect(result).toEqual({
+      index: 0,
+      productId: "5ac1bfd5040ab15980c9b435",
+      emojiId: "001",
+    });
+  });
+
+  test("LineQuickReplyItem decodes a valid quick reply action", () => {
+    const result = Schema.decodeUnknownSync(LineQuickReplyItem)({
+      type: "action",
+      action: { type: "message", label: "Yes", text: "Yes" },
+    });
+    expect(result).toEqual({
+      type: "action",
+      action: { type: "message", label: "Yes", text: "Yes" },
+    });
+  });
+
+  test("LineQuickReply decodes a container with items", () => {
+    const result = Schema.decodeUnknownSync(LineQuickReply)({
+      items: [{ type: "action", action: { type: "message", label: "Yes", text: "Yes" } }],
+    });
+    expect(result).toEqual({
+      items: [{ type: "action", action: { type: "message", label: "Yes", text: "Yes" } }],
+    });
+  });
+
+  test("LineSender decodes a sender with both optional fields", () => {
+    const result = Schema.decodeUnknownSync(LineSender)({
+      name: "Test Bot",
+      iconUrl: "https://example.com/icon.png",
+    });
+    expect(result).toEqual({
+      name: "Test Bot",
+      iconUrl: "https://example.com/icon.png",
+    });
+  });
+
+  test("LineSender decodes a sender with no optional fields", () => {
+    const result = Schema.decodeUnknownSync(LineSender)({});
+    expect(result).toEqual({});
+  });
+
+  test("LineEmojiSubstitutionObject decodes a valid emoji substitution", () => {
+    const result = Schema.decodeUnknownSync(LineEmojiSubstitutionObject)({
+      type: "emoji",
+      productId: "5ac1bfd5040ab15980c9b435",
+      emojiId: "001",
+    });
+    expect(result).toEqual({
+      type: "emoji",
+      productId: "5ac1bfd5040ab15980c9b435",
+      emojiId: "001",
+    });
+  });
+
+  test("LineMentionSubstitutionObject decodes a valid mention substitution", () => {
+    const result = Schema.decodeUnknownSync(LineMentionSubstitutionObject)({
+      type: "mention",
+      mentioneeId: "U123456789",
+    });
+    expect(result).toEqual({
+      type: "mention",
+      mentioneeId: "U123456789",
+    });
+  });
+
+  test("LineSubstitutionObject discriminates emoji variant", () => {
+    const result = Schema.decodeUnknownSync(LineSubstitutionObject)({
+      type: "emoji",
+      productId: "5ac1bfd5040ab15980c9b435",
+      emojiId: "001",
+    });
+    expect(result).toEqual({
+      type: "emoji",
+      productId: "5ac1bfd5040ab15980c9b435",
+      emojiId: "001",
+    });
+  });
+
+  test("LineSubstitutionObject discriminates mention variant", () => {
+    const result = Schema.decodeUnknownSync(LineSubstitutionObject)({
+      type: "mention",
+      mentioneeId: "U123456789",
+    });
+    expect(result).toEqual({
+      type: "mention",
+      mentioneeId: "U123456789",
     });
   });
 });

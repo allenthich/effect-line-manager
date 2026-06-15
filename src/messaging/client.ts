@@ -13,21 +13,96 @@ import {
 const defaultBaseUrl = "https://api.line.me";
 const defaultRequestTimeout = "30 seconds";
 
+export const LineEmoji = Schema.Struct({
+  index: Schema.Number,
+  productId: Schema.String,
+  emojiId: Schema.String,
+});
+
+export type LineEmoji = typeof LineEmoji.Type;
+
+export const LineQuickReplyItem = Schema.Struct({
+  type: Schema.Literal("action"),
+  action: Schema.Unknown,
+});
+
+export type LineQuickReplyItem = typeof LineQuickReplyItem.Type;
+
+export const LineQuickReply = Schema.Struct({
+  items: Schema.Array(LineQuickReplyItem),
+});
+
+export type LineQuickReply = typeof LineQuickReply.Type;
+
+export const LineSender = Schema.Struct({
+  name: Schema.optional(Schema.String),
+  iconUrl: Schema.optional(Schema.String),
+});
+
+export type LineSender = typeof LineSender.Type;
+
+export const LineEmojiSubstitutionObject = Schema.Struct({
+  type: Schema.Literal("emoji"),
+  productId: Schema.String,
+  emojiId: Schema.String,
+});
+
+export type LineEmojiSubstitutionObject = typeof LineEmojiSubstitutionObject.Type;
+
+export const LineMentionSubstitutionObject = Schema.Struct({
+  type: Schema.Literal("mention"),
+  mentioneeId: Schema.String,
+});
+
+export type LineMentionSubstitutionObject = typeof LineMentionSubstitutionObject.Type;
+
+export const LineSubstitutionObject = Schema.Union([
+  LineEmojiSubstitutionObject,
+  LineMentionSubstitutionObject,
+]);
+
+export type LineSubstitutionObject = typeof LineSubstitutionObject.Type;
+
 export const LineTextMessage = Schema.Struct({
   type: Schema.Literal("text"),
   text: Schema.String,
+  emojis: Schema.optional(Schema.Array(LineEmoji)),
+  quoteToken: Schema.optional(Schema.String),
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
 });
 
 export type LineTextMessage = typeof LineTextMessage.Type;
 
-export type LineMessageTuple =
-  | readonly [LineTextMessage]
-  | readonly [LineTextMessage, LineTextMessage]
-  | readonly [LineTextMessage, LineTextMessage, LineTextMessage]
-  | readonly [LineTextMessage, LineTextMessage, LineTextMessage, LineTextMessage]
-  | readonly [LineTextMessage, LineTextMessage, LineTextMessage, LineTextMessage, LineTextMessage];
+export const LineTextMessageV2 = Schema.Struct({
+  type: Schema.Literal("textV2"),
+  text: Schema.String,
+  substitution: Schema.optional(LineSubstitutionObject),
+  quoteToken: Schema.optional(Schema.String),
+  quickReply: Schema.optional(LineQuickReply),
+  sender: Schema.optional(LineSender),
+});
 
-export const LineMessages = Schema.NonEmptyArray(LineTextMessage).check(Schema.isMaxLength(5));
+export type LineTextMessageV2 = typeof LineTextMessageV2.Type;
+
+export const LineOutboundMessage = Schema.Union([LineTextMessage, LineTextMessageV2]);
+
+export type LineOutboundMessage = typeof LineOutboundMessage.Type;
+
+export type LineMessageTuple =
+  | readonly [LineOutboundMessage]
+  | readonly [LineOutboundMessage, LineOutboundMessage]
+  | readonly [LineOutboundMessage, LineOutboundMessage, LineOutboundMessage]
+  | readonly [LineOutboundMessage, LineOutboundMessage, LineOutboundMessage, LineOutboundMessage]
+  | readonly [
+      LineOutboundMessage,
+      LineOutboundMessage,
+      LineOutboundMessage,
+      LineOutboundMessage,
+      LineOutboundMessage,
+    ];
+
+export const LineMessages = Schema.NonEmptyArray(LineOutboundMessage).check(Schema.isMaxLength(5));
 
 export type LineMessages = typeof LineMessages.Type;
 
