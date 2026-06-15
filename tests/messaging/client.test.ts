@@ -422,11 +422,22 @@ describe("LINE Messaging API nested schemas", () => {
   test("LineMentionSubstitutionObject decodes a valid mention substitution", () => {
     const result = Schema.decodeUnknownSync(LineMentionSubstitutionObject)({
       type: "mention",
-      mentioneeId: "U123456789",
+      mentionee: { type: "user", userId: "U123456789" },
     });
     expect(result).toEqual({
       type: "mention",
-      mentioneeId: "U123456789",
+      mentionee: { type: "user", userId: "U123456789" },
+    });
+  });
+
+  test("LineMentionSubstitutionObject decodes a valid mention all substitution", () => {
+    const result = Schema.decodeUnknownSync(LineMentionSubstitutionObject)({
+      type: "mention",
+      mentionee: { type: "all" },
+    });
+    expect(result).toEqual({
+      type: "mention",
+      mentionee: { type: "all" },
     });
   });
 
@@ -446,11 +457,11 @@ describe("LINE Messaging API nested schemas", () => {
   test("LineSubstitutionObject discriminates mention variant", () => {
     const result = Schema.decodeUnknownSync(LineSubstitutionObject)({
       type: "mention",
-      mentioneeId: "U123456789",
+      mentionee: { type: "user", userId: "U123456789" },
     });
     expect(result).toEqual({
       type: "mention",
-      mentioneeId: "U123456789",
+      mentionee: { type: "user", userId: "U123456789" },
     });
   });
 });
@@ -464,8 +475,10 @@ describe("LINE Messaging API client — LineOutboundMessage wiring", () => {
       client.pushMessage("U123", [
         {
           type: "textV2",
-          text: "Hello ${user}!",
-          substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+          text: "Hello {smile}!",
+          substitution: {
+            smile: { type: "emoji", productId: "p1", emojiId: "001" },
+          },
         },
       ]),
     );
@@ -475,8 +488,10 @@ describe("LINE Messaging API client — LineOutboundMessage wiring", () => {
     expect(body.messages).toHaveLength(1);
     expect(body.messages[0]).toMatchObject({
       type: "textV2",
-      text: "Hello ${user}!",
-      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+      text: "Hello {smile}!",
+      substitution: {
+        smile: { type: "emoji", productId: "p1", emojiId: "001" },
+      },
     });
   });
 
@@ -487,7 +502,16 @@ describe("LINE Messaging API client — LineOutboundMessage wiring", () => {
     await Effect.runPromise(
       client.pushMessage("U123", [
         { type: "text", text: "classic" },
-        { type: "textV2", text: "v2", substitution: { type: "mention", mentioneeId: "U1" } },
+        {
+          type: "textV2",
+          text: "v2",
+          substitution: {
+            you: {
+              type: "mention",
+              mentionee: { type: "user", userId: "U1" },
+            },
+          },
+        },
       ]),
     );
 
@@ -498,7 +522,12 @@ describe("LINE Messaging API client — LineOutboundMessage wiring", () => {
     expect(body.messages[1]).toMatchObject({
       type: "textV2",
       text: "v2",
-      substitution: { type: "mention", mentioneeId: "U1" },
+      substitution: {
+        you: {
+          type: "mention",
+          mentionee: { type: "user", userId: "U1" },
+        },
+      },
     });
   });
 
@@ -591,7 +620,9 @@ describe("LINE Messaging API — validation", () => {
       Schema.decodeUnknownSync(LineTextMessageV2)({
         type: "textV2",
         text: "hello",
-        substitution: { type: "invalid", foo: "bar" },
+        substitution: {
+          key: { type: "invalid", foo: "bar" },
+        },
       }),
     ).toThrow();
 
@@ -599,19 +630,25 @@ describe("LINE Messaging API — validation", () => {
       Schema.decodeUnknownSync(LineTextMessageV2)({
         type: "textV2",
         text: "hello",
-        substitution: { productId: "p1", emojiId: "001" },
+        substitution: {
+          key: { productId: "p1", emojiId: "001" },
+        },
       }),
     ).toThrow();
 
     const valid = Schema.decodeUnknownSync(LineTextMessageV2)({
       type: "textV2",
       text: "hello",
-      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+      substitution: {
+        key: { type: "emoji", productId: "p1", emojiId: "001" },
+      },
     });
     expect(valid).toMatchObject({
       type: "textV2",
       text: "hello",
-      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+      substitution: {
+        key: { type: "emoji", productId: "p1", emojiId: "001" },
+      },
     });
   });
 });
@@ -645,7 +682,9 @@ describe("LINE Messaging API — adversarial edge cases", () => {
         {
           type: "textV2",
           text: "full featured",
-          substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+          substitution: {
+            smile: { type: "emoji", productId: "p1", emojiId: "001" },
+          },
           quoteToken: "qt-full",
           quickReply: {
             items: [{ type: "action", action: { type: "message", label: "OK", text: "OK" } }],
@@ -659,7 +698,9 @@ describe("LINE Messaging API — adversarial edge cases", () => {
     expect(body.messages[0]).toMatchObject({
       type: "textV2",
       text: "full featured",
-      substitution: { type: "emoji", productId: "p1", emojiId: "001" },
+      substitution: {
+        smile: { type: "emoji", productId: "p1", emojiId: "001" },
+      },
       quoteToken: "qt-full",
       sender: { name: "Bot", iconUrl: "https://example.com/icon.png" },
     });
@@ -765,5 +806,248 @@ describe("LINE Messaging API — adversarial edge cases", () => {
   test("LineQuickReply with empty items array is accepted by schema", () => {
     const result = Schema.decodeUnknownSync(LineQuickReply)({ items: [] });
     expect(result).toEqual({ items: [] });
+  });
+});
+
+describe("LINE Messaging API — customAggregationUnits", () => {
+  test("Push with customAggregationUnits → body includes customAggregationUnits field", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: ["unit-a", "unit-b"],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual(["unit-a", "unit-b"]);
+  });
+
+  test("Multicast with customAggregationUnits → body includes customAggregationUnits field", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.multicastMessage(["U1", "U2"], [{ type: "text", text: "hello" }], {
+        customAggregationUnits: ["unit-x"],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual(["unit-x"]);
+  });
+
+  test("Push without customAggregationUnits → body does NOT include customAggregationUnits field", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(client.pushMessage("U123", [{ type: "text", text: "hello" }]));
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toBeUndefined();
+  });
+
+  test("Multicast without customAggregationUnits → body does NOT include customAggregationUnits field", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.multicastMessage(["U1", "U2"], [{ type: "text", text: "hello" }]),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toBeUndefined();
+  });
+
+  test("retryKey still header (X-Line-Retry-Key), not body, when customAggregationUnits present", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        retryKey: "retry-42",
+        customAggregationUnits: ["unit-1"],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const request = requests[0]!;
+    expect(request.headers["x-line-retry-key"]).toBe("retry-42");
+    const body = await requestJson(request);
+    expect(body.customAggregationUnits).toEqual(["unit-1"]);
+    expect(body.retryKey).toBeUndefined();
+  });
+
+  test("Push with empty customAggregationUnits array → body includes empty array", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: [],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual([]);
+  });
+
+  test("Push with single-unit customAggregationUnits → body includes single-element array", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: ["unit1"],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual(["unit1"]);
+  });
+
+  test("Push with 5 customAggregationUnits → body includes all 5", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const units = ["u1", "u2", "u3", "u4", "u5"];
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: units,
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual(units);
+    expect(body.customAggregationUnits).toHaveLength(5);
+  });
+
+  test("Push with special characters in customAggregationUnits → all pass through", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const units = ["<>&\"'", "unit with spaces", "emoji: 👋", "日本語", "new\nline\ttab"];
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: units,
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual(units);
+  });
+
+  test("Push with duplicate customAggregationUnits → duplicates preserved", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    const units = ["same", "same"];
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: units,
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual(["same", "same"]);
+  });
+
+  test("Push with empty string as customAggregationUnit → passes through", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: [""],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual([""]);
+  });
+
+  test("Multicast with empty customAggregationUnits array → body includes empty array", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.multicastMessage(["U1"], [{ type: "text", text: "hello" }], {
+        customAggregationUnits: [],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toEqual([]);
+  });
+
+  test("Multicast retryKey still header, not body, when customAggregationUnits present", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.multicastMessage(["U1", "U2"], [{ type: "text", text: "hello" }], {
+        retryKey: "retry-multi-99",
+        customAggregationUnits: ["unit-z"],
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const request = requests[0]!;
+    expect(request.headers["x-line-retry-key"]).toBe("retry-multi-99");
+    const body = await requestJson(request);
+    expect(body.customAggregationUnits).toEqual(["unit-z"]);
+    expect(body.retryKey).toBeUndefined();
+  });
+
+  test("Reply message encodes correctly (no customAggregationUnits path)", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(client.replyMessage("reply-token", [{ type: "text", text: "reply" }]));
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.replyToken).toBe("reply-token");
+    expect(body.messages).toHaveLength(1);
+    expect(body.customAggregationUnits).toBeUndefined();
+  });
+
+  test("Narrowcast message encodes correctly (no customAggregationUnits path)", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(client.narrowcastMessage([{ type: "text", text: "narrowcast" }]));
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.messages).toHaveLength(1);
+    expect(body.customAggregationUnits).toBeUndefined();
+  });
+
+  test("Push with customAggregationUnits=undefined → does NOT include field (not empty array)", async () => {
+    const { client: httpClient, requests } = makeCapturingClient();
+    const client = makeLineApiClient(httpClient, Redacted.make("access-token"), { baseUrl });
+
+    await Effect.runPromise(
+      client.pushMessage("U123", [{ type: "text", text: "hello" }], {
+        customAggregationUnits: undefined,
+      }),
+    );
+
+    expect(requests).toHaveLength(1);
+    const body = await requestJson(requests[0]!);
+    expect(body.customAggregationUnits).toBeUndefined();
   });
 });
