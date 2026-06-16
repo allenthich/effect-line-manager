@@ -11,7 +11,7 @@ import {
 } from "./domain.ts";
 import { ChannelNotFoundError, ChannelDuplicateError } from "./errors.ts";
 import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
-import { LineClientRegistry } from "./registry.ts";
+import { LineClientRegistry } from "../registry/index.ts";
 import { LineChannelRepository } from "./repository.ts";
 
 export interface LineChannelManagementService {

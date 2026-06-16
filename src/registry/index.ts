@@ -4,20 +4,20 @@ import {
   makeLineApiClient,
   type LineApiClient,
   type LineApiClientError,
-} from "./client-messaging.ts";
-import { makeLineLoginClient, type LineLoginClient } from "./client-login.ts";
+} from "../messaging/client.ts";
+import { makeLineLoginClient, type LineLoginClient } from "../login/client.ts";
 import { makeLineLiffClient, type LineLiffClient } from "../liff/client.ts";
 import {
   LineChannelRecordId,
   MessagingChannel,
   type LoginChannel,
   type LineChannel,
-} from "./domain.ts";
+} from "../channel/domain.ts";
 import { LineLiffRecordId, type LineLiffApp } from "../liff/domain.ts";
-import { ChannelNotFoundError } from "./errors.ts";
+import { ChannelNotFoundError } from "../channel/errors.ts";
 import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
 import { LineRepositoryError } from "../shared/errors.ts";
-import { LineChannelRepository } from "./repository.ts";
+import { LineChannelRepository } from "../channel/repository.ts";
 import { LineLiffRepository } from "../liff/repository.ts";
 
 const defaultCapacity = 500;

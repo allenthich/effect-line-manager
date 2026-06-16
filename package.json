@@ -9,7 +9,11 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
+    "./adapter": "./dist/adapter/index.mjs",
     "./httpapi": "./dist/httpapi/index.mjs",
+    "./login": "./dist/login/index.mjs",
+    "./messaging": "./dist/messaging/index.mjs",
+    "./registry": "./dist/registry/index.mjs",
     "./web": "./dist/web/index.mjs",
     "./package.json": "./package.json"
   },

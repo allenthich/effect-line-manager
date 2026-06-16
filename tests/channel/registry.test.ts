@@ -5,7 +5,7 @@ import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstab
 import { LineChannelId, LineChannelRecordId, MessagingChannel } from "../../src/channel/domain.ts";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineRepositoryError } from "../../src/shared/errors.ts";
-import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/channel/registry.ts";
+import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/registry/index.ts";
 import {
   LineChannelRepository,
   type LineChannelRepositoryService,

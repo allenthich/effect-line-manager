@@ -9,7 +9,7 @@ import {
 } from "./domain.ts";
 import { LineProviderNotFoundError, LineProviderDuplicateError } from "./errors.ts";
 import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
-import { LineClientRegistry } from "../channel/registry.ts";
+import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "./repository.ts";
 
 export interface LineProviderManagementService {

@@ -2,7 +2,7 @@ import { Context, Effect, Layer, Option, Schema } from "effect";
 import { LineChannelRecordId } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
 import { LineChannelRepository } from "../channel/repository.ts";
-import { LineClientRegistry } from "../channel/registry.ts";
+import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "../provider/repository.ts";
 import {
   type CreateLiffAppInput,

@@ -12,7 +12,7 @@ import {
   LineChannelId,
 } from "../../src/channel/domain.ts";
 import { LineAccountPersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
-import { LineClientRegistry } from "../../src/channel/registry.ts";
+import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
 import {
   LineChannelRepository,

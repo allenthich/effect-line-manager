@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { Effect, Layer, Option, Schema } from "effect";
 import { LineProviderId } from "../../src/provider/domain.ts";
 
-import { LineClientRegistry } from "../../src/channel/registry.ts";
+import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineProviderManagement } from "../../src/provider/service.ts";
 import {
   LineProviderRepository,

@@ -7,7 +7,7 @@ import {
 } from "../../src/provider/repository.ts";
 import { MessagingChannel, LineChannelId, LineChannelRecordId } from "../../src/channel/domain.ts";
 import { LineChannelManagement, makeLineChannelManagement } from "../../src/channel/service.ts";
-import { LineClientRegistry, type LineClientRegistryService } from "../../src/channel/registry.ts";
+import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
 import {
   LineChannelRepository,
   type LineChannelRepositoryService,

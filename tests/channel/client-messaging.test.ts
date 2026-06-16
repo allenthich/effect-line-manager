@@ -21,7 +21,7 @@ import {
   LineTextMessageV2,
   makeLineApiClient,
   type LineMessageTuple,
-} from "../../src/channel/client-messaging.ts";
+} from "../../src/messaging/index.ts";
 
 const baseUrl = "https://line.test";
 

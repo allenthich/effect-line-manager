@@ -4,7 +4,7 @@ import type { HttpClient } from "effect/unstable/http";
 import { LineProviderId } from "../provider/domain.ts";
 import { LineChannelRecordId } from "../channel/domain.ts";
 import { LineLiffRecordId } from "../liff/domain.ts";
-import { type LineProviderManagementAdapter } from "../shared/domain.ts";
+import { type LineProviderManagementAdapter } from "../adapter/types.ts";
 import { LineApi } from "./api.ts";
 
 // ── New API Client ────────────────────────────────────────────────────

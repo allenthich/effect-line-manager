@@ -8,7 +8,8 @@ import {
   LineLoginApiTransportError,
   LineLoginRequestEncodingError,
   type LineLoginOperation,
-} from "./errors-login.ts";
+} from "./errors.ts";
+import { sanitizedCause, withoutTrailingSlash } from "../shared/http-client-utils.ts";
 
 const defaultBaseUrl = "https://api.line.me";
 const defaultAuthorizeUrl = "https://access.line.me";
@@ -90,18 +91,6 @@ export interface LineLoginClient {
     LineLoginClientError
   >;
 }
-
-const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, "");
-
-const sanitizedCause = (cause: unknown): Error => {
-  if (typeof cause === "object" && cause !== null && "reason" in cause) {
-    const reason = cause.reason;
-    if (typeof reason === "object" && reason !== null && "_tag" in reason) {
-      return new Error(String(reason._tag));
-    }
-  }
-  return new Error("UnknownHttpError");
-};
 
 export const makeLineLoginClient = (
   httpClient: HttpClient.HttpClient,

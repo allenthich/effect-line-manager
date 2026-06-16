@@ -8,7 +8,15 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   pack: {
-    entry: ["src/index.ts", "src/web/index.ts", "src/httpapi/index.ts"],
+    entry: [
+      "src/index.ts",
+      "src/web/index.ts",
+      "src/httpapi/index.ts",
+      "src/messaging/index.ts",
+      "src/login/index.ts",
+      "src/registry/index.ts",
+      "src/adapter/index.ts",
+    ],
     dts: {
       tsgo: true,
     },

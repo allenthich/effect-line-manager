@@ -1,4 +1,4 @@
-import type { LineProviderManagementAdapter } from "../shared/domain.ts";
+import type { LineProviderManagementAdapter } from "../adapter/types.ts";
 import type {
   ProviderView,
   CreateProviderInput,
