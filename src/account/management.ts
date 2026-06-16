@@ -365,9 +365,14 @@ export const makeLineAccountManagement = Effect.gen(function* () {
     ),
 
     deleteProvider: Effect.fn("LineAccountManagement.deleteProvider")((id: LineProviderId) =>
-      repository
-        .deleteProvider(id)
-        .pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
+      Effect.gen(function* () {
+        yield* repository.deleteProvider(id);
+        // Provider deletion cascades to child channels and LIFF apps.
+        yield* registry.invalidateAll;
+      }).pipe(
+        Effect.catchTag("LineRepositoryError", persistenceFailure),
+        Effect.withSpan("LineAccountManagement.deleteProvider"),
+      ),
     ),
 
     // Channels
@@ -433,7 +438,8 @@ export const makeLineAccountManagement = Effect.gen(function* () {
     deleteChannel: Effect.fn("LineAccountManagement.deleteChannel")((id: LineChannelRecordId) =>
       Effect.gen(function* () {
         yield* repository.deleteChannel(id);
-        yield* registry.invalidateChannel(id);
+        // Channel deletion can cascade to LIFF apps, so clear descendant caches too.
+        yield* registry.invalidateAll;
       }).pipe(
         Effect.catchTag("LineRepositoryError", persistenceFailure),
         Effect.withSpan("LineAccountManagement.deleteChannel"),

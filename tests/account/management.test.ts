@@ -7,6 +7,7 @@ import {
   LineChannelId,
   LineChannelRecordId,
   LineLoginChannelId,
+  LineProviderId,
 } from "../../src/account/domain.ts";
 import {
   LineAccountDuplicateChannelError,
@@ -20,6 +21,7 @@ import { LineRepository, type LineRepositoryService } from "../../src/account/re
 
 const recordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
 const otherRecordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-2");
+const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 const channelId = Schema.decodeUnknownSync(LineChannelId)("channel-1");
 const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("login-1");
 
@@ -83,7 +85,7 @@ const makeRegistry = (invalidated: string[]): LineClientRegistryService =>
     invalidateChannel: (id) => Effect.sync(() => invalidated.push(id)),
     invalidateLiff: (id) => Effect.sync(() => invalidated.push(id)),
     invalidate: (id) => Effect.sync(() => invalidated.push(id)),
-    invalidateAll: Effect.void,
+  invalidateAll: Effect.sync(() => invalidated.push("*")),
   }) as LineClientRegistryService;
 
 const run = <A, E>(
@@ -197,6 +199,34 @@ describe("LineAccountManagement", () => {
     );
 
     expect(invalidated).toEqual(["record-1"]);
+  });
+
+  test("clears all cached descendants after deleting a provider", async () => {
+    const invalidated: string[] = [];
+
+    await run(
+      Effect.flatMap(LineAccountManagement, (management) => management.deleteProvider(providerId)),
+      makeRepository({
+        deleteProvider: () => Effect.void,
+      }),
+      makeRegistry(invalidated),
+    );
+
+    expect(invalidated).toEqual(["*"]);
+  });
+
+  test("clears all cached descendants after deleting a channel", async () => {
+    const invalidated: string[] = [];
+
+    await run(
+      Effect.flatMap(LineAccountManagement, (management) => management.deleteChannel(recordId)),
+      makeRepository({
+        deleteChannel: () => Effect.void,
+      }),
+      makeRegistry(invalidated),
+    );
+
+    expect(invalidated).toEqual(["*"]);
   });
 
   test("preserves expected duplicate and not-found outcomes", async () => {
