@@ -1,14 +1,4 @@
-import {
-  Cache,
-  Context,
-  type Duration,
-  Effect,
-  Exit,
-  Layer,
-  Option,
-  Redacted,
-  Schema,
-} from "effect";
+import { Cache, Context, type Duration, Effect, Exit, Layer, Option, Redacted } from "effect";
 import { HttpClient } from "effect/unstable/http";
 import {
   makeLineApiClient,
@@ -264,9 +254,10 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           // Decode the updated channel to ensure type safety — it must
           // remain a MessagingChannel since we validated the type above
           // and the update preserves the channel type.
-          return yield* Schema.decodeUnknownEffect(MessagingChannel)(updatedChannel).pipe(
-            Effect.orDie,
-          );
+          if (isMessagingChannel(updatedChannel)) {
+            return updatedChannel;
+          }
+          return yield* Effect.die("Expected updated channel to remain a messaging channel");
         }),
     );
 

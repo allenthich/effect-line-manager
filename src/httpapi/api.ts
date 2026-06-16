@@ -37,10 +37,10 @@ const CreatedLiffAppView = LiffAppView.pipe(HttpApiSchema.status(201));
 // ── Query parameter schemas ────────────────────────────────────────────
 
 const ProviderIdQuery = Schema.Struct({
-  providerId: Schema.optional(Schema.String),
+  providerId: Schema.optional(LineProviderId),
 });
 const ChannelIdQuery = Schema.Struct({
-  channelId: Schema.optional(Schema.String),
+  channelId: Schema.optional(LineChannelRecordId),
 });
 
 // ── Providers group ────────────────────────────────────────────────────

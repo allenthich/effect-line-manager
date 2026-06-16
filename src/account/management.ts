@@ -240,19 +240,17 @@ const toCreateChannelRecordInput = (input: CreateChannelInput) => {
       channelType: "messaging" as const,
       providerId,
       name: input.name,
-      channelId: input.channelId ?? "",
-      channelSecret: input.channelSecret ? Redacted.make(input.channelSecret) : Redacted.make(""),
-      channelAccessToken: input.channelAccessToken
-        ? Redacted.make(input.channelAccessToken)
-        : Redacted.make(""),
+      channelId: input.channelId,
+      channelSecret: Redacted.make(input.channelSecret),
+      channelAccessToken: Redacted.make(input.channelAccessToken),
     };
   }
   return {
     channelType: "login" as const,
     providerId,
     name: input.name,
-    channelId: input.channelId ?? "",
-    channelSecret: input.channelSecret ? Redacted.make(input.channelSecret) : Redacted.make(""),
+    channelId: input.channelId,
+    channelSecret: Redacted.make(input.channelSecret),
   };
 };
 

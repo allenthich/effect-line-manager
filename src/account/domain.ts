@@ -185,14 +185,23 @@ export const UpdateProviderInput = Schema.Struct({
 });
 export type UpdateProviderInput = typeof UpdateProviderInput.Type;
 
-export const CreateChannelInput = Schema.Struct({
-  channelType: Schema.Literals(["messaging", "login"]),
-  providerId: NonEmptyTrimmedString,
-  name: NonEmptyTrimmedString,
-  channelId: Schema.optional(NonEmptyTrimmedString),
-  channelSecret: Schema.optional(NonEmptyTrimmedString),
-  channelAccessToken: Schema.optional(NonEmptyTrimmedString),
-});
+export const CreateChannelInput = Schema.Union([
+  Schema.Struct({
+    channelType: Schema.Literal("messaging"),
+    providerId: NonEmptyTrimmedString,
+    name: NonEmptyTrimmedString,
+    channelId: NonEmptyTrimmedString,
+    channelSecret: NonEmptyTrimmedString,
+    channelAccessToken: NonEmptyTrimmedString,
+  }),
+  Schema.Struct({
+    channelType: Schema.Literal("login"),
+    providerId: NonEmptyTrimmedString,
+    name: NonEmptyTrimmedString,
+    channelId: NonEmptyTrimmedString,
+    channelSecret: NonEmptyTrimmedString,
+  }),
+] as const);
 export type CreateChannelInput = typeof CreateChannelInput.Type;
 
 export const UpdateChannelInput = Schema.Struct({

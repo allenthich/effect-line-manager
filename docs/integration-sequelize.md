@@ -310,7 +310,7 @@ const toDomainProvider = (r: LineProviderModel): LineProvider =>
     updatedAt: r.updatedAt,
   });
 
-const toDomainChannel = (r: LineChannelModel): ReturnType<typeof toDomainChannel> => {
+const toDomainChannel = (r: LineChannelModel): LineChannel => {
   const channelSecret = Redacted.make(decrypt(r.channelSecretEncrypted));
   if (r.channelType === "messaging") {
     const channelAccessToken = Redacted.make(decrypt(r.channelAccessTokenEncrypted!));
@@ -538,40 +538,85 @@ export const SequelizeLineRepositoryLive = Layer.succeed(
     // Delegate each to the appropriate new entity method.
 
     create: (input) =>
-      // Map old flat LineAccount fields to new CreateChannelRecordInput
-      // and delegate to createChannel.
-      createChannel({
-        channelType: "messaging",
-        providerId: "default" as any, // from your default provider
-        name: input.name,
-        channelId: input.channelId,
-        channelSecret: input.channelSecret,
-        channelAccessToken: input.channelAccessToken,
-      }),
+      Effect.tryPromise({
+        try: async () => {
+          const channelSecretEncrypted = encrypt(Redacted.value(input.channelSecret));
+          const channelAccessTokenEncrypted = encrypt(Redacted.value(input.channelAccessToken));
+          return await LineChannelModel.create({
+            providerId: "default" as any, // from your default provider
+            channelType: "messaging",
+            name: input.name,
+            channelId: input.channelId,
+            channelSecretEncrypted,
+            channelAccessTokenEncrypted,
+            isActive: input.isActive ?? true,
+            botUserId: input.botUserId ?? null,
+          });
+        },
+        catch: (error) => repoError("create", error),
+      }).pipe(Effect.map(toDomainChannel)),
 
     update: (id, input) =>
-      updateChannel(id, {
-        name: input.name,
-        channelId: input.channelId,
-        channelSecret: input.channelSecret,
-        channelAccessToken: input.channelAccessToken,
-        isActive: input.isActive,
-        botUserId: input.botUserId ?? null,
-      }),
+      Effect.tryPromise({
+        try: async () => {
+          const data: Record<string, unknown> = {};
+          if (input.name !== undefined) data.name = input.name;
+          if (input.channelId !== undefined) data.channelId = input.channelId;
+          if (input.channelSecret !== undefined) {
+            data.channelSecretEncrypted = encrypt(Redacted.value(input.channelSecret));
+          }
+          if (input.channelAccessToken !== undefined) {
+            data.channelAccessTokenEncrypted = encrypt(Redacted.value(input.channelAccessToken));
+          }
+          if (input.isActive !== undefined) data.isActive = input.isActive;
+          if (input.botUserId !== undefined) data.botUserId = input.botUserId ?? null;
 
-    findById: (id) => findChannelById(id),
-    findByChannelId: (channelId) => findChannelByMessagingId(channelId),
-    findByBotUserId: (botUserId) => findChannelByBotUserId(botUserId),
+          const [affected] = await LineChannelModel.update(data, {
+            where: { id, channelType: "messaging" },
+          });
+          if (affected === 0) throw new Error("Channel not found");
+          return (await LineChannelModel.findByPk(id))!;
+        },
+        catch: (error) => repoError("update", error),
+      }).pipe(Effect.map(toDomainChannel)),
+
+    findById: (id) =>
+      Effect.tryPromise({
+        try: () => LineChannelModel.findOne({ where: { id, channelType: "messaging" } }),
+        catch: (error) => repoError("findById", error),
+      }).pipe(Effect.map(Option.fromNullable), Effect.map(Option.map(toDomainChannel))),
+    findByChannelId: (channelId) =>
+      Effect.tryPromise({
+        try: () =>
+          LineChannelModel.findOne({
+            where: { channelId, channelType: "messaging" },
+          }),
+        catch: (error) => repoError("findByChannelId", error),
+      }).pipe(Effect.map(Option.fromNullable), Effect.map(Option.map(toDomainChannel))),
+    findByBotUserId: (botUserId) =>
+      Effect.tryPromise({
+        try: () =>
+          LineChannelModel.findOne({
+            where: { botUserId, channelType: "messaging" },
+          }),
+        catch: (error) => repoError("findByBotUserId", error),
+      }).pipe(Effect.map(Option.fromNullable), Effect.map(Option.map(toDomainChannel))),
 
     listAll: Effect.gen(function* () {
-      const providers = yield* __internal_listProviders();
-      const channelArrays = yield* Effect.all(
-        providers.map((p) => __internal_listChannelsByProvider(p.id)),
-      );
-      return channelArrays.flat();
+      const channels = yield* Effect.tryPromise({
+        try: () => LineChannelModel.findAll({ where: { channelType: "messaging" } }),
+        catch: (error) => repoError("listAll", error),
+      });
+      return channels.map(toDomainChannel);
     }),
 
-    deleteById: (id) => deleteChannel(id),
+    deleteById: (id) =>
+      Effect.tryPromise({
+        try: async () => {
+          await LineChannelModel.destroy({ where: { id } });
+        },
+        catch: (error) => repoError("deleteById", error),
+      }),
   }),
 );
 ```

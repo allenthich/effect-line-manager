@@ -58,9 +58,15 @@ export const makeLineProviderManagementAdapter = (
 
   listChannels: (providerId?) =>
     Effect.runPromise(
-      client.lineChannels.listChannels({
-        query: providerId ? { providerId } : {},
-      }),
+      providerId === undefined
+        ? client.lineChannels.listChannels({ query: {} })
+        : decodeProviderId(providerId).pipe(
+            Effect.flatMap((decodedProviderId) =>
+              client.lineChannels.listChannels({
+                query: { providerId: decodedProviderId },
+              }),
+            ),
+          ),
     ),
   getChannel: (id) =>
     Effect.runPromise(
@@ -69,7 +75,28 @@ export const makeLineProviderManagementAdapter = (
       ),
     ),
   createChannel: (input) =>
-    Effect.runPromise(client.lineChannels.createChannel({ payload: input })),
+    Effect.runPromise(
+      input.channelType === "messaging"
+        ? client.lineChannels.createChannel({
+            payload: {
+              channelType: "messaging",
+              providerId: input.providerId,
+              name: input.name,
+              channelId: input.channelId,
+              channelSecret: input.channelSecret,
+              channelAccessToken: input.channelAccessToken,
+            },
+          })
+        : client.lineChannels.createChannel({
+            payload: {
+              channelType: "login",
+              providerId: input.providerId,
+              name: input.name,
+              channelId: input.channelId,
+              channelSecret: input.channelSecret,
+            },
+          }),
+    ),
   updateChannel: (id, input) =>
     Effect.runPromise(
       decodeRecordId(id).pipe(
@@ -89,9 +116,15 @@ export const makeLineProviderManagementAdapter = (
 
   listLiffApps: (channelId?) =>
     Effect.runPromise(
-      client.lineLiffApps.listLiffApps({
-        query: channelId ? { channelId } : {},
-      }),
+      channelId === undefined
+        ? client.lineLiffApps.listLiffApps({ query: {} })
+        : decodeRecordId(channelId).pipe(
+            Effect.flatMap((decodedChannelId) =>
+              client.lineLiffApps.listLiffApps({
+                query: { channelId: decodedChannelId },
+              }),
+            ),
+          ),
     ),
   getLiffApp: (id) =>
     Effect.runPromise(

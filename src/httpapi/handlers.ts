@@ -1,7 +1,6 @@
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { LineAccountManagement } from "../account/management.ts";
-import { LineChannelRecordId, LineProviderId } from "../account/domain.ts";
 import { LineApi } from "./api.ts";
 import {
   ChannelDuplicateHttpError,
@@ -80,10 +79,7 @@ const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers)
 
     return handlers
       .handle("listChannels", ({ query }) => {
-        const providerId = query.providerId
-          ? Schema.decodeUnknownSync(LineProviderId)(query.providerId)
-          : undefined;
-        return management.listChannels(providerId).pipe(
+        return management.listChannels(query.providerId).pipe(
           Effect.catchTags({
             LineAccountPersistenceError: mapPersistenceError,
           }),
@@ -136,10 +132,7 @@ const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (handlers)
 
     return handlers
       .handle("listLiffApps", ({ query }) => {
-        const channelId = query.channelId
-          ? Schema.decodeUnknownSync(LineChannelRecordId)(query.channelId)
-          : undefined;
-        return management.listLiffApps(channelId).pipe(
+        return management.listLiffApps(query.channelId).pipe(
           Effect.catchTags({
             LineAccountPersistenceError: mapPersistenceError,
           }),
