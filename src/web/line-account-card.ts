@@ -326,8 +326,16 @@ export class LineAccountCard extends LitElement {
     );
   }
 
+  get #isSelectable(): boolean {
+    return (
+      this.variant === "split" ||
+      this.type === "provider" ||
+      (this.type === "channel" && (this.item as ChannelView)?.channelType === "login")
+    );
+  }
+
   #handleCardClick = (): void => {
-    if (this.variant === "split") {
+    if (this.#isSelectable) {
       this.#emitRequest("line-account-select-request");
     }
   };
@@ -369,8 +377,8 @@ export class LineAccountCard extends LitElement {
   render() {
     if (this.item === undefined) return html``;
 
-    const isSplit = this.variant === "split";
-    const selectClass = isSplit ? "selectable" : "";
+    const selectable = this.#isSelectable;
+    const selectClass = selectable ? "selectable" : "";
     const selectedClass = this.selected ? "selected" : "";
     const disabledClass = this.disabled ? "disabled" : "";
 
@@ -378,9 +386,9 @@ export class LineAccountCard extends LitElement {
       <article
         class="card ${selectClass} ${selectedClass} ${disabledClass}"
         part="card"
-        role=${isSplit ? "button" : "article"}
-        tabindex=${isSplit ? "0" : "-1"}
-        aria-pressed=${isSplit ? (this.selected ? "true" : "false") : undefined}
+        role=${selectable ? "button" : "article"}
+        tabindex=${selectable ? "0" : "-1"}
+        aria-pressed=${selectable ? (this.selected ? "true" : "false") : undefined}
         @click=${this.#handleCardClick}
         @keydown=${this.#handleKeydown}
       >
@@ -546,7 +554,7 @@ export class LineAccountCard extends LitElement {
   }
 
   #handleKeydown = (event: KeyboardEvent): void => {
-    if (this.variant !== "split" || this.disabled) return;
+    if (!this.#isSelectable || this.disabled) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       this.#emitRequest("line-account-select-request");

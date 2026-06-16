@@ -48,8 +48,8 @@ export class LineAccountManagement extends LitElement {
     variant: { type: String, reflect: true },
     searchQuery: { state: true },
     selectedItemId: { state: true },
-    selectedProviderId: { state: true }, // Filter channels by provider
-    selectedChannelId: { state: true }, // Filter LIFF apps by login channel
+    selectedProviderId: { type: String, attribute: "selected-provider-id" }, // Filter channels by provider
+    selectedChannelId: { type: String, attribute: "selected-channel-id" }, // Filter LIFF apps by login channel
   };
 
   static styles = css`
@@ -279,6 +279,53 @@ export class LineAccountManagement extends LitElement {
 
     .dialog-copy {
       line-height: 1.6;
+    }
+
+    /* Breadcrumbs styling */
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      color: var(--line-account-muted-color, #64748b);
+      font-weight: 550;
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .breadcrumb-link {
+      cursor: pointer;
+      color: var(--line-account-muted-color, #64748b);
+      transition: color 0.15s ease-in-out;
+      text-decoration: none;
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.25rem;
+    }
+
+    .breadcrumb-link:hover {
+      color: var(--line-account-primary-color, #10b981);
+      background-color: var(--line-account-muted-background, #eef2f5);
+    }
+
+    .breadcrumb-current {
+      color: var(--line-account-text-color, #0f172a);
+      font-weight: 600;
+      padding: 0.125rem 0.25rem;
+    }
+
+    .breadcrumb-separator {
+      color: var(--line-account-border-color, #cbd5e1);
+      user-select: none;
+    }
+
+    .details-table tbody tr:hover {
+      background-color: var(--line-account-selected-bg, #ecfdf5);
     }
 
     /* Tabs Bar styling */
@@ -742,8 +789,31 @@ export class LineAccountManagement extends LitElement {
     this.selectedChannelId = "";
 
     this.addEventListener("line-account-select-request", (event) => {
-      const { item } = (event as CustomEvent<LineAccountRequestDetail>).detail;
+      const { type, item } = (event as CustomEvent<LineAccountRequestDetail>).detail;
       this.selectedItemId = item.id;
+
+      if (type === "provider") {
+        this.selectedProviderId = item.id;
+        if (this.variant !== "split") {
+          this.currentTab = "channel";
+          this.selectedItemId = undefined;
+        }
+      } else if (type === "channel") {
+        const c = item as ChannelView;
+        this.selectedProviderId = c.providerId;
+        this.selectedChannelId = c.id;
+        if (this.variant !== "split" && c.channelType === "login") {
+          this.currentTab = "liff";
+          this.selectedItemId = undefined;
+        }
+      } else if (type === "liff") {
+        const l = item as LiffAppView;
+        this.selectedChannelId = l.loginChannelId;
+        const parentChannel = this.channels.find((c) => c.id === l.loginChannelId);
+        if (parentChannel) {
+          this.selectedProviderId = parentChannel.providerId;
+        }
+      }
     });
   }
 
@@ -906,6 +976,9 @@ export class LineAccountManagement extends LitElement {
             : ""}
         </header>
 
+        <!-- Breadcrumbs Navigation -->
+        ${this.#renderBreadcrumbs()}
+
         <!-- Tabs Navigation -->
         <div class="tabs-bar" role="tablist">
           <button
@@ -1026,6 +1099,8 @@ export class LineAccountManagement extends LitElement {
           .messages=${messages}
           .submitting=${this.createPending}
           .error=${this.dialogKind === "create" ? this.mutationError : undefined}
+          .selectedProviderId=${this.selectedProviderId}
+          .selectedChannelId=${this.selectedChannelId}
           @line-account-form-submit=${this.#handleFormSubmit}
         ></line-account-form>
         <button
@@ -1063,6 +1138,8 @@ export class LineAccountManagement extends LitElement {
           .messages=${messages}
           .submitting=${this.editPending}
           .error=${this.dialogKind === "edit" ? this.mutationError : undefined}
+          .selectedProviderId=${this.selectedProviderId}
+          .selectedChannelId=${this.selectedChannelId}
           @line-account-form-submit=${this.#handleFormSubmit}
         ></line-account-form>
         <button
@@ -1295,6 +1372,7 @@ export class LineAccountManagement extends LitElement {
     const target = event.target;
     if (target instanceof HTMLSelectElement) {
       this.selectedProviderId = target.value;
+      this.selectedItemId = undefined;
     }
   };
 
@@ -1302,6 +1380,7 @@ export class LineAccountManagement extends LitElement {
     const target = event.target;
     if (target instanceof HTMLSelectElement) {
       this.selectedChannelId = target.value;
+      this.selectedItemId = undefined;
     }
   };
 
@@ -1317,7 +1396,121 @@ export class LineAccountManagement extends LitElement {
     this.currentTab = tab;
     this.selectedItemId = undefined;
     this.searchQuery = "";
+    if (tab === "provider") {
+      this.selectedProviderId = "";
+      this.selectedChannelId = "";
+    } else if (tab === "channel") {
+      this.selectedChannelId = "";
+    }
   };
+
+  #resetToProviders = (): void => {
+    this.selectedProviderId = "";
+    this.selectedChannelId = "";
+    this.selectedItemId = undefined;
+    this.currentTab = "provider";
+    this.searchQuery = "";
+  };
+
+  #selectProviderBreadcrumb = (providerId: string): void => {
+    this.selectedProviderId = providerId;
+    this.selectedChannelId = "";
+    this.selectedItemId = undefined;
+    this.currentTab = "channel";
+    this.searchQuery = "";
+  };
+
+  #drillDownToChannel = (channel: ChannelView): void => {
+    this.selectedProviderId = channel.providerId;
+    this.selectedChannelId = channel.id;
+    this.selectedItemId = channel.id;
+    this.currentTab = "channel";
+  };
+
+  #drillDownToLiff = (liff: LiffAppView): void => {
+    this.selectedChannelId = liff.loginChannelId;
+    const parentChannel = this.channels.find((c) => c.id === liff.loginChannelId);
+    if (parentChannel) {
+      this.selectedProviderId = parentChannel.providerId;
+    }
+    this.selectedItemId = liff.id;
+    this.currentTab = "liff";
+  };
+
+  #openCreateChannelForProvider = (providerId: string): void => {
+    this.selectedProviderId = providerId;
+    this.currentTab = "channel";
+    this.#openCreate();
+  };
+
+  #openCreateLiffForChannel = (channelId: string): void => {
+    this.selectedChannelId = channelId;
+    const parentChannel = this.channels.find((c) => c.id === channelId);
+    if (parentChannel) {
+      this.selectedProviderId = parentChannel.providerId;
+    }
+    this.currentTab = "liff";
+    this.#openCreate();
+  };
+
+  #renderBreadcrumbs() {
+    const activeProvider = this.providers.find((p) => p.id === this.selectedProviderId);
+    const activeChannel = this.channels.find((c) => c.id === this.selectedChannelId);
+
+    let providerName = activeProvider?.name;
+    if (!providerName && activeChannel) {
+      const p = this.providers.find((prov) => prov.id === activeChannel.providerId);
+      providerName = p?.name;
+    }
+
+    return html`
+      <nav class="breadcrumbs" aria-label="Breadcrumb" part="breadcrumbs">
+        <span class="breadcrumb-item">
+          <span
+            class="breadcrumb-link ${!this.selectedProviderId ? "breadcrumb-current" : ""}"
+            role="button"
+            tabindex="0"
+            @click=${this.#resetToProviders}
+            @keydown=${(e: KeyboardEvent) => e.key === "Enter" && this.#resetToProviders()}
+          >
+            LINE Accounts
+          </span>
+        </span>
+
+        ${this.selectedProviderId || activeChannel
+          ? html`
+              <span class="breadcrumb-item">
+                <span class="breadcrumb-separator">/</span>
+                <span
+                  class="breadcrumb-link ${!this.selectedChannelId ? "breadcrumb-current" : ""}"
+                  role="button"
+                  tabindex="0"
+                  @click=${() =>
+                    this.#selectProviderBreadcrumb(
+                      this.selectedProviderId || activeChannel!.providerId,
+                    )}
+                  @keydown=${(e: KeyboardEvent) =>
+                    e.key === "Enter" &&
+                    this.#selectProviderBreadcrumb(
+                      this.selectedProviderId || activeChannel!.providerId,
+                    )}
+                >
+                  ${providerName || "Provider"}
+                </span>
+              </span>
+            `
+          : ""}
+        ${this.selectedChannelId && activeChannel
+          ? html`
+              <span class="breadcrumb-item">
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-current"> ${activeChannel.name} </span>
+              </span>
+            `
+          : ""}
+      </nav>
+    `;
+  }
 
   #renderSplitPane(
     messages: LineAccountManagementMessages,
@@ -1459,6 +1652,99 @@ export class LineAccountManagement extends LitElement {
               <span class="details-value">${provider.updatedAt.toLocaleString()}</span>
             </div>
           </div>
+
+          <div class="details-section" style="grid-column: 1 / -1;">
+            <div
+              class="details-section-title"
+              style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
+            >
+              <span>Channels</span>
+              <button
+                class="primary"
+                type="button"
+                style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                @click=${() => this.#openCreateChannelForProvider(provider.id)}
+              >
+                + Add Channel
+              </button>
+            </div>
+            ${this.channels.filter((c) => c.providerId === provider.id).length === 0
+              ? html`<p
+                  style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
+                >
+                  No LINE Channels found under this provider.
+                </p>`
+              : html`
+                  <table
+                    class="details-table"
+                    style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
+                  >
+                    <thead>
+                      <tr
+                        style="border-bottom: 1px solid var(--line-account-border-color); text-align: left; color: var(--line-account-muted-color);"
+                      >
+                        <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Name</th>
+                        <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Type</th>
+                        <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Status</th>
+                        <th style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${this.channels
+                        .filter((c) => c.providerId === provider.id)
+                        .map(
+                          (c) => html`
+                            <tr
+                              style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
+                              @click=${() => this.#drillDownToChannel(c)}
+                            >
+                              <td
+                                style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
+                              >
+                                ${c.name}
+                              </td>
+                              <td style="padding: 0.5rem 0.25rem;">
+                                ${c.channelType === "messaging" ? "Messaging API" : "LINE Login"}
+                              </td>
+                              <td style="padding: 0.5rem 0.25rem;">
+                                ${c.channelType === "messaging"
+                                  ? html`<span
+                                      class="badge ${c.isActive
+                                        ? "badge-status"
+                                        : "badge-status-inactive"}"
+                                      style="font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 9999px; font-weight: 600;"
+                                    >
+                                      ${c.isActive ? "Active" : "Inactive"}
+                                    </span>`
+                                  : "-"}
+                              </td>
+                              <td
+                                style="padding: 0.5rem 0.25rem; text-align: right;"
+                                @click=${(e: Event) => e.stopPropagation()}
+                              >
+                                <button
+                                  style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
+                                  @click=${() => this.#triggerEdit(c)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  class="danger"
+                                  style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
+                                  @click=${() => this.#triggerDelete(c)}
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          `,
+                        )}
+                    </tbody>
+                  </table>
+                `}
+          </div>
         </div>
 
         <div class="details-actions">
@@ -1560,7 +1846,96 @@ export class LineAccountManagement extends LitElement {
                     : ""}
                 </div>
               `
-            : ""}
+            : html`
+                <div class="details-section" style="grid-column: 1 / -1;">
+                  <div
+                    class="details-section-title"
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
+                  >
+                    <span>LIFF Applications</span>
+                    <button
+                      class="primary"
+                      type="button"
+                      style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                      @click=${() => this.#openCreateLiffForChannel(channel.id)}
+                    >
+                      + Add LIFF App
+                    </button>
+                  </div>
+                  ${this.liffApps.filter((l) => l.loginChannelId === channel.id).length === 0
+                    ? html`<p
+                        style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
+                      >
+                        No LIFF applications found under this channel.
+                      </p>`
+                    : html`
+                        <table
+                          class="details-table"
+                          style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
+                        >
+                          <thead>
+                            <tr
+                              style="border-bottom: 1px solid var(--line-account-border-color); text-align: left; color: var(--line-account-muted-color);"
+                            >
+                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
+                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
+                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
+                              <th
+                                style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
+                              >
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${this.liffApps
+                              .filter((l) => l.loginChannelId === channel.id)
+                              .map(
+                                (l) => html`
+                                  <tr
+                                    style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
+                                    @click=${() => this.#drillDownToLiff(l)}
+                                  >
+                                    <td
+                                      style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
+                                    >
+                                      ${l.liffId}
+                                    </td>
+                                    <td style="padding: 0.5rem 0.25rem;">
+                                      ${l.view.type.toUpperCase()}
+                                    </td>
+                                    <td
+                                      style="padding: 0.5rem 0.25rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                      title=${l.view.url}
+                                    >
+                                      ${l.view.url}
+                                    </td>
+                                    <td
+                                      style="padding: 0.5rem 0.25rem; text-align: right;"
+                                      @click=${(e: Event) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
+                                        @click=${() => this.#triggerEdit(l)}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        class="danger"
+                                        style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
+                                        @click=${() => this.#triggerDelete(l)}
+                                      >
+                                        Delete
+                                      </button>
+                                    </td>
+                                  </tr>
+                                `,
+                              )}
+                          </tbody>
+                        </table>
+                      `}
+                </div>
+              `}
         </div>
 
         <div class="details-actions">

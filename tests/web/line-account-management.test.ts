@@ -34,6 +34,17 @@ const mockChannel: ChannelView = {
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
 
+const mockChannelLogin: ChannelView = {
+  id: "channel-2",
+  providerId: "provider-1",
+  channelType: "login",
+  name: "Login Channel",
+  channelId: "0987654321",
+  hasChannelSecret: true,
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
+
 const mockLiff: LiffAppView = {
   id: "liff-1",
   loginChannelId: "channel-1",
@@ -43,6 +54,19 @@ const mockLiff: LiffAppView = {
     url: "https://example.com/liff",
   },
   description: "Loyalty card dashboard",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
+
+const mockLiffForLogin: LiffAppView = {
+  id: "liff-2",
+  loginChannelId: "channel-2",
+  liffId: "0987654321-AbCdEf12",
+  view: {
+    type: "full",
+    url: "https://example.com/login-liff",
+  },
+  description: "Login App",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
@@ -210,5 +234,101 @@ describe("LineAccountManagement", () => {
 
     expect(element.currentTab).toBe("channel");
     expect(getCards(element)).toHaveLength(1);
+  });
+
+  test("drill-down navigation on selection in grid mode", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    // Click on provider card to drill down to channels
+    const providerCard = getCards(element)[0];
+    const providerCardInner = providerCard.shadowRoot?.querySelector(".card") as HTMLElement;
+    providerCardInner.click();
+    await settle(element);
+
+    expect(element.currentTab).toBe("channel");
+    expect(element.selectedProviderId).toBe("provider-1");
+
+    // Click on channel card to drill down to LIFF apps
+    const channelCard = getCards(element)[0];
+    const channelCardInner = channelCard.shadowRoot?.querySelector(".card") as HTMLElement;
+    channelCardInner.click();
+    await settle(element);
+
+    expect(element.currentTab).toBe("liff");
+    expect(element.selectedChannelId).toBe("channel-2");
+  });
+
+  test("breadcrumb navigation", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.selectedProviderId = "provider-1";
+    element.selectedChannelId = "channel-2";
+    element.currentTab = "liff";
+    await settle(element);
+
+    // Verify breadcrumbs are rendered
+    const breadcrumbLinks = element.shadowRoot?.querySelectorAll(".breadcrumb-link");
+    expect(breadcrumbLinks).toBeDefined();
+
+    // Reset to providers via first breadcrumb link click
+    const rootLink = breadcrumbLinks?.[0] as HTMLElement;
+    rootLink.click();
+    await settle(element);
+
+    expect(element.currentTab).toBe("provider");
+    expect(element.selectedProviderId).toBe("");
+    expect(element.selectedChannelId).toBe("");
+  });
+
+  test("nested child lists in details pane", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "split";
+    element.currentTab = "provider";
+    element.selectedItemId = "provider-1";
+    await settle(element);
+
+    // Verify channels list is rendered in the details pane
+    const detailsPane = element.shadowRoot?.querySelector(".split-details");
+    expect(detailsPane?.textContent).toContain("Channels");
+    expect(detailsPane?.textContent).toContain("Login Channel");
+
+    // Switch to channel tab and select the login channel
+    element.currentTab = "channel";
+    element.selectedItemId = "channel-2";
+    await settle(element);
+
+    // Verify LIFF apps list is rendered in the details pane
+    expect(detailsPane?.textContent).toContain("LIFF Applications");
+    expect(detailsPane?.textContent).toContain("0987654321-AbCdEf12");
+  });
+
+  test("form scoped pre-population and disabled selectors", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.selectedProviderId = "provider-1";
+    element.currentTab = "channel";
+    await settle(element);
+
+    // Open create dialog
+    const createBtn = element.shadowRoot?.querySelector(".add-btn") as HTMLButtonElement;
+    createBtn.click();
+    await settle(element);
+
+    const form = element.shadowRoot?.querySelector("line-account-form");
+    expect(form).toBeDefined();
+
+    // We wait for form rendering
+    await settle(element);
+
+    // Pre-populated provider ID should match selectedProviderId
+    const providerSelect = form?.shadowRoot?.querySelector(
+      "#channelProviderId",
+    ) as HTMLSelectElement;
+    expect(providerSelect.value).toBe("provider-1");
+    expect(providerSelect.disabled).toBe(true);
   });
 });

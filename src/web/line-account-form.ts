@@ -1,6 +1,5 @@
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
-import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type {
   ProviderView,
@@ -48,6 +47,8 @@ export class LineAccountForm extends LitElement {
     error: { type: String },
     showChannelSecret: { state: true },
     showChannelAccessToken: { state: true },
+    selectedProviderId: { type: String },
+    selectedChannelId: { type: String },
   };
 
   static styles = css`
@@ -252,6 +253,8 @@ export class LineAccountForm extends LitElement {
   declare error: string | undefined;
   declare showChannelSecret: boolean;
   declare showChannelAccessToken: boolean;
+  declare selectedProviderId: string | undefined;
+  declare selectedChannelId: string | undefined;
 
   #values: FormValues;
   #invalidFields = new Set<keyof FormValues>();
@@ -264,11 +267,12 @@ export class LineAccountForm extends LitElement {
     this.item = undefined;
     this.providers = [];
     this.channels = [];
-    this.messages = defaultLineAccountManagementMessages;
     this.submitting = false;
     this.error = undefined;
     this.showChannelSecret = false;
     this.showChannelAccessToken = false;
+    this.selectedProviderId = undefined;
+    this.selectedChannelId = undefined;
     this.#values = this.#initialValues();
   }
 
@@ -287,7 +291,9 @@ export class LineAccountForm extends LitElement {
       changedProperties.has("mode") ||
       changedProperties.has("item") ||
       changedProperties.has("providers") ||
-      changedProperties.has("channels")
+      changedProperties.has("channels") ||
+      changedProperties.has("selectedProviderId") ||
+      changedProperties.has("selectedChannelId")
     ) {
       this.#values = this.#initialValues();
       this.#invalidFields = new Set();
@@ -349,7 +355,9 @@ export class LineAccountForm extends LitElement {
               id="channelProviderId"
               name="channelProviderId"
               .value=${this.#values.channelProviderId}
-              ?disabled=${this.submitting || editing}
+              ?disabled=${this.submitting ||
+              editing ||
+              (this.selectedProviderId !== undefined && this.selectedProviderId !== "")}
               @change=${this.#handleSelectChange}
             >
               ${this.providers.map(
@@ -437,7 +445,9 @@ export class LineAccountForm extends LitElement {
               id="liffLoginChannelId"
               name="liffLoginChannelId"
               .value=${this.#values.liffLoginChannelId}
-              ?disabled=${this.submitting || editing}
+              ?disabled=${this.submitting ||
+              editing ||
+              (this.selectedChannelId !== undefined && this.selectedChannelId !== "")}
               @change=${this.#handleSelectChange}
             >
               ${loginChannels.map(
@@ -651,11 +661,15 @@ export class LineAccountForm extends LitElement {
         liffDescription = liff.description ?? "";
       }
     } else {
-      if (this.providers.length > 0) {
+      if (this.selectedProviderId && this.providers.some((p) => p.id === this.selectedProviderId)) {
+        channelProviderId = this.selectedProviderId;
+      } else if (this.providers.length > 0) {
         channelProviderId = this.providers[0].id;
       }
       const loginChannels = this.channels.filter((c) => c.channelType === "login");
-      if (loginChannels.length > 0) {
+      if (this.selectedChannelId && loginChannels.some((c) => c.id === this.selectedChannelId)) {
+        liffLoginChannelId = this.selectedChannelId;
+      } else if (loginChannels.length > 0) {
         liffLoginChannelId = loginChannels[0].id;
       }
     }
