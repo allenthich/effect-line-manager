@@ -18,6 +18,28 @@ import {
   LineAccountManagement,
   type LineAccountManagementService,
 } from "../../src/account/management.ts";
+
+const unusedManagementMethods: Omit<
+  LineAccountManagementService,
+  "list" | "create" | "update" | "delete"
+> = {
+  listProviders: Effect.die("unused in api test"),
+  getProvider: () => Effect.die("unused in api test"),
+  createProvider: () => Effect.die("unused in api test"),
+  updateProvider: () => Effect.die("unused in api test"),
+  deleteProvider: () => Effect.die("unused in api test"),
+  listChannels: () => Effect.die("unused in api test"),
+  getChannel: () => Effect.die("unused in api test"),
+  findChannelByBotUserId: () => Effect.die("unused in api test"),
+  createChannel: () => Effect.die("unused in api test"),
+  updateChannel: () => Effect.die("unused in api test"),
+  deleteChannel: () => Effect.die("unused in api test"),
+  listLiffApps: () => Effect.die("unused in api test"),
+  getLiffApp: () => Effect.die("unused in api test"),
+  createLiffApp: () => Effect.die("unused in api test"),
+  updateLiffApp: () => Effect.die("unused in api test"),
+  deleteLiffApp: () => Effect.die("unused in api test"),
+};
 import {
   LineAccountManagementApi,
   LineAccountManagementApiLayer,
@@ -59,6 +81,7 @@ const makeClient = (management: LineAccountManagementService) =>
   );
 
 const baseManagement = (): LineAccountManagementService => ({
+  ...unusedManagementMethods,
   list: Effect.succeed({
     data: [account],
     pagination: {
@@ -86,6 +109,7 @@ describe("LineAccountManagementApi", () => {
   test("exercises all four credential-safe endpoints through HttpApiTest", async () => {
     const calls: Array<unknown> = [];
     const management: LineAccountManagementService = {
+      ...unusedManagementMethods,
       list: Effect.sync(() => {
         calls.push("list");
         return {

@@ -7,6 +7,7 @@ import {
   LineChannelId,
   LineChannelRecordId,
   LineLoginChannelId,
+  LineProviderId,
 } from "../../src/account/domain.ts";
 import {
   LineAccountDuplicateChannelError,
@@ -20,6 +21,7 @@ import { LineRepository, type LineRepositoryService } from "../../src/account/re
 
 const recordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
 const otherRecordId = Schema.decodeUnknownSync(LineChannelRecordId)("record-2");
+const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 const channelId = Schema.decodeUnknownSync(LineChannelId)("channel-1");
 const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("login-1");
 
@@ -43,25 +45,48 @@ const makeAccount = (overrides: Partial<LineAccount> = {}) =>
     ...overrides,
   });
 
-const makeRepository = (overrides: Partial<LineRepositoryService> = {}): LineRepositoryService => ({
-  create: () => Effect.succeed(makeAccount()),
-  update: () => Effect.succeed(makeAccount()),
-  findById: () => Effect.succeed(Option.some(makeAccount())),
-  findByChannelId: () => Effect.succeedNone,
-  findByBotUserId: () => Effect.succeedNone,
-  listAll: Effect.succeed([makeAccount()]),
-  deleteById: () => Effect.void,
-  ...overrides,
-});
+const makeRepository = (overrides: Partial<LineRepositoryService> = {}): LineRepositoryService =>
+  ({
+    // Deprecated
+    create: () => Effect.succeed(makeAccount()),
+    update: () => Effect.succeed(makeAccount()),
+    findById: () => Effect.succeed(Option.some(makeAccount())),
+    findByChannelId: () => Effect.succeedNone,
+    findByBotUserId: () => Effect.succeedNone,
+    listAll: Effect.succeed([makeAccount()]),
+    deleteById: () => Effect.void,
+    // New methods (unused in deprecated tests)
+    createProvider: () => Effect.die("unused"),
+    updateProvider: () => Effect.die("unused"),
+    findProviderById: () => Effect.die("unused"),
+    listProviders: Effect.die("unused"),
+    deleteProvider: () => Effect.die("unused"),
+    createChannel: () => Effect.die("unused"),
+    updateChannel: () => Effect.die("unused"),
+    findChannelById: () => Effect.die("unused"),
+    findChannelByMessagingId: () => Effect.die("unused"),
+    findChannelByBotUserId: () => Effect.die("unused"),
+    listChannelsByProvider: () => Effect.die("unused"),
+    deleteChannel: () => Effect.die("unused"),
+    createLiffApp: () => Effect.die("unused"),
+    updateLiffApp: () => Effect.die("unused"),
+    findLiffAppById: () => Effect.die("unused"),
+    listLiffAppsByChannel: () => Effect.die("unused"),
+    deleteLiffApp: () => Effect.die("unused"),
+    ...overrides,
+  }) as LineRepositoryService;
 
-const makeRegistry = (invalidated: string[]): LineClientRegistryService => ({
-  getMessagingClient: () => Effect.die("unused"),
-  getLoginClient: () => Effect.die("unused"),
-  getLiffClient: () => Effect.die("unused"),
-  syncBotProfile: () => Effect.die("unused"),
-  invalidate: (id) => Effect.sync(() => invalidated.push(id)),
-  invalidateAll: Effect.void,
-});
+const makeRegistry = (invalidated: string[]): LineClientRegistryService =>
+  ({
+    getMessagingClient: () => Effect.die("unused"),
+    getLoginClient: () => Effect.die("unused"),
+    getLiffClient: () => Effect.die("unused"),
+    syncBotProfile: () => Effect.die("unused"),
+    invalidateChannel: (id) => Effect.sync(() => invalidated.push(id)),
+    invalidateLiff: (id) => Effect.sync(() => invalidated.push(id)),
+    invalidate: (id) => Effect.sync(() => invalidated.push(id)),
+    invalidateAll: Effect.sync(() => invalidated.push("*")),
+  }) as LineClientRegistryService;
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineAccountManagement>,
@@ -174,6 +199,34 @@ describe("LineAccountManagement", () => {
     );
 
     expect(invalidated).toEqual(["record-1"]);
+  });
+
+  test("clears all cached descendants after deleting a provider", async () => {
+    const invalidated: string[] = [];
+
+    await run(
+      Effect.flatMap(LineAccountManagement, (management) => management.deleteProvider(providerId)),
+      makeRepository({
+        deleteProvider: () => Effect.void,
+      }),
+      makeRegistry(invalidated),
+    );
+
+    expect(invalidated).toEqual(["*"]);
+  });
+
+  test("clears all cached descendants after deleting a channel", async () => {
+    const invalidated: string[] = [];
+
+    await run(
+      Effect.flatMap(LineAccountManagement, (management) => management.deleteChannel(recordId)),
+      makeRepository({
+        deleteChannel: () => Effect.void,
+      }),
+      makeRegistry(invalidated),
+    );
+
+    expect(invalidated).toEqual(["*"]);
   });
 
   test("preserves expected duplicate and not-found outcomes", async () => {

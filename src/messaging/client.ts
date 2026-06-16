@@ -295,7 +295,13 @@ const MulticastMessageBody = Schema.Struct({
 const NarrowcastMessageBody = Schema.Struct({
   messages: LineMessages,
   notificationDisabled: Schema.optional(Schema.Boolean),
+  // Passthrough — the caller supplies the full recipient payload from the LINE SDK.
+  // Schemas for OperatorRecipient, AudienceRecipient, and RedeliveryRecipient exist
+  // in @line/bot-sdk but are not re-validated here to avoid coupling to SDK internals.
   recipient: Schema.optional(Schema.Unknown),
+  // Passthrough — the caller supplies the full demographic-filter payload from the LINE SDK.
+  // DemographicFilter variants (Gender, Age, AppType, Area, SubscriptionPeriod, etc.) are
+  // not re-validated here to avoid coupling to SDK internals.
   filter: Schema.optional(Schema.Unknown),
   limit: Schema.optional(Schema.Unknown),
 });
@@ -316,7 +322,9 @@ export interface LineNarrowcastOptions {
         readonly forbidPartialDelivery?: boolean | undefined;
       }
     | undefined;
+  /** Passthrough — the caller supplies the full recipient shape from the LINE SDK (e.g. OperatorRecipient). */
   readonly recipient?: unknown;
+  /** Passthrough — the caller supplies the full demographic-filter shape from the LINE SDK (e.g. GenderDemographicFilter). */
   readonly filter?: unknown;
 }
 
