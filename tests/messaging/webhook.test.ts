@@ -377,4 +377,221 @@ describe("LINE webhook schema", () => {
 
     expect(() => Schema.decodeUnknownSync(LineWebhookRequestBody)(payload)).toThrow();
   });
+
+  // ── Adversarial edge-case tests ──
+
+  // Note: Schema.String accepts empty strings. The following tests document
+  // current behavior — empty strings are NOT rejected. This is a pre-existing
+  // design choice in Effect Schema; tightening would require NonEmptyString.
+
+  test("accepts payload with empty destination (Schema.String behavior)", () => {
+    const payload = {
+      destination: "",
+      events: [
+        {
+          type: "message",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          message: { id: "12345678901234", type: "text", text: "Hello" },
+        },
+      ],
+    };
+
+    const decoded = Schema.decodeUnknownSync(LineWebhookRequestBody)(payload);
+    expect(decoded.destination).toBe("");
+  });
+
+  test("rejects payload with missing destination", () => {
+    const payload = {
+      events: [
+        {
+          type: "message",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          message: { id: "12345678901234", type: "text", text: "Hello" },
+        },
+      ],
+    };
+
+    expect(() => Schema.decodeUnknownSync(LineWebhookRequestBody)(payload)).toThrow();
+  });
+
+  test("accepts text message with empty text (Schema.String behavior)", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "message",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          message: { id: "12345678901234", type: "text", text: "" },
+        },
+      ],
+    };
+
+    const decoded = Schema.decodeUnknownSync(LineWebhookRequestBody)(payload);
+    const event = decoded.events[0] as typeof LineTextMessageEvent.Type;
+    expect(event.message.text).toBe("");
+  });
+
+  test("rejects text message event with missing text field", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "message",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          message: { id: "12345678901234", type: "text" },
+        },
+      ],
+    };
+
+    expect(() => Schema.decodeUnknownSync(LineWebhookRequestBody)(payload)).toThrow();
+  });
+
+  test("accepts postback event with empty data (Schema.String behavior)", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "postback",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          postback: { data: "" },
+        },
+      ],
+    };
+
+    const decoded = Schema.decodeUnknownSync(LineWebhookRequestBody)(payload);
+    const event = decoded.events[0] as typeof LinePostbackEvent.Type;
+    expect(event.postback.data).toBe("");
+  });
+
+  test("rejects postback event missing postback field", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "postback",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+        },
+      ],
+    };
+
+    expect(() => Schema.decodeUnknownSync(LineWebhookRequestBody)(payload)).toThrow();
+  });
+
+  test("rejects Group source missing required groupId", () => {
+    const source = { type: "group", userId: "U4af4980629abcdef" };
+    expect(() => Schema.decodeUnknownSync(LineGroupSource)(source)).toThrow();
+  });
+
+  test("rejects Room source missing required roomId", () => {
+    const source = { type: "room", userId: "U4af4980629abcdef" };
+    expect(() => Schema.decodeUnknownSync(LineRoomSource)(source)).toThrow();
+  });
+
+  test("accepts event with empty replyToken (Schema.String behavior)", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "message",
+          replyToken: "",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          message: { id: "12345678901234", type: "text", text: "Hello" },
+        },
+      ],
+    };
+
+    const decoded = Schema.decodeUnknownSync(LineWebhookRequestBody)(payload);
+    const event = decoded.events[0] as typeof LineTextMessageEvent.Type;
+    expect(event.replyToken).toBe("");
+  });
+
+  test("accepts event with empty webhookEventId (Schema.String behavior)", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "message",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "",
+          message: { id: "12345678901234", type: "text", text: "Hello" },
+        },
+      ],
+    };
+
+    const decoded = Schema.decodeUnknownSync(LineWebhookRequestBody)(payload);
+    const event = decoded.events[0] as typeof LineTextMessageEvent.Type;
+    expect(event.webhookEventId).toBe("");
+  });
+
+  test("rejects unsupported event type (e.g., joined)", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "joined",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+        },
+      ],
+    };
+
+    expect(() => Schema.decodeUnknownSync(LineWebhookRequestBody)(payload)).toThrow();
+  });
+
+  test("rejects unsupported message type (e.g., sticker)", () => {
+    const payload = {
+      destination: "U1234567890abcdef1234567890abcdef",
+      events: [
+        {
+          type: "message",
+          replyToken: "nH7w3O5gndHnsR0HNYglTyTA",
+          source: { type: "user", userId: "U4af4980629abcdef" },
+          timestamp: 1462629479859,
+          mode: "active",
+          webhookEventId: "0123456789abcdef0123456789abcdef",
+          message: {
+            id: "12345678901234",
+            type: "sticker",
+            stickerId: "1",
+            packageId: "1",
+          },
+        },
+      ],
+    };
+
+    expect(() => Schema.decodeUnknownSync(LineWebhookRequestBody)(payload)).toThrow();
+  });
 });
