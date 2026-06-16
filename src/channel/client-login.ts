@@ -8,7 +8,7 @@ import {
   LineLoginApiTransportError,
   LineLoginRequestEncodingError,
   type LineLoginOperation,
-} from "./errors.ts";
+} from "./errors-login.ts";
 
 const defaultBaseUrl = "https://api.line.me";
 const defaultAuthorizeUrl = "https://access.line.me";

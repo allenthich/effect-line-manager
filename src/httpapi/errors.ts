@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect";
 import { HttpApiMiddleware, HttpApiSchema } from "effect/unstable/httpapi";
-import { LineRepositoryOperation } from "../account/errors.ts";
+import { LineRepositoryOperation } from "../shared/errors.ts";
 
 // ── Validation Middleware ──────────────────────────────────────────────
 

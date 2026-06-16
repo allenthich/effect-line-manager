@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Schema } from "effect";
-import { LineMessages } from "../../src/messaging/client.ts";
+import { LineMessages } from "../../src/channel/client-messaging.ts";
 import {
   LineEventSource,
   LineFollowEvent,
@@ -10,7 +10,7 @@ import {
   LineGroupSource,
   LineRoomSource,
   LineWebhookRequestBody,
-} from "../../src/messaging/webhook.ts";
+} from "../../src/channel/webhook.ts";
 
 describe("LINE messaging schemas", () => {
   test.each([1, 2, 3, 4, 5])("accepts %i text messages", (count) => {

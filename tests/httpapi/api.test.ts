@@ -3,28 +3,25 @@ import { NodeHttpServer } from "@effect/platform-node";
 import { Effect, Layer, Schema } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
-import {
-  ProviderView,
-  LineProviderId,
-  ChannelView,
-  LineChannelRecordId,
-  LineChannelId,
-  LiffAppView,
-  LineLiffRecordId,
-} from "../../src/account/domain.ts";
+import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
+import { ChannelView, LineChannelRecordId, LineChannelId } from "../../src/channel/domain.ts";
+import { LiffAppView, LineLiffRecordId } from "../../src/liff/domain.ts";
 import {
   LineProviderNotFoundError,
   LineProviderDuplicateError,
-  ChannelNotFoundError,
-  ChannelDuplicateError,
-  LiffAppNotFoundError,
-  LiffAppDuplicateError,
-  LineAccountPersistenceError,
-} from "../../src/account/errors.ts";
+} from "../../src/provider/errors.ts";
+import { ChannelNotFoundError, ChannelDuplicateError } from "../../src/channel/errors.ts";
+import { LiffAppNotFoundError, LiffAppDuplicateError } from "../../src/liff/errors.ts";
+import { LineAccountPersistenceError } from "../../src/shared/errors.ts";
 import {
-  LineAccountManagement,
-  type LineAccountManagementService,
-} from "../../src/account/management.ts";
+  LineProviderManagement,
+  type LineProviderManagementService,
+} from "../../src/provider/service.ts";
+import {
+  LineChannelManagement,
+  type LineChannelManagementService,
+} from "../../src/channel/service.ts";
+import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 import {
   LineApi,
   LineApiLayer,
@@ -75,32 +72,17 @@ const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
   updatedAt: "2026-06-11T00:00:00.000Z",
 });
 
-const unusedManagementMethods: LineAccountManagementService = {
-  listProviders: Effect.die("unused in api test"),
-  getProvider: () => Effect.die("unused in api test"),
-  createProvider: () => Effect.die("unused in api test"),
-  updateProvider: () => Effect.die("unused in api test"),
-  deleteProvider: () => Effect.die("unused in api test"),
-  listChannels: () => Effect.die("unused in api test"),
-  getChannel: () => Effect.die("unused in api test"),
-  findChannelByBotUserId: () => Effect.die("unused in api test"),
-  createChannel: () => Effect.die("unused in api test"),
-  updateChannel: () => Effect.die("unused in api test"),
-  deleteChannel: () => Effect.die("unused in api test"),
-  listLiffApps: () => Effect.die("unused in api test"),
-  getLiffApp: () => Effect.die("unused in api test"),
-  createLiffApp: () => Effect.die("unused in api test"),
-  updateLiffApp: () => Effect.die("unused in api test"),
-  deleteLiffApp: () => Effect.die("unused in api test"),
-};
-
-const makeClient = (management: LineAccountManagementService) =>
+const makeClient = (
+  providerMgmt: LineProviderManagementService,
+  channelMgmt: LineChannelManagementService,
+  liffMgmt: LineLiffManagementService,
+) =>
   HttpApiTest.groups(LineApi, ["lineProviders", "lineChannels", "lineLiffApps"]).pipe(
     Effect.provide(
       Layer.mergeAll(
-        providerHandlers.pipe(Layer.provide(Layer.succeed(LineAccountManagement)(management))),
-        channelHandlers.pipe(Layer.provide(Layer.succeed(LineAccountManagement)(management))),
-        liffAppHandlers.pipe(Layer.provide(Layer.succeed(LineAccountManagement)(management))),
+        providerHandlers.pipe(Layer.provide(Layer.succeed(LineProviderManagement)(providerMgmt))),
+        channelHandlers.pipe(Layer.provide(Layer.succeed(LineChannelManagement)(channelMgmt))),
+        liffAppHandlers.pipe(Layer.provide(Layer.succeed(LineLiffManagement)(liffMgmt))),
         LineValidationMiddlewareLayer,
         NodeHttpServer.layerHttpServices,
       ),
@@ -108,8 +90,7 @@ const makeClient = (management: LineAccountManagementService) =>
     Effect.scoped,
   );
 
-const baseManagement = (): LineAccountManagementService => ({
-  ...unusedManagementMethods,
+const defaultProviderMgmt: LineProviderManagementService = {
   listProviders: Effect.succeed({
     data: [providerView],
     pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
@@ -118,17 +99,22 @@ const baseManagement = (): LineAccountManagementService => ({
   createProvider: () => Effect.succeed(providerView),
   updateProvider: () => Effect.succeed(providerView),
   deleteProvider: () => Effect.void,
+};
 
+const defaultChannelMgmt: LineChannelManagementService = {
   listChannels: () =>
     Effect.succeed({
       data: [channelView],
       pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
     }),
   getChannel: () => Effect.succeed(channelView),
+  findChannelByBotUserId: () => Effect.die("unused"),
   createChannel: () => Effect.succeed(channelView),
   updateChannel: () => Effect.succeed(channelView),
   deleteChannel: () => Effect.void,
+};
 
+const defaultLiffMgmt: LineLiffManagementService = {
   listLiffApps: () =>
     Effect.succeed({
       data: [liffAppView],
@@ -138,12 +124,18 @@ const baseManagement = (): LineAccountManagementService => ({
   createLiffApp: () => Effect.succeed(liffAppView),
   updateLiffApp: () => Effect.succeed(liffAppView),
   deleteLiffApp: () => Effect.void,
-});
+};
 
-const makeWebHandler = (management: LineAccountManagementService) =>
+const makeWebHandler = (
+  providerMgmt: LineProviderManagementService,
+  channelMgmt: LineChannelManagementService,
+  liffMgmt: LineLiffManagementService,
+) =>
   HttpRouter.toWebHandler(
     LineApiLayer.pipe(
-      Layer.provide(Layer.succeed(LineAccountManagement)(management)),
+      Layer.provide(Layer.succeed(LineProviderManagement)(providerMgmt)),
+      Layer.provide(Layer.succeed(LineChannelManagement)(channelMgmt)),
+      Layer.provide(Layer.succeed(LineLiffManagement)(liffMgmt)),
       Layer.provide(HttpServer.layerServices),
     ),
     { disableLogger: true },
@@ -152,7 +144,7 @@ const makeWebHandler = (management: LineAccountManagementService) =>
 describe("LineApi", () => {
   test("exercises all credential-safe endpoints through HttpApiTest", async () => {
     const calls: Array<unknown> = [];
-    const management: LineAccountManagementService = {
+    const providerMgmt: LineProviderManagementService = {
       listProviders: Effect.sync(() => {
         calls.push("listProviders");
         return {
@@ -166,7 +158,9 @@ describe("LineApi", () => {
       updateProvider: (id, input) =>
         Effect.sync(() => (calls.push(["updateProvider", id, input]), providerView)),
       deleteProvider: (id) => Effect.sync(() => void calls.push(["deleteProvider", id])),
+    };
 
+    const channelMgmt: LineChannelManagementService = {
       listChannels: (providerId) =>
         Effect.sync(() => {
           calls.push(["listChannels", providerId]);
@@ -182,7 +176,9 @@ describe("LineApi", () => {
       updateChannel: (id, input) =>
         Effect.sync(() => (calls.push(["updateChannel", id, input]), channelView)),
       deleteChannel: (id) => Effect.sync(() => void calls.push(["deleteChannel", id])),
+    };
 
+    const liffMgmt: LineLiffManagementService = {
       listLiffApps: (channelId) =>
         Effect.sync(() => {
           calls.push(["listLiffApps", channelId]);
@@ -201,7 +197,7 @@ describe("LineApi", () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeClient(management);
+        const client = yield* makeClient(providerMgmt, channelMgmt, liffMgmt);
 
         // Providers
         const listedProviders = yield* client.lineProviders.listProviders();
@@ -299,19 +295,27 @@ describe("LineApi", () => {
     const liffDuplicate = new LiffAppDuplicateError({ liffId: "1234567890-AbCdEf12" });
     const liffNotFound = new LiffAppNotFoundError({ recordId: liffRecordId });
 
-    const management: LineAccountManagementService = {
-      ...baseManagement(),
+    const providerMgmt: LineProviderManagementService = {
+      ...defaultProviderMgmt,
       createProvider: () => Effect.fail(providerDuplicate),
       getProvider: () => Effect.fail(providerNotFound),
+    };
+
+    const channelMgmt: LineChannelManagementService = {
+      ...defaultChannelMgmt,
       createChannel: () => Effect.fail(channelDuplicate),
       getChannel: () => Effect.fail(channelNotFound),
+    };
+
+    const liffMgmt: LineLiffManagementService = {
+      ...defaultLiffMgmt,
       createLiffApp: () => Effect.fail(liffDuplicate),
       getLiffApp: () => Effect.fail(liffNotFound),
     };
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeClient(management);
+        const client = yield* makeClient(providerMgmt, channelMgmt, liffMgmt);
 
         const providerDupErr = yield* client.lineProviders
           .createProvider({ payload: { name: "LINE Marketing" } })
@@ -379,14 +383,14 @@ describe("LineApi", () => {
   });
 
   test("sanitizes persistence failures", async () => {
-    const management: LineAccountManagementService = {
-      ...baseManagement(),
+    const providerMgmt: LineProviderManagementService = {
+      ...defaultProviderMgmt,
       listProviders: Effect.fail(new LineAccountPersistenceError({ operation: "listProviders" })),
     };
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeClient(management);
+        const client = yield* makeClient(providerMgmt, defaultChannelMgmt, defaultLiffMgmt);
         const error = yield* client.lineProviders.listProviders().pipe(Effect.flip);
         expect(error).toMatchObject({
           _tag: "LinePersistenceHttpError",
@@ -398,7 +402,7 @@ describe("LineApi", () => {
   });
 
   test("returns declared success and validation statuses over Fetch", async () => {
-    const web = makeWebHandler(baseManagement());
+    const web = makeWebHandler(defaultProviderMgmt, defaultChannelMgmt, defaultLiffMgmt);
 
     const listResponse = await web.handler(new Request("http://localhost/line-providers"));
     const createResponse = await web.handler(

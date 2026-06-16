@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Effect, Redacted } from "effect";
-import { LineSignatureError } from "./errors.ts";
+import { LineSignatureError } from "./errors-messaging.ts";
 
 const base64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 

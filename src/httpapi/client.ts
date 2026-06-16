@@ -1,12 +1,10 @@
 import { Effect, Schema } from "effect";
 import { HttpApi, HttpApiClient, OpenApi } from "effect/unstable/httpapi";
 import type { HttpClient } from "effect/unstable/http";
-import {
-  LineChannelRecordId,
-  LineLiffRecordId,
-  LineProviderId,
-  type LineProviderManagementAdapter,
-} from "../account/domain.ts";
+import { LineProviderId } from "../provider/domain.ts";
+import { LineChannelRecordId } from "../channel/domain.ts";
+import { LineLiffRecordId } from "../liff/domain.ts";
+import { type LineProviderManagementAdapter } from "../shared/domain.ts";
 import { LineApi } from "./api.ts";
 
 // ── New API Client ────────────────────────────────────────────────────

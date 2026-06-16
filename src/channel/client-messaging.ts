@@ -8,7 +8,7 @@ import {
   LineApiTransportError,
   LineRequestEncodingError,
   type LineApiOperation,
-} from "./errors.ts";
+} from "./errors-messaging.ts";
 
 const defaultBaseUrl = "https://api.line.me";
 const defaultRequestTimeout = "30 seconds";

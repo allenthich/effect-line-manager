@@ -1,11 +1,17 @@
 import { Layer } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { Hono, type MiddlewareHandler } from "hono";
-import { LineAccountManagement } from "../../src/account/management.ts";
+import { LineProviderManagement } from "../../src/provider/service.ts";
+import { LineChannelManagement } from "../../src/channel/service.ts";
+import { LineLiffManagement } from "../../src/liff/service.ts";
 import { LineApiLayer } from "../../src/httpapi/index.ts";
 
 export interface HonoLineAccountManagementOptions {
-  readonly managementLayer: Layer.Layer<LineAccountManagement, unknown, never>;
+  readonly managementLayer: Layer.Layer<
+    LineProviderManagement | LineChannelManagement | LineLiffManagement,
+    unknown,
+    never
+  >;
   readonly prefix?: string | undefined;
   readonly authorize?: MiddlewareHandler | undefined;
 }

@@ -1,7 +1,11 @@
 import { expect, test } from "vite-plus/test";
 import {
-  LineAccountManagement,
-  LineRepository,
+  LineProviderManagement,
+  LineChannelManagement,
+  LineLiffManagement,
+  LineProviderRepository,
+  LineChannelRepository,
+  LineLiffRepository,
   LineClientRegistry,
   LineMessages,
   LineTextMessage,
@@ -26,8 +30,12 @@ import {
 
 test("exports the stable LINE manager API", () => {
   expect([
-    LineAccountManagement,
-    LineRepository,
+    LineProviderManagement,
+    LineChannelManagement,
+    LineLiffManagement,
+    LineProviderRepository,
+    LineChannelRepository,
+    LineLiffRepository,
     LineClientRegistry,
     LineMessages,
     LineTextMessage,

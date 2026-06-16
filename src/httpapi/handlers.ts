@@ -1,6 +1,8 @@
 import { Effect, Layer } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { LineAccountManagement } from "../account/management.ts";
+import { LineProviderManagement } from "../provider/service.ts";
+import { LineChannelManagement } from "../channel/service.ts";
+import { LineLiffManagement } from "../liff/service.ts";
 import { LineApi } from "./api.ts";
 import {
   ChannelDuplicateHttpError,
@@ -22,7 +24,7 @@ const mapPersistenceError = (error: { operation: string }) =>
 
 export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineAccountManagement;
+    const management = yield* LineProviderManagement;
 
     return handlers
       .handle("listProviders", () =>
@@ -75,7 +77,7 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
 
 export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineAccountManagement;
+    const management = yield* LineChannelManagement;
 
     return handlers
       .handle("listChannels", ({ query }) => {
@@ -128,7 +130,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
 
 export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineAccountManagement;
+    const management = yield* LineLiffManagement;
 
     return handlers
       .handle("listLiffApps", ({ query }) => {

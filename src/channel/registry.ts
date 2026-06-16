@@ -4,24 +4,21 @@ import {
   makeLineApiClient,
   type LineApiClient,
   type LineApiClientError,
-} from "../messaging/client.ts";
-import { makeLineLoginClient, type LineLoginClient } from "../login/client.ts";
+} from "./client-messaging.ts";
+import { makeLineLoginClient, type LineLoginClient } from "./client-login.ts";
 import { makeLineLiffClient, type LineLiffClient } from "../liff/client.ts";
 import {
   LineChannelRecordId,
-  LineLiffRecordId,
   MessagingChannel,
   type LoginChannel,
   type LineChannel,
-  type LineLiffApp,
 } from "./domain.ts";
-import {
-  ChannelNotFoundError,
-  LiffAppNotFoundError,
-  LiffLoginConfigMissingError,
-  type LineRepositoryError,
-} from "./errors.ts";
-import { LineRepository } from "./repository.ts";
+import { LineLiffRecordId, type LineLiffApp } from "../liff/domain.ts";
+import { ChannelNotFoundError } from "./errors.ts";
+import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
+import { LineRepositoryError } from "../shared/errors.ts";
+import { LineChannelRepository } from "./repository.ts";
+import { LineLiffRepository } from "../liff/repository.ts";
 
 const defaultCapacity = 500;
 const defaultTimeToLive = "30 minutes";
@@ -107,7 +104,8 @@ const isLoginChannel = (channel: LineChannel): channel is LoginChannel =>
 
 const makeRegistry = (config: LineClientRegistryConfig = {}) =>
   Effect.gen(function* () {
-    const repository = yield* LineRepository;
+    const channelRepository = yield* LineChannelRepository;
+    const liffRepository = yield* LineLiffRepository;
     const httpClient = yield* HttpClient.HttpClient;
     const successTimeToLive = config.timeToLive ?? defaultTimeToLive;
     const failureTimeToLive = config.failureTimeToLive ?? defaultFailureTimeToLive;
@@ -116,7 +114,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const loadChannelEntry = Effect.fn("LineClientRegistry.loadChannelEntry")(function* (
       recordId: LineChannelRecordId,
     ) {
-      const optionChannel = yield* repository.findChannelById(recordId);
+      const optionChannel = yield* channelRepository.findChannelById(recordId);
       if (Option.isNone(optionChannel)) {
         return yield* new ChannelNotFoundError({ recordId });
       }
@@ -150,14 +148,14 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const loadLiffEntry = Effect.fn("LineClientRegistry.loadLiffEntry")(function* (
       liffRecordId: LineLiffRecordId,
     ) {
-      const optionLiff = yield* repository.findLiffAppById(liffRecordId);
+      const optionLiff = yield* liffRepository.findLiffAppById(liffRecordId);
       if (Option.isNone(optionLiff)) {
         return yield* new LiffAppNotFoundError({ recordId: liffRecordId });
       }
       const liffApp = optionLiff.value;
 
       // Resolve the parent LoginChannel for validation
-      const optionParent = yield* repository.findChannelById(liffApp.loginChannelId);
+      const optionParent = yield* channelRepository.findChannelById(liffApp.loginChannelId);
       if (Option.isNone(optionParent) || !isLoginChannel(optionParent.value)) {
         return yield* new ChannelNotFoundError({ recordId: liffApp.loginChannelId });
       }
@@ -228,7 +226,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           const messagingClient = entry.messaging.value;
           const botInfo = yield* messagingClient.getBotInfo;
 
-          const updatedChannel = yield* repository.updateChannel(channelRecordId, {
+          const updatedChannel = yield* channelRepository.updateChannel(channelRecordId, {
             botUserId: botInfo.userId,
             basicId: botInfo.basicId,
             displayName: botInfo.displayName,

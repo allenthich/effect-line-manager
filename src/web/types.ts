@@ -1,18 +1,22 @@
+import type { LineProviderManagementAdapter } from "../shared/domain.ts";
 import type {
-  LineProviderManagementAdapter,
   ProviderView,
-  ChannelView,
-  LiffAppView,
   CreateProviderInput,
   UpdateProviderInput,
+  ProviderListPage,
+} from "../provider/domain.ts";
+import type {
+  ChannelView,
   CreateChannelInput,
   UpdateChannelInput,
+  ChannelListPage,
+} from "../channel/domain.ts";
+import type {
+  LiffAppView,
   CreateLiffAppInput,
   UpdateLiffAppInput,
-  ProviderListPage,
-  ChannelListPage,
   LiffAppListPage,
-} from "../account/domain.ts";
+} from "../liff/domain.ts";
 
 export type {
   LineProviderManagementAdapter,

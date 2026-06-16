@@ -1,22 +1,26 @@
 import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 import {
-  ChannelView,
-  ChannelListPage,
-  CreateChannelInput,
-  CreateLiffAppInput,
-  CreateProviderInput,
-  LiffAppView,
-  LiffAppListPage,
-  LineChannelRecordId,
-  LineLiffRecordId,
   LineProviderId,
   ProviderView,
   ProviderListPage,
-  UpdateChannelInput,
-  UpdateLiffAppInput,
+  CreateProviderInput,
   UpdateProviderInput,
-} from "../account/domain.ts";
+} from "../provider/domain.ts";
+import {
+  LineChannelRecordId,
+  ChannelView,
+  ChannelListPage,
+  CreateChannelInput,
+  UpdateChannelInput,
+} from "../channel/domain.ts";
+import {
+  LineLiffRecordId,
+  LiffAppView,
+  LiffAppListPage,
+  CreateLiffAppInput,
+  UpdateLiffAppInput,
+} from "../liff/domain.ts";
 import {
   ChannelDuplicateHttpError,
   ChannelNotFoundHttpError,

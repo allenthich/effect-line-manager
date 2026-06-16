@@ -1,2 +1,2 @@
-export * from "./client.ts";
+export * from "./domain.ts";
 export * from "./errors.ts";

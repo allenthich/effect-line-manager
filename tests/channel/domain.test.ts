@@ -1,13 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Redacted, Schema } from "effect";
 import { inspect } from "node:util";
-import {
-  LineProvider,
-  MessagingChannel,
-  LineProviderId,
-  LineChannelRecordId,
-  LineLiffRecordId,
-} from "../../src/account/domain.ts";
+import { LineProvider, LineProviderId } from "../../src/provider/domain.ts";
+import { MessagingChannel, LineChannelRecordId } from "../../src/channel/domain.ts";
+import { LineLiffRecordId } from "../../src/liff/domain.ts";
 
 describe("LINE account domain schemas", () => {
   test("constructs a provider", () => {

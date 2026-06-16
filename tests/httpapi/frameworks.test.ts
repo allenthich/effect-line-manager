@@ -5,22 +5,33 @@ import express5 from "express5";
 import type { Application } from "express";
 import { request as nodeRequest, type Server } from "node:http";
 import {
-  LineAccountManagement,
-  type LineAccountManagementService,
-} from "../../src/account/management.ts";
+  LineProviderManagement,
+  type LineProviderManagementService,
+} from "../../src/provider/service.ts";
+import {
+  LineChannelManagement,
+  type LineChannelManagementService,
+} from "../../src/channel/service.ts";
+import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 
-const unusedManagementMethods: LineAccountManagementService = {
+const unusedProviderMgmt: LineProviderManagementService = {
   listProviders: Effect.die("unused"),
   getProvider: () => Effect.die("unused"),
   createProvider: () => Effect.die("unused"),
   updateProvider: () => Effect.die("unused"),
   deleteProvider: () => Effect.die("unused"),
+};
+
+const unusedChannelMgmt: LineChannelManagementService = {
   listChannels: () => Effect.die("unused"),
   getChannel: () => Effect.die("unused"),
   findChannelByBotUserId: () => Effect.die("unused"),
   createChannel: () => Effect.die("unused"),
   updateChannel: () => Effect.die("unused"),
   deleteChannel: () => Effect.die("unused"),
+};
+
+const unusedLiffMgmt: LineLiffManagementService = {
   listLiffApps: () => Effect.die("unused"),
   getLiffApp: () => Effect.die("unused"),
   createLiffApp: () => Effect.die("unused"),
@@ -42,8 +53,8 @@ const provider = {
   updatedAt: new Date("2026-06-11T00:00:00.000Z"),
 };
 
-const management: LineAccountManagementService = {
-  ...unusedManagementMethods,
+const providerMgmt: LineProviderManagementService = {
+  ...unusedProviderMgmt,
   listProviders: Effect.succeed({
     data: [provider],
     pagination: {
@@ -134,10 +145,15 @@ describe("HTTP API framework examples", () => {
   test("mounts the Fetch handler in Hono after consumer auth middleware and disposes resources", async () => {
     let authorized = false;
     let disposed = false;
-    const managementLayer = Layer.effect(LineAccountManagement)(
-      Effect.acquireRelease(Effect.succeed(management), () =>
+    const providerMgmtLayer = Layer.effect(LineProviderManagement)(
+      Effect.acquireRelease(Effect.succeed(providerMgmt), () =>
         Effect.sync(() => void (disposed = true)),
       ),
+    );
+    const managementLayer = Layer.mergeAll(
+      providerMgmtLayer,
+      Layer.succeed(LineChannelManagement)(unusedChannelMgmt),
+      Layer.succeed(LineLiffManagement)(unusedLiffMgmt),
     );
     const mounted = createHonoLineAccountManagementApp({
       prefix: "/api/admin",
@@ -178,7 +194,11 @@ describe("HTTP API framework examples", () => {
     test(`mounts before body parsers with ${name} and forwards the unconsumed JSON body`, async () => {
       const app = express();
       const mounted = createExpressLineAccountManagementMiddleware({
-        managementLayer: Layer.succeed(LineAccountManagement)(management),
+        managementLayer: Layer.mergeAll(
+          Layer.succeed(LineProviderManagement)(providerMgmt),
+          Layer.succeed(LineChannelManagement)(unusedChannelMgmt),
+          Layer.succeed(LineLiffManagement)(unusedLiffMgmt),
+        ),
       });
       app.use("/api/admin", mounted.middleware);
       app.use(express.json());
@@ -200,8 +220,10 @@ describe("HTTP API framework examples", () => {
   test("forwards asynchronous setup failures to Express next", async () => {
     const app = express4();
     const mounted = createExpressLineAccountManagementMiddleware({
-      managementLayer: Layer.effect(LineAccountManagement)(
-        Effect.fail(new SetupError("setup failed")),
+      managementLayer: Layer.mergeAll(
+        Layer.effect(LineProviderManagement)(Effect.fail(new SetupError("setup failed"))),
+        Layer.succeed(LineChannelManagement)(unusedChannelMgmt),
+        Layer.succeed(LineLiffManagement)(unusedLiffMgmt),
       ),
     });
     app.use("/api/admin", mounted.middleware);

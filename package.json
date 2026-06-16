@@ -19,6 +19,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
+    "dev:demo": "vp dev demo",
     "test": "vp test",
     "check": "vp check && vpx tsgo --noEmit",
     "prepublishOnly": "vp run build",

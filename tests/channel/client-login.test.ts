@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Effect, Redacted } from "effect";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
-import { makeLineLoginClient } from "../../src/login/client.ts";
+import { makeLineLoginClient } from "../../src/channel/client-login.ts";
 
 const baseUrl = "https://line-login.test";
 
