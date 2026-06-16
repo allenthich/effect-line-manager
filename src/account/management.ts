@@ -12,6 +12,7 @@ import {
   type LineLiffApp,
   LineChannelRecordId,
   LineLiffRecordId,
+  LineLiffId,
   LineProviderId,
   type ProviderView,
   type ChannelView,
@@ -20,17 +21,6 @@ import {
   ProviderListPage,
   ChannelListPage,
   LiffAppListPage,
-  // Deprecated
-  type CreateLineAccountInput,
-  type CreateLineAccountRecordInput,
-  type LineAccount,
-  type LineAccountListPage,
-  type LineAccountView,
-  type LineChannelId,
-  LineLiffId,
-  type LineLoginChannelId,
-  type UpdateLineAccountInput,
-  type UpdateLineAccountRecordInput,
 } from "./domain.ts";
 import {
   ChannelNotFoundError,
@@ -41,9 +31,6 @@ import {
   type LiffAppDuplicateError,
   type LineProviderDuplicateError,
   type LineRepositoryError,
-  // Deprecated
-  type LineAccountDuplicateChannelError,
-  type LineAccountNotFoundError,
 } from "./errors.ts";
 import { LineClientRegistry } from "./registry.ts";
 import { LineRepository } from "./repository.ts";
@@ -108,25 +95,6 @@ export interface LineAccountManagementService {
   readonly deleteLiffApp: (
     id: LineLiffRecordId,
   ) => Effect.Effect<void, LiffAppNotFoundError | LineAccountPersistenceError>;
-
-  // Deprecated
-  readonly list: Effect.Effect<LineAccountListPage, LineAccountPersistenceError>;
-  readonly create: (
-    input: CreateLineAccountInput,
-  ) => Effect.Effect<
-    LineAccountView,
-    LineAccountDuplicateChannelError | LineAccountPersistenceError
-  >;
-  readonly update: (
-    id: LineChannelRecordId,
-    input: UpdateLineAccountInput,
-  ) => Effect.Effect<
-    LineAccountView,
-    LineAccountNotFoundError | LineAccountDuplicateChannelError | LineAccountPersistenceError
-  >;
-  readonly delete: (
-    id: LineChannelRecordId,
-  ) => Effect.Effect<void, LineAccountNotFoundError | LineAccountPersistenceError>;
 }
 
 // ── Service Class ─────────────────────────────────────────────────────
@@ -480,112 +448,5 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         yield* registry.invalidateLiff(id);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
-
-    // Deprecated
-    list: repository.listAll.pipe(
-      Effect.catchTag("LineRepositoryError", persistenceFailure),
-      Effect.map(toLineAccountListPage),
-      Effect.withSpan("LineAccountManagement.list"),
-    ),
-
-    create: Effect.fn("LineAccountManagement.create")((input: CreateLineAccountInput) =>
-      repository.create(toCreateLineAccountRecordInput(input)).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.tap((account) => registry.invalidate(account.id)),
-        Effect.map(toLineAccountView),
-      ),
-    ),
-
-    update: Effect.fn("LineAccountManagement.update")(
-      (id: LineChannelRecordId, input: UpdateLineAccountInput) =>
-        repository.update(id, toUpdateLineAccountRecordInput(input)).pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.tap(() => registry.invalidate(id)),
-          Effect.map(toLineAccountView),
-        ),
-    ),
-
-    delete: Effect.fn("LineAccountManagement.delete")((id: LineChannelRecordId) =>
-      repository
-        .deleteById(id)
-        .pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.andThen(registry.invalidate(id)),
-        ),
-    ),
   });
-});
-
-// ═══════════════════════════════════════════════════════════════════════
-// DEPRECATED — kept for backward compatibility
-// ═══════════════════════════════════════════════════════════════════════
-
-export const toLineAccountView = (account: LineAccount): LineAccountView => ({
-  id: account.id,
-  name: account.name,
-  channelId: account.channelId,
-  botUserId: account.botUserId ?? null,
-  basicId: account.basicId ?? null,
-  displayName: account.displayName ?? null,
-  pictureUrl: account.pictureUrl ?? null,
-  isActive: account.isActive,
-  loginChannelId: account.loginChannelId,
-  liffId: account.liffId,
-  createdAt: account.createdAt,
-  updatedAt: account.updatedAt,
-  hasChannelSecret: true,
-  hasChannelAccessToken: true,
-  hasLoginChannelSecret: account.loginChannelSecret !== null,
-});
-
-export const toLineAccountListPage = (
-  accounts: ReadonlyArray<LineAccount>,
-): LineAccountListPage => ({
-  data: accounts.map(toLineAccountView),
-  pagination: {
-    page: 1,
-    pageSize: accounts.length,
-    totalItems: accounts.length,
-    totalPages: accounts.length === 0 ? 0 : 1,
-  },
-});
-
-const toCreateLineAccountRecordInput = (
-  input: CreateLineAccountInput,
-): CreateLineAccountRecordInput => ({
-  name: input.name,
-  channelId: input.channelId as LineChannelId,
-  channelSecret: Redacted.make(input.channelSecret),
-  channelAccessToken: Redacted.make(input.channelAccessToken),
-  loginChannelId:
-    input.loginChannelId === undefined ? null : (input.loginChannelId as LineLoginChannelId | null),
-  loginChannelSecret:
-    input.loginChannelSecret === undefined || input.loginChannelSecret === null
-      ? null
-      : Redacted.make(input.loginChannelSecret),
-  liffId: input.liffId === undefined ? null : (input.liffId as LineLiffId | null),
-});
-
-const toUpdateLineAccountRecordInput = (
-  input: UpdateLineAccountInput,
-): UpdateLineAccountRecordInput => ({
-  ...(input.name === undefined ? {} : { name: input.name }),
-  ...(input.channelId === undefined ? {} : { channelId: input.channelId as LineChannelId }),
-  ...(input.channelSecret === undefined
-    ? {}
-    : { channelSecret: Redacted.make(input.channelSecret) }),
-  ...(input.channelAccessToken === undefined
-    ? {}
-    : { channelAccessToken: Redacted.make(input.channelAccessToken) }),
-  ...(input.loginChannelId === undefined
-    ? {}
-    : { loginChannelId: input.loginChannelId as LineLoginChannelId | null }),
-  ...(input.loginChannelSecret === undefined
-    ? {}
-    : {
-        loginChannelSecret:
-          input.loginChannelSecret === null ? null : Redacted.make(input.loginChannelSecret),
-      }),
-  ...(input.liffId === undefined ? {} : { liffId: input.liffId as LineLiffId | null }),
-  ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
 });

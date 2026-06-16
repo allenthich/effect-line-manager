@@ -61,14 +61,6 @@ const makeRepository = (
   findLiffAppById: () => Effect.die("unused"),
   listLiffAppsByChannel: () => Effect.die("unused"),
   deleteLiffApp: () => Effect.die("unused"),
-  // Legacy methods — kept for backward compat, unused by new registry
-  create: () => Effect.die("unused"),
-  update: () => Effect.die("unused"),
-  findById: () => Effect.die("unused"),
-  findByChannelId: () => Effect.die("unused"),
-  findByBotUserId: () => Effect.die("unused"),
-  listAll: Effect.die("unused"),
-  deleteById: () => Effect.die("unused"),
 });
 
 const makeCapturingHttpClient = (status = 200, body: string | null = null) => {
@@ -166,7 +158,7 @@ describe("LineClientRegistry", () => {
     const { client: httpClient } = makeCapturingHttpClient();
     const missingRepository = makeRepository(() => Effect.succeedNone);
     const repositoryFailure = new LineRepositoryError({
-      operation: "findById",
+      operation: "findChannelById",
       cause: new Error("database unavailable"),
     });
     const failingRepository = makeRepository(() => Effect.fail(repositoryFailure));
@@ -214,7 +206,7 @@ describe("LineClientRegistry", () => {
         const cached = yield* registry.getMessagingClient(recordId);
         yield* cached.pushMessage("U123", [{ type: "text", text: "cached" }]);
 
-        yield* registry.invalidate(recordId);
+        yield* registry.invalidateChannel(recordId);
         const rotated = yield* registry.getMessagingClient(recordId);
         yield* rotated.pushMessage("U123", [{ type: "text", text: "rotated" }]);
 
@@ -256,7 +248,7 @@ describe("LineClientRegistry", () => {
         yield* registry.getMessagingClient(recordId);
 
         channel = Option.none();
-        yield* registry.invalidate(recordId);
+        yield* registry.invalidateChannel(recordId);
         yield* Effect.exit(registry.getMessagingClient(recordId));
         channel = Option.some(makeMessagingChannel("token-2"));
         yield* Effect.exit(registry.getMessagingClient(recordId));

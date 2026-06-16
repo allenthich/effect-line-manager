@@ -1,10 +1,8 @@
 import { Context, type Effect, type Option } from "effect";
 import type {
   CreateChannelRecordInput,
-  CreateLineAccountRecordInput,
   CreateLiffAppRecordInput,
   CreateProviderRecordInput,
-  LineAccount,
   LineChannel,
   LineChannelId,
   LineChannelRecordId,
@@ -13,15 +11,12 @@ import type {
   LineProvider,
   LineProviderId,
   UpdateChannelRecordInput,
-  UpdateLineAccountRecordInput,
   UpdateLiffAppRecordInput,
   UpdateProviderRecordInput,
 } from "./domain.ts";
 import type {
   ChannelDuplicateError,
   ChannelNotFoundError,
-  LineAccountDuplicateChannelError,
-  LineAccountNotFoundError,
   LiffAppDuplicateError,
   LiffAppNotFoundError,
   LineProviderDuplicateError,
@@ -103,49 +98,6 @@ export class LineRepository extends Context.Service<
     readonly deleteLiffApp: (
       id: LineLiffRecordId,
     ) => Effect.Effect<void, LiffAppNotFoundError | LineRepositoryError>;
-
-    // ═══════════════════════════════════════════════════════════
-    // DEPRECATED — flat LineAccount methods kept for backward
-    // compatibility with management.ts and test files.
-    // Remove once Task C (management) + Phase 2 tests are updated.
-    // ═══════════════════════════════════════════════════════════
-
-    /** @deprecated Use {@link createProvider}, {@link createChannel}, or {@link createLiffApp} instead. */
-    readonly create: (
-      input: CreateLineAccountRecordInput,
-    ) => Effect.Effect<LineAccount, LineAccountDuplicateChannelError | LineRepositoryError>;
-
-    /** @deprecated Use {@link updateProvider}, {@link updateChannel}, or {@link updateLiffApp} instead. */
-    readonly update: (
-      id: LineChannelRecordId,
-      input: UpdateLineAccountRecordInput,
-    ) => Effect.Effect<
-      LineAccount,
-      LineAccountNotFoundError | LineAccountDuplicateChannelError | LineRepositoryError
-    >;
-
-    /** @deprecated Use {@link findChannelById} instead. */
-    readonly findById: (
-      id: LineChannelRecordId,
-    ) => Effect.Effect<Option.Option<LineAccount>, LineRepositoryError>;
-
-    /** @deprecated Use {@link findChannelByMessagingId} instead. */
-    readonly findByChannelId: (
-      channelId: LineChannelId,
-    ) => Effect.Effect<Option.Option<LineAccount>, LineRepositoryError>;
-
-    /** @deprecated Use {@link findChannelByBotUserId} instead. */
-    readonly findByBotUserId: (
-      botUserId: string,
-    ) => Effect.Effect<Option.Option<LineAccount>, LineRepositoryError>;
-
-    /** @deprecated Use {@link listProviders}, {@link listChannelsByProvider}, or {@link listLiffAppsByChannel} instead. */
-    readonly listAll: Effect.Effect<ReadonlyArray<LineAccount>, LineRepositoryError>;
-
-    /** @deprecated Use {@link deleteChannel} instead. */
-    readonly deleteById: (
-      id: LineChannelRecordId,
-    ) => Effect.Effect<void, LineAccountNotFoundError | LineRepositoryError>;
   }
 >()("effect-line-manager/LineRepository") {}
 

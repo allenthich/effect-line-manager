@@ -19,7 +19,6 @@ import {
   ChannelNotFoundError,
   LiffAppNotFoundError,
   LiffLoginConfigMissingError,
-  LineLoginConfigMissingError,
   type LineRepositoryError,
 } from "./errors.ts";
 import { LineRepository } from "./repository.ts";
@@ -56,13 +55,9 @@ export class LineClientRegistry extends Context.Service<
       channelRecordId: LineChannelRecordId,
     ) => Effect.Effect<LineApiClient, LineRepositoryError | ChannelNotFoundError>;
 
-    /** Resolves a LINE Login client from a LoginChannel record. */
     readonly getLoginClient: (
       channelRecordId: LineChannelRecordId,
-    ) => Effect.Effect<
-      LineLoginClient,
-      LineRepositoryError | ChannelNotFoundError | LineLoginConfigMissingError
-    >;
+    ) => Effect.Effect<LineLoginClient, LineRepositoryError | ChannelNotFoundError>;
 
     /** Resolves a LIFF client by LIFF record ID.
      *  Uses the parent Login Channel's OAuth token (Option A).
@@ -95,14 +90,6 @@ export class LineClientRegistry extends Context.Service<
 
     /** Evicts all cached channels and LIFF apps. */
     readonly invalidateAll: Effect.Effect<void>;
-
-    // ═══════════════════════════════════════════════════════════
-    // DEPRECATED — kept for backward compatibility with
-    // management.ts and test files. Remove once Task C completes.
-    // ═══════════════════════════════════════════════════════════
-
-    /** @deprecated Use {@link invalidateChannel} instead. */
-    readonly invalidate: (recordId: LineChannelRecordId) => Effect.Effect<void>;
   }
 >()("effect-line-manager/LineClientRegistry") {
   static layer(config: LineClientRegistryConfig = {}) {
@@ -209,7 +196,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
         Effect.flatMap(Cache.get(channelCache, channelRecordId), (entry) =>
           Option.isSome(entry.login)
             ? Effect.succeed(entry.login.value)
-            : new LineLoginConfigMissingError({ recordId: channelRecordId }),
+            : new ChannelNotFoundError({ recordId: channelRecordId }),
         ),
     );
 
@@ -269,10 +256,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       invalidateChannel: Effect.fn("LineClientRegistry.invalidateChannel")(
         (channelRecordId: LineChannelRecordId) => Cache.invalidate(channelCache, channelRecordId),
       ),
-      /** @deprecated Use {@link invalidateChannel} instead. */
-      invalidate: Effect.fn("LineClientRegistry.invalidate")((recordId: LineChannelRecordId) =>
-        Cache.invalidate(channelCache, recordId),
-      ),
+
       invalidateLiff: Effect.fn("LineClientRegistry.invalidateLiff")(
         (liffRecordId: LineLiffRecordId) => Cache.invalidate(liffCache, liffRecordId),
       ),

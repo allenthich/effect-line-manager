@@ -1,17 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import {
-  CreateLineAccountInput,
-  CreateLineAccountRecordInput,
-  LineAccount,
-  LineAccountDuplicateChannelError,
   LineAccountManagement,
-  LineAccountNotFoundError,
-  LineAccountPersistenceError,
-  LineAccountView,
-  LineChannelRecordId,
-  LineChannelId,
-  LineLoginChannelId,
-  LineLiffId,
   LineRepository,
   LineClientRegistry,
   LineMessages,
@@ -30,22 +19,14 @@ import {
   LineLoginApiRateLimitError,
   LineLoginApiResponseError,
   LineLoginApiTimeoutError,
+  ProviderView,
+  ChannelView,
+  LiffAppView,
 } from "../src/index.ts";
 
 test("exports the stable LINE manager API", () => {
   expect([
-    CreateLineAccountInput,
-    CreateLineAccountRecordInput,
-    LineAccount,
-    LineAccountDuplicateChannelError,
     LineAccountManagement,
-    LineAccountNotFoundError,
-    LineAccountPersistenceError,
-    LineAccountView,
-    LineChannelRecordId,
-    LineChannelId,
-    LineLoginChannelId,
-    LineLiffId,
     LineRepository,
     LineClientRegistry,
     LineMessages,
@@ -64,5 +45,8 @@ test("exports the stable LINE manager API", () => {
     LineLoginApiRateLimitError,
     LineLoginApiResponseError,
     LineLoginApiTimeoutError,
+    ProviderView,
+    ChannelView,
+    LiffAppView,
   ]).not.toContain(undefined);
 });

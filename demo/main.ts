@@ -2,63 +2,64 @@ import { createInMemoryLineAccountAdapter } from "./in-memory-line-account-adapt
 import {
   defineLineAccountManagementElements,
   type LineAccountManagement,
-  type LineAccountView,
+  type ProviderView,
+  type ChannelView,
+  type LiffAppView,
 } from "../src/web/index.ts";
 
 const createdAt = new Date("2026-06-01T00:00:00.000Z");
 const updatedAt = new Date("2026-06-10T00:00:00.000Z");
 
-const seedAccounts: readonly LineAccountView[] = [
+const seedProviders: ProviderView[] = [
   {
-    id: "demo-account-1",
+    id: "demo-provider-1",
+    name: "LINE Marketing",
+    createdAt,
+    updatedAt,
+  },
+];
+
+const seedChannels: ChannelView[] = [
+  {
+    id: "demo-channel-1",
+    providerId: "demo-provider-1",
+    channelType: "messaging",
     name: "Customer Support",
     displayName: "LINE Support",
     channelId: "2001043291",
-    botUserId: null,
+    botUserId: "U1234567890",
     basicId: "@line-support",
     pictureUrl: null,
     isActive: true,
-    loginChannelId: "2001043310",
+    hasChannelSecret: true,
+    hasChannelAccessToken: true,
+    createdAt,
+    updatedAt,
+  },
+  {
+    id: "demo-channel-2",
+    providerId: "demo-provider-1",
+    channelType: "login",
+    name: "Customer Auth Portal",
+    channelId: "2001043310",
+    hasChannelSecret: true,
+    createdAt,
+    updatedAt,
+  },
+];
+
+const seedLiffApps: LiffAppView[] = [
+  {
+    id: "demo-liff-1",
+    loginChannelId: "demo-channel-2",
     liffId: "2001043291-AbCdEf12",
+    view: {
+      type: "tall",
+      url: "https://example.com/liff",
+    },
+    description: "Loyalty card dashboard for customers.",
     createdAt,
     updatedAt,
-    hasChannelAccessToken: true,
-    hasChannelSecret: true,
-    hasLoginChannelSecret: true,
-  },
-  {
-    id: "demo-account-2",
-    name: "Order Notifications",
-    displayName: "LINE Orders",
-    channelId: "2002098741",
-    botUserId: null,
-    basicId: "@line-orders",
-    pictureUrl: null,
-    isActive: true,
-    loginChannelId: null,
-    liffId: null,
-    createdAt,
-    updatedAt,
-    hasChannelAccessToken: true,
-    hasChannelSecret: true,
-    hasLoginChannelSecret: false,
-  },
-  {
-    id: "demo-account-3",
-    name: "Seasonal Campaign",
-    channelId: "2003184427",
-    botUserId: null,
-    basicId: null,
-    displayName: null,
-    pictureUrl: null,
-    isActive: false,
-    loginChannelId: "2003184499",
-    liffId: null,
-    createdAt,
-    updatedAt,
-    hasChannelAccessToken: true,
-    hasChannelSecret: true,
-    hasLoginChannelSecret: true,
   },
 ];
 
@@ -69,25 +70,27 @@ const status = document.querySelector<HTMLElement>("#demo-status");
 
 if (page === null) throw new Error("Missing line-account-management demo element");
 
-page.adapter = createInMemoryLineAccountAdapter(seedAccounts);
+page.adapter = createInMemoryLineAccountAdapter(seedProviders, seedChannels, seedLiffApps);
 
 const announce = (message: string): void => {
   if (status !== null) status.textContent = message;
 };
 
 page.addEventListener("line-account-created", (event) => {
-  const { account } = (event as CustomEvent<{ account: LineAccountView }>).detail;
-  announce(`Created ${account.name}.`);
+  const { item, type } = (event as CustomEvent<{ item: any; type: string }>).detail;
+  const name = type === "provider" || type === "channel" ? item.name : item.liffId;
+  announce(`Created ${type}: ${name}.`);
 });
 
 page.addEventListener("line-account-updated", (event) => {
-  const { account } = (event as CustomEvent<{ account: LineAccountView }>).detail;
-  announce(`Updated ${account.name}.`);
+  const { item, type } = (event as CustomEvent<{ item: any; type: string }>).detail;
+  const name = type === "provider" || type === "channel" ? item.name : item.liffId;
+  announce(`Updated ${type}: ${name}.`);
 });
 
 page.addEventListener("line-account-deleted", (event) => {
-  const { id } = (event as CustomEvent<{ id: string }>).detail;
-  announce(`Deleted account ${id}.`);
+  const { id, type } = (event as CustomEvent<{ id: string; type: string }>).detail;
+  announce(`Deleted ${type}: ${id}.`);
 });
 
 page.addEventListener("line-account-error", (event) => {

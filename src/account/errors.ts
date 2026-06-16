@@ -24,14 +24,6 @@ export const LineRepositoryOperation = Schema.Literals([
   "findLiffAppById",
   "listLiffAppsByChannel",
   "deleteLiffApp",
-  // Deprecated — kept for backward compatibility
-  "create",
-  "update",
-  "findById",
-  "findByChannelId",
-  "findByBotUserId",
-  "listAll",
-  "deleteById",
 ]);
 
 export type LineRepositoryOperation = typeof LineRepositoryOperation.Type;
@@ -99,55 +91,10 @@ export class LineAccountPersistenceError extends Schema.TaggedErrorClass<LineAcc
   },
 ) {}
 
-// ═══════════════════════════════════════════════════════════════════════
-// DEPRECATED — kept for backward compatibility until Task B/C/D update.
-// Remove once all consumers are migrated.
-// ═══════════════════════════════════════════════════════════════════════
-
-/** @deprecated Use {@link ChannelDuplicateError} instead. */
-export class LineAccountDuplicateChannelError extends Schema.TaggedErrorClass<LineAccountDuplicateChannelError>()(
-  "LineAccountDuplicateChannelError",
-  {
-    channelId: LineChannelId,
-  },
-) {}
-
-/** @deprecated Use {@link ChannelNotFoundError} instead. */
-export class LineAccountNotFoundError extends Schema.TaggedErrorClass<LineAccountNotFoundError>()(
-  "LineAccountNotFoundError",
-  {
-    recordId: LineChannelRecordId,
-  },
-) {}
-
-/** @deprecated No direct replacement — Login Channel credentials are now managed within the LoginChannel entity. */
-export class LineLoginConfigMissingError extends Schema.TaggedErrorClass<LineLoginConfigMissingError>()(
-  "LineLoginConfigMissingError",
-  {
-    recordId: LineChannelRecordId,
-  },
-) {}
-
 /** Error raised when a LIFF client is requested but no OAuth access token is provided. */
 export class LiffLoginConfigMissingError extends Schema.TaggedErrorClass<LiffLoginConfigMissingError>()(
   "LiffLoginConfigMissingError",
   {
     recordId: LineLiffRecordId,
-  },
-) {}
-
-/** @deprecated Use {@link LiffLoginConfigMissingError} instead. */
-export class LineLiffConfigMissingError extends Schema.TaggedErrorClass<LineLiffConfigMissingError>()(
-  "LineLiffConfigMissingError",
-  {
-    recordId: LineChannelRecordId,
-  },
-) {}
-
-/** @deprecated Use {@link ChannelNotFoundError} instead. */
-export class LineChannelNotFoundError extends Schema.TaggedErrorClass<LineChannelNotFoundError>()(
-  "LineChannelNotFoundError",
-  {
-    recordId: LineChannelRecordId,
   },
 ) {}

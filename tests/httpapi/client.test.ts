@@ -2,30 +2,19 @@ import { describe, expect, test } from "vite-plus/test";
 import { Effect, Layer } from "effect";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 import {
-  makeLineAccountManagementAdapter,
-  makeLineAccountManagementClient,
-  type LineAccountManagementClient,
+  makeLineClient,
+  makeLineProviderManagementAdapter,
+  type LineClient,
 } from "../../src/httpapi/index.ts";
 
-const accountJson = {
+const providerJson = {
   id: "record-1",
-  name: "Primary",
-  channelId: "channel-1",
-  botUserId: null,
-  basicId: "@primary",
-  displayName: "Primary Bot",
-  pictureUrl: null,
-  isActive: true,
-  loginChannelId: null,
-  liffId: null,
+  name: "Primary Provider",
   createdAt: "2026-06-10T00:00:00.000Z",
   updatedAt: "2026-06-11T00:00:00.000Z",
-  hasChannelSecret: true,
-  hasChannelAccessToken: true,
-  hasLoginChannelSecret: false,
 };
 
-describe("generated LINE account client", () => {
+describe("generated LINE HTTP client", () => {
   test("uses the supplied HTTP client and base URL for relative API paths", async () => {
     const requests: HttpClientRequest.HttpClientRequest[] = [];
     const httpClient = HttpClient.make((request) => {
@@ -37,7 +26,7 @@ describe("generated LINE account client", () => {
               JSON.stringify(
                 request.method === "GET"
                   ? {
-                      data: [accountJson],
+                      data: [providerJson],
                       pagination: {
                         page: 1,
                         pageSize: 1,
@@ -45,7 +34,7 @@ describe("generated LINE account client", () => {
                         totalPages: 1,
                       },
                     }
-                  : accountJson,
+                  : providerJson,
               ),
               {
                 status: request.method === "POST" ? 201 : 200,
@@ -57,47 +46,40 @@ describe("generated LINE account client", () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeLineAccountManagementClient({
+        const client = yield* makeLineClient({
           baseUrl: "https://example.test/api/admin",
         });
-        yield* client.lineAccounts.list();
-        yield* client.lineAccounts.create({
+        yield* client.lineProviders.listProviders();
+        yield* client.lineProviders.createProvider({
           payload: {
-            name: "Primary",
-            channelId: "channel-1",
-            channelSecret: "secret",
-            channelAccessToken: "token",
-            loginChannelId: null,
-            loginChannelSecret: null,
-            liffId: null,
+            name: "Primary Provider",
           },
         });
-        yield* client.lineAccounts.update({
-          params: { id: "record-1" as never },
+        yield* client.lineProviders.updateProvider({
+          params: { id: "record-1" as any },
           payload: { name: "Renamed" },
         });
-        yield* client.lineAccounts.delete({ params: { id: "record-1" as never } });
+        yield* client.lineProviders.deleteProvider({ params: { id: "record-1" as any } });
       }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient)(httpClient))),
     );
 
     expect(requests.map((request) => [request.method, request.url])).toEqual([
-      ["GET", "https://example.test/api/admin/line-accounts"],
-      ["POST", "https://example.test/api/admin/line-accounts"],
-      ["PATCH", "https://example.test/api/admin/line-accounts/record-1"],
-      ["DELETE", "https://example.test/api/admin/line-accounts/record-1"],
+      ["GET", "https://example.test/api/admin/line-providers"],
+      ["POST", "https://example.test/api/admin/line-providers"],
+      ["PATCH", "https://example.test/api/admin/line-providers/record-1"],
+      ["DELETE", "https://example.test/api/admin/line-providers/record-1"],
     ]);
-    expect(requests[1]?.body.toString()).not.toContain("[REDACTED]");
   });
 
   test("bridges only the supplied generated client to the Promise web adapter", async () => {
     const calls: unknown[] = [];
     const fakeClient = {
-      lineAccounts: {
-        list: () =>
+      lineProviders: {
+        listProviders: () =>
           Effect.sync(() => {
-            calls.push("list");
+            calls.push("listProviders");
             return {
-              data: [accountJson],
+              data: [providerJson],
               pagination: {
                 page: 1,
                 pageSize: 1,
@@ -106,45 +88,38 @@ describe("generated LINE account client", () => {
               },
             };
           }),
-        create: ({ payload }: { readonly payload: unknown }) =>
-          Effect.sync(() => (calls.push(["create", payload]), accountJson)),
-        update: ({ params, payload }: { readonly params: unknown; readonly payload: unknown }) =>
-          Effect.sync(() => (calls.push(["update", params, payload]), accountJson)),
-        delete: ({ params }: { readonly params: unknown }) =>
-          Effect.sync(() => void calls.push(["delete", params])),
+        createProvider: ({ payload }: { readonly payload: unknown }) =>
+          Effect.sync(() => (calls.push(["createProvider", payload]), providerJson)),
+        updateProvider: ({
+          params,
+          payload,
+        }: {
+          readonly params: unknown;
+          readonly payload: unknown;
+        }) => Effect.sync(() => (calls.push(["updateProvider", params, payload]), providerJson)),
+        deleteProvider: ({ params }: { readonly params: unknown }) =>
+          Effect.sync(() => void calls.push(["deleteProvider", params])),
       },
-    } as unknown as LineAccountManagementClient;
-    const adapter = makeLineAccountManagementAdapter(fakeClient);
+    } as unknown as LineClient;
+    const adapter = makeLineProviderManagementAdapter(fakeClient);
 
-    await adapter.list();
-    await adapter.create({
-      name: "Primary",
-      channelId: "channel-1",
-      channelSecret: "secret",
-      channelAccessToken: "token",
-      loginChannelId: null,
-      loginChannelSecret: null,
-      liffId: null,
+    await adapter.listProviders();
+    await adapter.createProvider({
+      name: "Primary Provider",
     });
-    await adapter.update("record-1", { name: "Renamed" });
-    await adapter.delete("record-1");
+    await adapter.updateProvider("record-1", { name: "Renamed" });
+    await adapter.deleteProvider("record-1");
 
     expect(calls).toEqual([
-      "list",
+      "listProviders",
       [
-        "create",
+        "createProvider",
         {
-          name: "Primary",
-          channelId: "channel-1",
-          channelSecret: "secret",
-          channelAccessToken: "token",
-          loginChannelId: null,
-          loginChannelSecret: null,
-          liffId: null,
+          name: "Primary Provider",
         },
       ],
-      ["update", { id: "record-1" }, { name: "Renamed" }],
-      ["delete", { id: "record-1" }],
+      ["updateProvider", { id: "record-1" }, { name: "Renamed" }],
+      ["deleteProvider", { id: "record-1" }],
     ]);
   });
 });

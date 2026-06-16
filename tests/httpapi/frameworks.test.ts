@@ -9,10 +9,7 @@ import {
   type LineAccountManagementService,
 } from "../../src/account/management.ts";
 
-const unusedManagementMethods: Omit<
-  LineAccountManagementService,
-  "list" | "create" | "update" | "delete"
-> = {
+const unusedManagementMethods: LineAccountManagementService = {
   listProviders: Effect.die("unused"),
   getProvider: () => Effect.die("unused"),
   createProvider: () => Effect.die("unused"),
@@ -38,28 +35,17 @@ class SetupError extends Error {
   readonly _tag = "SetupError";
 }
 
-const account = {
+const provider = {
   id: "record-1",
-  name: "Primary",
-  channelId: "channel-1",
-  botUserId: null,
-  basicId: "@primary",
-  displayName: "Primary Bot",
-  pictureUrl: null,
-  isActive: true,
-  loginChannelId: null,
-  liffId: null,
+  name: "LINE Marketing",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-11T00:00:00.000Z"),
-  hasChannelSecret: true,
-  hasChannelAccessToken: true,
-  hasLoginChannelSecret: false,
 };
 
 const management: LineAccountManagementService = {
   ...unusedManagementMethods,
-  list: Effect.succeed({
-    data: [account],
+  listProviders: Effect.succeed({
+    data: [provider],
     pagination: {
       page: 1,
       pageSize: 1,
@@ -67,9 +53,7 @@ const management: LineAccountManagementService = {
       totalPages: 1,
     },
   }),
-  create: (input) => Effect.succeed({ ...account, name: input.name }),
-  update: (_id, input) => Effect.succeed({ ...account, ...input }),
-  delete: () => Effect.void,
+  createProvider: (input) => Effect.succeed({ ...provider, name: input.name }),
 };
 
 const servers: Server[] = [];
@@ -164,16 +148,16 @@ describe("HTTP API framework examples", () => {
       },
     });
 
-    const response = await mounted.app.request("/api/admin/line-accounts");
+    const response = await mounted.app.request("/api/admin/line-providers");
 
     expect(response.status).toBe(200);
     expect(authorized).toBe(true);
     expect(await response.json()).toEqual({
       data: [
         {
-          ...account,
-          createdAt: account.createdAt.toISOString(),
-          updatedAt: account.updatedAt.toISOString(),
+          ...provider,
+          createdAt: provider.createdAt.toISOString(),
+          updatedAt: provider.updatedAt.toISOString(),
         },
       ],
       pagination: {
@@ -200,21 +184,15 @@ describe("HTTP API framework examples", () => {
       app.use(express.json());
       const baseUrl = await listen(app);
 
-      const response = await requestJson(`${baseUrl}/api/admin/line-accounts`, {
+      const response = await requestJson(`${baseUrl}/api/admin/line-providers`, {
         method: "POST",
         body: {
-          name: `${name} account`,
-          channelId: "channel-1",
-          channelSecret: "secret",
-          channelAccessToken: "token",
-          loginChannelId: null,
-          loginChannelSecret: null,
-          liffId: null,
+          name: `${name} provider`,
         },
       });
 
       expect(response.status).toBe(201);
-      expect(response.body).toMatchObject({ name: `${name} account` });
+      expect(response.body).toMatchObject({ name: `${name} provider` });
       await mounted.dispose();
     });
   }
@@ -239,7 +217,7 @@ describe("HTTP API framework examples", () => {
     );
     const baseUrl = await listen(app);
 
-    const response = await requestJson(`${baseUrl}/api/admin/line-accounts`);
+    const response = await requestJson(`${baseUrl}/api/admin/line-providers`);
 
     expect(response.status).toBe(503);
     expect(response.body).toEqual({ message: "setup failed" });

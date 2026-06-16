@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Context, Effect, Layer, Redacted, Schema } from "effect";
-import { LineAccount, LineChannelId, LineChannelRecordId } from "../../src/account/domain.ts";
+import {
+  MessagingChannel,
+  LineChannelId,
+  LineChannelRecordId,
+  LineProviderId,
+} from "../../src/account/domain.ts";
 import { LineAccountManagement, makeLineAccountManagement } from "../../src/account/management.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/account/registry.ts";
 import { LineRepository, type LineRepositoryService } from "../../src/account/repository.ts";
@@ -9,48 +14,50 @@ const recordId1 = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
 const recordId2 = Schema.decodeUnknownSync(LineChannelRecordId)("record-2");
 const channelId1 = Schema.decodeUnknownSync(LineChannelId)("channel-1");
 const channelId2 = Schema.decodeUnknownSync(LineChannelId)("channel-2");
+const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 
-const makeAccount = (id: LineChannelRecordId, channelId: LineChannelId, name: string) =>
-  new LineAccount({
+const makeChannel = (id: LineChannelRecordId, channelId: LineChannelId, name: string) =>
+  new MessagingChannel({
     id,
+    providerId,
+    channelType: "messaging",
     name,
     channelId,
     channelSecret: Redacted.make("secret"),
     channelAccessToken: Redacted.make("token"),
-    loginChannelId: null,
-    loginChannelSecret: null,
-    liffId: null,
+    botUserId: null,
+    basicId: null,
+    displayName: null,
+    pictureUrl: null,
     isActive: true,
     createdAt: new Date("2026-06-10T00:00:00.000Z"),
     updatedAt: new Date("2026-06-11T00:00:00.000Z"),
   });
 
-const account1 = makeAccount(recordId1, channelId1, "Alpha");
-const account2 = makeAccount(recordId2, channelId2, "Beta");
+const channel1 = makeChannel(recordId1, channelId1, "Alpha");
+const channel2 = makeChannel(recordId2, channelId2, "Beta");
 
 const makeRepository = (): LineRepositoryService =>
   ({
-    // Deprecated
-    create: () => Effect.die("unused"),
-    update: () => Effect.die("unused"),
-    findById: () => Effect.succeedNone,
-    findByChannelId: () => Effect.succeedNone,
-    findByBotUserId: () => Effect.succeedNone,
-    listAll: Effect.succeed([account1, account2]),
-    deleteById: () => Effect.die("unused"),
-    // New methods
     createProvider: () => Effect.die("unused"),
     updateProvider: () => Effect.die("unused"),
     findProviderById: () => Effect.succeedNone,
-    listProviders: Effect.succeed([]),
+    listProviders: Effect.succeed([
+      {
+        id: providerId,
+        name: "LINE Marketing",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]),
     deleteProvider: () => Effect.die("unused"),
     createChannel: () => Effect.die("unused"),
     updateChannel: () => Effect.die("unused"),
     findChannelById: () => Effect.succeedNone,
     findChannelByMessagingId: () => Effect.succeedNone,
     findChannelByBotUserId: () => Effect.succeedNone,
-    listChannelsByProvider: () => Effect.succeed([]),
-    deleteChannel: () => Effect.die("unused"),
+    listChannelsByProvider: () => Effect.succeed([channel1, channel2]),
+    deleteChannel: () => Effect.void,
     createLiffApp: () => Effect.die("unused"),
     updateLiffApp: () => Effect.die("unused"),
     findLiffAppById: () => Effect.succeedNone,
@@ -66,7 +73,6 @@ const makeRegistry = (): LineClientRegistryService =>
     syncBotProfile: () => Effect.die("unused"),
     invalidateChannel: () => Effect.void,
     invalidateLiff: () => Effect.void,
-    invalidate: () => Effect.void,
     invalidateAll: Effect.void,
   }) as LineClientRegistryService;
 
@@ -76,16 +82,18 @@ const baseLayer = Layer.mergeAll(
 );
 
 describe("LineAccountManagement service override", () => {
-  test("default list returns all accounts", async () => {
+  test("default list channels returns all channels", async () => {
     const layer = LineAccountManagement.layer.pipe(Layer.provide(baseLayer));
 
-    const accounts = await Effect.runPromise(
-      Effect.flatMap(LineAccountManagement, (m) => m.list).pipe(Effect.provide(layer)),
+    const channels = await Effect.runPromise(
+      Effect.flatMap(LineAccountManagement, (m) => m.listChannels(undefined)).pipe(
+        Effect.provide(layer),
+      ),
     );
 
-    expect(accounts.data).toHaveLength(2);
-    expect(accounts.data.map((a) => a.name)).toEqual(["Alpha", "Beta"]);
-    expect(accounts.pagination).toEqual({
+    expect(channels.data).toHaveLength(2);
+    expect(channels.data.map((c) => c.name)).toEqual(["Alpha", "Beta"]);
+    expect(channels.pagination).toEqual({
       page: 1,
       pageSize: 2,
       totalItems: 2,
@@ -93,7 +101,7 @@ describe("LineAccountManagement service override", () => {
     });
   });
 
-  test("consumer can override list to apply user-scoped filtering", async () => {
+  test("consumer can override listChannels to apply user-scoped filtering", async () => {
     // Simulate a consumer's user-channel assignment service
     class UserChannelStore extends Context.Service<
       UserChannelStore,
@@ -112,7 +120,7 @@ describe("LineAccountManagement service override", () => {
     );
 
     // Consumer creates their own management layer that wraps the default
-    // and overrides only list with user-scoped filtering
+    // and overrides only listChannels with user-scoped filtering
     const userScopedManagementLayer = Layer.effect(LineAccountManagement)(
       Effect.gen(function* () {
         const base = yield* makeLineAccountManagement;
@@ -120,41 +128,42 @@ describe("LineAccountManagement service override", () => {
 
         return LineAccountManagement.of({
           ...base,
-          list: Effect.gen(function* () {
-            const userId = "alice"; // in real app, from auth context
-            const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
-            const all = yield* base.list;
-            const data = all.data.filter((a) => assignedIds.has(a.channelId));
-            return {
-              data,
-              pagination: {
-                page: 1,
-                pageSize: data.length,
-                totalItems: data.length,
-                totalPages: data.length === 0 ? 0 : 1,
-              },
-            };
-          }).pipe(Effect.withSpan("UserScopedManagement.list")),
+          listChannels: (providerId) =>
+            Effect.gen(function* () {
+              const userId = "alice"; // in real app, from auth context
+              const assignedIds = yield* userChannels.listAssignedChannelIds(userId);
+              const all = yield* base.listChannels(providerId);
+              const data = all.data.filter((c) => assignedIds.has(c.channelId));
+              return {
+                data,
+                pagination: {
+                  page: 1,
+                  pageSize: data.length,
+                  totalItems: data.length,
+                  totalPages: data.length === 0 ? 0 : 1,
+                },
+              };
+            }).pipe(Effect.withSpan("UserScopedManagement.listChannels")),
         });
       }),
     ).pipe(Layer.provide(baseLayer), Layer.provide(userChannelLayer));
 
-    const accounts = await Effect.runPromise(
-      Effect.flatMap(LineAccountManagement, (m) => m.list).pipe(
+    const channels = await Effect.runPromise(
+      Effect.flatMap(LineAccountManagement, (m) => m.listChannels(undefined)).pipe(
         Effect.provide(userScopedManagementLayer),
       ),
     );
 
     // Alice only sees channel-1 (Alpha)
-    expect(accounts.data).toHaveLength(1);
-    expect(accounts.data[0]!.name).toBe("Alpha");
+    expect(channels.data).toHaveLength(1);
+    expect(channels.data[0]!.name).toBe("Alpha");
   });
 
-  test("consumer retains original delete when overriding list()", async () => {
+  test("consumer retains original deleteChannel when overriding listChannels()", async () => {
     let deleteCalled = false;
     const repo: LineRepositoryService = {
       ...makeRepository(),
-      deleteById: () =>
+      deleteChannel: () =>
         Effect.sync(() => {
           deleteCalled = true;
         }),
@@ -170,23 +179,24 @@ describe("LineAccountManagement service override", () => {
         const base = yield* makeLineAccountManagement;
         return LineAccountManagement.of({
           ...base,
-          list: base.list.pipe(
-            Effect.map((page) => ({
-              data: page.data.slice(0, 1),
-              pagination: {
-                page: 1,
-                pageSize: 1,
-                totalItems: 1,
-                totalPages: 1,
-              },
-            })),
-          ),
+          listChannels: (providerId) =>
+            base.listChannels(providerId).pipe(
+              Effect.map((page) => ({
+                data: page.data.slice(0, 1),
+                pagination: {
+                  page: 1,
+                  pageSize: 1,
+                  totalItems: 1,
+                  totalPages: 1,
+                },
+              })),
+            ),
         });
       }),
     ).pipe(Layer.provide(testBaseLayer));
 
     await Effect.runPromise(
-      Effect.flatMap(LineAccountManagement, (m) => m.delete(recordId1)).pipe(
+      Effect.flatMap(LineAccountManagement, (m) => m.deleteChannel(recordId1)).pipe(
         Effect.provide(userScopedManagementLayer),
       ),
     );

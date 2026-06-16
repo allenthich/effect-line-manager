@@ -62,10 +62,6 @@ const makeManagement = (
   createLiffApp: () => Effect.die("unused in line api validation test"),
   updateLiffApp: () => Effect.die("unused in line api validation test"),
   deleteLiffApp: () => Effect.die("unused in line api validation test"),
-  list: Effect.die("unused in line api validation test"),
-  create: () => Effect.die("unused in line api validation test"),
-  update: () => Effect.die("unused in line api validation test"),
-  delete: () => Effect.die("unused in line api validation test"),
   ...overrides,
 });
 
