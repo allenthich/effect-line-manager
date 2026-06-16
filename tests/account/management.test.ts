@@ -85,7 +85,7 @@ const makeRegistry = (invalidated: string[]): LineClientRegistryService =>
     invalidateChannel: (id) => Effect.sync(() => invalidated.push(id)),
     invalidateLiff: (id) => Effect.sync(() => invalidated.push(id)),
     invalidate: (id) => Effect.sync(() => invalidated.push(id)),
-  invalidateAll: Effect.sync(() => invalidated.push("*")),
+    invalidateAll: Effect.sync(() => invalidated.push("*")),
   }) as LineClientRegistryService;
 
 const run = <A, E>(

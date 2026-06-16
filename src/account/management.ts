@@ -338,10 +338,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           return yield* new LineProviderNotFoundError({ providerId: id });
         }
         return toProviderView(option.value);
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.getProvider"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     createProvider: Effect.fn("LineAccountManagement.createProvider")(
@@ -369,10 +366,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         yield* repository.deleteProvider(id);
         // Provider deletion cascades to child channels and LIFF apps.
         yield* registry.invalidateAll;
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.deleteProvider"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     // Channels
@@ -384,7 +378,6 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         ).pipe(
           Effect.catchTag("LineRepositoryError", persistenceFailure),
           Effect.map(toChannelListPage),
-          Effect.withSpan("LineAccountManagement.listChannels"),
         ),
     ),
 
@@ -395,10 +388,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           return yield* new ChannelNotFoundError({ recordId: id });
         }
         return toChannelView(option.value);
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.getChannel"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     findChannelByBotUserId: Effect.fn("LineAccountManagement.findChannelByBotUserId")(
@@ -408,7 +398,6 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           .pipe(
             Effect.catchTag("LineRepositoryError", persistenceFailure),
             Effect.map(Option.map(toChannelView)),
-            Effect.withSpan("LineAccountManagement.findChannelByBotUserId"),
           ),
     ),
 
@@ -417,10 +406,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         const record = yield* repository.createChannel(toCreateChannelRecordInput(input));
         yield* registry.invalidateChannel(record.id);
         return toChannelView(record);
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.createChannel"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     updateChannel: Effect.fn("LineAccountManagement.updateChannel")(
@@ -429,10 +415,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           const record = yield* repository.updateChannel(id, toUpdateChannelRecordInput(input));
           yield* registry.invalidateChannel(id);
           return toChannelView(record);
-        }).pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.withSpan("LineAccountManagement.updateChannel"),
-        ),
+        }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     deleteChannel: Effect.fn("LineAccountManagement.deleteChannel")((id: LineChannelRecordId) =>
@@ -440,10 +423,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         yield* repository.deleteChannel(id);
         // Channel deletion can cascade to LIFF apps, so clear descendant caches too.
         yield* registry.invalidateAll;
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.deleteChannel"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     // LIFF Apps
@@ -455,7 +435,6 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         ).pipe(
           Effect.catchTag("LineRepositoryError", persistenceFailure),
           Effect.map(toLiffAppListPage),
-          Effect.withSpan("LineAccountManagement.listLiffApps"),
         ),
     ),
 
@@ -466,10 +445,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           return yield* new LiffAppNotFoundError({ recordId: id });
         }
         return toLiffAppView(option.value);
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.getLiffApp"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     createLiffApp: Effect.fn("LineAccountManagement.createLiffApp")((input: CreateLiffAppInput) =>
@@ -486,10 +462,7 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         const record = yield* repository.createLiffApp(toCreateLiffAppRecordInput(input));
         yield* registry.invalidateLiff(record.id);
         return toLiffAppView(record);
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.createLiffApp"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     updateLiffApp: Effect.fn("LineAccountManagement.updateLiffApp")(
@@ -498,20 +471,14 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           const record = yield* repository.updateLiffApp(id, toUpdateLiffAppRecordInput(input));
           yield* registry.invalidateLiff(id);
           return toLiffAppView(record);
-        }).pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.withSpan("LineAccountManagement.updateLiffApp"),
-        ),
+        }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     deleteLiffApp: Effect.fn("LineAccountManagement.deleteLiffApp")((id: LineLiffRecordId) =>
       Effect.gen(function* () {
         yield* repository.deleteLiffApp(id);
         yield* registry.invalidateLiff(id);
-      }).pipe(
-        Effect.catchTag("LineRepositoryError", persistenceFailure),
-        Effect.withSpan("LineAccountManagement.deleteLiffApp"),
-      ),
+      }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     // Deprecated
@@ -526,7 +493,6 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         Effect.catchTag("LineRepositoryError", persistenceFailure),
         Effect.tap((account) => registry.invalidate(account.id)),
         Effect.map(toLineAccountView),
-        Effect.withSpan("LineAccountManagement.create"),
       ),
     ),
 
@@ -536,7 +502,6 @@ export const makeLineAccountManagement = Effect.gen(function* () {
           Effect.catchTag("LineRepositoryError", persistenceFailure),
           Effect.tap(() => registry.invalidate(id)),
           Effect.map(toLineAccountView),
-          Effect.withSpan("LineAccountManagement.update"),
         ),
     ),
 
@@ -546,7 +511,6 @@ export const makeLineAccountManagement = Effect.gen(function* () {
         .pipe(
           Effect.catchTag("LineRepositoryError", persistenceFailure),
           Effect.andThen(registry.invalidate(id)),
-          Effect.withSpan("LineAccountManagement.delete"),
         ),
     ),
   });
