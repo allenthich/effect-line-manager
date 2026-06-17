@@ -26,7 +26,7 @@
     "prepare": "vp config && effect-tsgo patch",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "vp pack"
+    "release": "vp pack && vpx jsr publish --allow-slow-types"
   },
   "dependencies": {
     "effect": "4.0.0-beta.78"
