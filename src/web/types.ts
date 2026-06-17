@@ -52,7 +52,8 @@ export type LineAccountOperation =
   | "getLiffApp"
   | "createLiffApp"
   | "updateLiffApp"
-  | "deleteLiffApp";
+  | "deleteLiffApp"
+  | "syncChannel";
 
 export interface LineAccountRequestDetail {
   readonly type: LineAccountFormType;

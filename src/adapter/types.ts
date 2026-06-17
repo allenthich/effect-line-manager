@@ -33,4 +33,5 @@ export interface LineProviderManagementAdapter {
   readonly createLiffApp: (input: CreateLiffAppInput) => Promise<LiffAppView>;
   readonly updateLiffApp: (id: string, input: UpdateLiffAppInput) => Promise<LiffAppView>;
   readonly deleteLiffApp: (id: string) => Promise<void>;
+  readonly syncChannel?: (id: string) => Promise<ChannelView>;
 }
