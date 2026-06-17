@@ -30,7 +30,7 @@
     "prepublishOnly": "vp run build",
     "prepare": "vp config && effect-tsgo patch",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version": "changeset version && node scripts/sync-jsr.js",
     "release": "vp pack && vpx jsr publish --allow-slow-types"
   },
   "dependencies": {
