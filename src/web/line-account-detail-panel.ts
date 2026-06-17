@@ -12,6 +12,8 @@ export class LineAccountDetailPanel extends LitElement {
     liffApps: { attribute: false },
     pendingItemIds: { attribute: false },
     messages: { attribute: false },
+    readonly: { type: Boolean },
+    inline: { type: Boolean, reflect: true },
   };
 
   static styles = css`
@@ -25,6 +27,15 @@ export class LineAccountDetailPanel extends LitElement {
       padding: 1.5rem;
       box-shadow: var(--line-account-shadow, 0 1px 3px rgba(0, 0, 0, 0.05));
       min-height: 28rem;
+    }
+
+    :host([inline]) {
+      border: none;
+      padding: 0;
+      box-shadow: none;
+      min-height: auto;
+      background: transparent;
+      gap: 1rem;
     }
 
     .details-header {
@@ -317,6 +328,8 @@ export class LineAccountDetailPanel extends LitElement {
   declare liffApps: readonly LiffAppView[];
   declare pendingItemIds: ReadonlySet<string>;
   declare messages: LineAccountManagementMessages;
+  declare readonly: boolean;
+  declare inline: boolean;
 
   constructor() {
     super();
@@ -327,6 +340,8 @@ export class LineAccountDetailPanel extends LitElement {
     this.liffApps = [];
     this.pendingItemIds = new Set();
     this.messages = defaultLineAccountManagementMessages;
+    this.readonly = false;
+    this.inline = false;
   }
 
   #emit(type: string, detail: unknown): void {
@@ -414,15 +429,17 @@ export class LineAccountDetailPanel extends LitElement {
     const isPending = this.pendingItemIds.has(provider.id);
 
     return html`
-      <div class="details-header">
-        <div class="details-identity">
-          <span class="details-initial details-initial-provider">${initial}</span>
-          <div class="details-title-group">
-            <h2>${provider.name}</h2>
-            <div class="details-basic-id">Provider ID: ${provider.id}</div>
-          </div>
-        </div>
-      </div>
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
+            <div class="details-identity">
+              <span class="details-initial details-initial-provider">${initial}</span>
+              <div class="details-title-group">
+                <h2>${provider.name}</h2>
+                <div class="details-basic-id">Provider ID: ${provider.id}</div>
+              </div>
+            </div>
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -443,14 +460,16 @@ export class LineAccountDetailPanel extends LitElement {
             style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
           >
             <span>Channels</span>
-            <button
-              class="primary"
-              type="button"
-              style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
-              @click=${() => this.#emitCreateChannel(provider.id)}
-            >
-              + Add Channel
-            </button>
+            ${this.readonly
+              ? ""
+              : html`<button
+                  class="primary"
+                  type="button"
+                  style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                  @click=${() => this.#emitCreateChannel(provider.id)}
+                >
+                  + Add Channel
+                </button>`}
           </div>
           ${this.channels.filter((c) => c.providerId === provider.id).length === 0
             ? html`<p
@@ -470,9 +489,13 @@ export class LineAccountDetailPanel extends LitElement {
                       <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Name</th>
                       <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Type</th>
                       <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Status</th>
-                      <th style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;">
-                        Actions
-                      </th>
+                      ${this.readonly
+                        ? ""
+                        : html`<th
+                            style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
+                          >
+                            Actions
+                          </th>`}
                     </tr>
                   </thead>
                   <tbody>
@@ -504,24 +527,26 @@ export class LineAccountDetailPanel extends LitElement {
                                   </span>`
                                 : "-"}
                             </td>
-                            <td
-                              style="padding: 0.5rem 0.25rem; text-align: right;"
-                              @click=${(e: Event) => e.stopPropagation()}
-                            >
-                              <button
-                                style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
-                                @click=${(e: Event) => this.#emitEdit(e, c)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                class="danger"
-                                style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
-                                @click=${(e: Event) => this.#emitDelete(e, c)}
-                              >
-                                Delete
-                              </button>
-                            </td>
+                            ${this.readonly
+                              ? ""
+                              : html`<td
+                                  style="padding: 0.5rem 0.25rem; text-align: right;"
+                                  @click=${(e: Event) => e.stopPropagation()}
+                                >
+                                  <button
+                                    style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
+                                    @click=${(e: Event) => this.#emitEdit(e, c)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    class="danger"
+                                    style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
+                                    @click=${(e: Event) => this.#emitDelete(e, c)}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>`}
                           </tr>
                         `,
                       )}
@@ -531,24 +556,26 @@ export class LineAccountDetailPanel extends LitElement {
         </div>
       </div>
 
-      <div class="details-actions">
-        <button
-          class="action-btn"
-          type="button"
-          ?disabled=${isPending}
-          @click=${(e: Event) => this.#emitEdit(e, provider)}
-        >
-          Edit
-        </button>
-        <button
-          class="danger"
-          type="button"
-          ?disabled=${isPending}
-          @click=${(e: Event) => this.#emitDelete(e, provider)}
-        >
-          Delete
-        </button>
-      </div>
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
+            <button
+              class="action-btn"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitEdit(e, provider)}
+            >
+              Edit
+            </button>
+            <button
+              class="danger"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitDelete(e, provider)}
+            >
+              Delete
+            </button>
+          </div>`}
     `;
   }
 
@@ -558,37 +585,39 @@ export class LineAccountDetailPanel extends LitElement {
     const initial = channel.name.trim().charAt(0).toUpperCase();
 
     return html`
-      <div class="details-header">
-        <div class="details-identity">
-          ${isMessaging && channel.pictureUrl
-            ? html`<img class="details-avatar" src=${channel.pictureUrl} alt=${channel.name} />`
-            : html`<span
-                class="details-initial ${isMessaging
-                  ? "details-initial-channel-messaging"
-                  : "details-initial-channel-login"}"
-                >${initial}</span
-              >`}
-          <div class="details-title-group">
-            <h2>${channel.name}</h2>
-            <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
-          </div>
-        </div>
-        ${isMessaging
-          ? html`
-              <button
-                class="switch ${channel.isActive ? "checked" : ""}"
-                part="status-button"
-                role="switch"
-                aria-checked=${channel.isActive ? "true" : "false"}
-                aria-label=${channel.isActive ? "Deactivate Channel" : "Activate Channel"}
-                ?disabled=${isPending}
-                @click=${() => this.#emitToggle(channel)}
-              >
-                <span class="switch-thumb"></span>
-              </button>
-            `
-          : ""}
-      </div>
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
+            <div class="details-identity">
+              ${isMessaging && channel.pictureUrl
+                ? html`<img class="details-avatar" src=${channel.pictureUrl} alt=${channel.name} />`
+                : html`<span
+                    class="details-initial ${isMessaging
+                      ? "details-initial-channel-messaging"
+                      : "details-initial-channel-login"}"
+                    >${initial}</span
+                  >`}
+              <div class="details-title-group">
+                <h2>${channel.name}</h2>
+                <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
+              </div>
+            </div>
+            ${isMessaging
+              ? html`
+                  <button
+                    class="switch ${channel.isActive ? "checked" : ""}"
+                    part="status-button"
+                    role="switch"
+                    aria-checked=${channel.isActive ? "true" : "false"}
+                    aria-label=${channel.isActive ? "Deactivate Channel" : "Activate Channel"}
+                    ?disabled=${this.readonly || isPending}
+                    @click=${() => this.#emitToggle(channel)}
+                  >
+                    <span class="switch-thumb"></span>
+                  </button>
+                `
+              : ""}
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -598,6 +627,10 @@ export class LineAccountDetailPanel extends LitElement {
             <span class="details-value"
               >${channel.channelType === "messaging" ? "Messaging API" : "LINE Login"}</span
             >
+          </div>
+          <div class="details-row">
+            <span class="details-label">Channel ID</span>
+            <span class="details-value">${channel.channelId}</span>
           </div>
           <div class="details-row">
             <span class="details-label">Record ID</span>
@@ -627,127 +660,137 @@ export class LineAccountDetailPanel extends LitElement {
                   : ""}
               </div>
             `
-          : html`
-              <div class="details-section" style="grid-column: 1 / -1;">
-                <div
-                  class="details-section-title"
-                  style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
-                >
-                  <span>LIFF Applications</span>
-                  <button
-                    class="primary"
-                    type="button"
-                    style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
-                    @click=${() => this.#emitCreateLiff(channel.id)}
+          : this.inline
+            ? ""
+            : html`
+                <div class="details-section" style="grid-column: 1 / -1;">
+                  <div
+                    class="details-section-title"
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
                   >
-                    + Add LIFF App
-                  </button>
-                </div>
-                ${this.liffApps.filter((l) => l.loginChannelId === channel.id).length === 0
-                  ? html`<p
-                      style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
-                    >
-                      No LIFF applications found under this channel.
-                    </p>`
-                  : html`
-                      <table
-                        class="details-table"
-                        style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
+                    <span>LIFF Applications</span>
+                    ${this.readonly
+                      ? ""
+                      : html`<button
+                          class="primary"
+                          type="button"
+                          style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                          @click=${() => this.#emitCreateLiff(channel.id)}
+                        >
+                          + Add LIFF App
+                        </button>`}
+                  </div>
+                  ${this.liffApps.filter((l) => l.loginChannelId === channel.id).length === 0
+                    ? html`<p
+                        style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
                       >
-                        <thead>
-                          <tr
-                            style="border-bottom: 1px solid var(--line-account-border-color); text-align: left; color: var(--line-account-muted-color);"
-                          >
-                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
-                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
-                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
-                            <th
-                              style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
+                        No LIFF applications found under this channel.
+                      </p>`
+                    : html`
+                        <table
+                          class="details-table"
+                          style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
+                        >
+                          <thead>
+                            <tr
+                              style="border-bottom: 1px solid var(--line-account-border-color); text-align: left; color: var(--line-account-muted-color);"
                             >
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${this.liffApps
-                            .filter((l) => l.loginChannelId === channel.id)
-                            .map(
-                              (l) => html`
-                                <tr
-                                  style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
-                                  @click=${() => this.#emitDrillLiff(l)}
-                                >
-                                  <td
-                                    style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
+                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
+                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
+                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
+                              ${this.readonly
+                                ? ""
+                                : html`<th
+                                    style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
                                   >
-                                    ${l.liffId}
-                                  </td>
-                                  <td style="padding: 0.5rem 0.25rem;">
-                                    ${l.view.type.toUpperCase()}
-                                  </td>
-                                  <td
-                                    style="padding: 0.5rem 0.25rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                                    title=${l.view.url}
+                                    Actions
+                                  </th>`}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${this.liffApps
+                              .filter((l) => l.loginChannelId === channel.id)
+                              .map(
+                                (l) => html`
+                                  <tr
+                                    style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
+                                    @click=${() => this.#emitDrillLiff(l)}
                                   >
-                                    ${l.view.url}
-                                  </td>
-                                  <td
-                                    style="padding: 0.5rem 0.25rem; text-align: right;"
-                                    @click=${(e: Event) => e.stopPropagation()}
-                                  >
-                                    <button
-                                      style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
-                                      @click=${(e: Event) => this.#emitEdit(e, l)}
+                                    <td
+                                      style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
                                     >
-                                      Edit
-                                    </button>
-                                    <button
-                                      class="danger"
-                                      style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
-                                      @click=${(e: Event) => this.#emitDelete(e, l)}
+                                      ${l.liffId}
+                                    </td>
+                                    <td style="padding: 0.5rem 0.25rem;">
+                                      ${l.view.type.toUpperCase()}
+                                    </td>
+                                    <td
+                                      style="padding: 0.5rem 0.25rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                      title=${l.view.url}
                                     >
-                                      Delete
-                                    </button>
-                                  </td>
-                                </tr>
-                              `,
-                            )}
-                        </tbody>
-                      </table>
-                    `}
-              </div>
-            `}
+                                      ${l.view.url}
+                                    </td>
+                                    ${this.readonly
+                                      ? ""
+                                      : html`<td
+                                          style="padding: 0.5rem 0.25rem; text-align: right;"
+                                          @click=${(e: Event) => e.stopPropagation()}
+                                        >
+                                          <button
+                                            style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
+                                            @click=${(e: Event) => this.#emitEdit(e, l)}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            class="danger"
+                                            style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
+                                            @click=${(e: Event) => this.#emitDelete(e, l)}
+                                          >
+                                            Delete
+                                          </button>
+                                        </td>`}
+                                  </tr>
+                                `,
+                              )}
+                          </tbody>
+                        </table>
+                      `}
+                </div>
+              `}
       </div>
 
-      <div class="details-actions">
-        ${isMessaging
-          ? html`<button
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
+            ${isMessaging
+              ? html`<button
+                  class="action-btn"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emitSync(channel)}
+                  style="margin-right: auto;"
+                >
+                  Sync
+                </button>`
+              : ""}
+            <button
               class="action-btn"
               type="button"
               ?disabled=${isPending}
-              @click=${() => this.#emitSync(channel)}
-              style="margin-right: auto;"
+              @click=${(e: Event) => this.#emitEdit(e, channel)}
             >
-              Sync
-            </button>`
-          : ""}
-        <button
-          class="action-btn"
-          type="button"
-          ?disabled=${isPending}
-          @click=${(e: Event) => this.#emitEdit(e, channel)}
-        >
-          Edit
-        </button>
-        <button
-          class="danger"
-          type="button"
-          ?disabled=${isPending}
-          @click=${(e: Event) => this.#emitDelete(e, channel)}
-        >
-          Delete
-        </button>
-      </div>
+              Edit
+            </button>
+            <button
+              class="danger"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitDelete(e, channel)}
+            >
+              Delete
+            </button>
+          </div>`}
     `;
   }
 
@@ -755,15 +798,17 @@ export class LineAccountDetailPanel extends LitElement {
     const isPending = this.pendingItemIds.has(liff.id);
 
     return html`
-      <div class="details-header">
-        <div class="details-identity">
-          <span class="details-initial details-initial-liff">L</span>
-          <div class="details-title-group">
-            <h2>LIFF: ${liff.liffId}</h2>
-            <div class="details-basic-id">Login Channel Record ID: ${liff.loginChannelId}</div>
-          </div>
-        </div>
-      </div>
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
+            <div class="details-identity">
+              <span class="details-initial details-initial-liff">L</span>
+              <div class="details-title-group">
+                <h2>LIFF: ${liff.liffId}</h2>
+                <div class="details-basic-id">Login Channel Record ID: ${liff.loginChannelId}</div>
+              </div>
+            </div>
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -796,24 +841,26 @@ export class LineAccountDetailPanel extends LitElement {
           : ""}
       </div>
 
-      <div class="details-actions">
-        <button
-          class="action-btn"
-          type="button"
-          ?disabled=${isPending}
-          @click=${(e: Event) => this.#emitEdit(e, liff)}
-        >
-          Edit
-        </button>
-        <button
-          class="danger"
-          type="button"
-          ?disabled=${isPending}
-          @click=${(e: Event) => this.#emitDelete(e, liff)}
-        >
-          Delete
-        </button>
-      </div>
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
+            <button
+              class="action-btn"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitEdit(e, liff)}
+            >
+              Edit
+            </button>
+            <button
+              class="danger"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitDelete(e, liff)}
+            >
+              Delete
+            </button>
+          </div>`}
     `;
   }
 }

@@ -179,40 +179,6 @@ export class LineAccountToolbar extends LitElement {
     );
   }
 
-  #emitProviderFilterChange(value: string): void {
-    this.dispatchEvent(
-      new CustomEvent("provider-filter-change", {
-        bubbles: true,
-        composed: true,
-        detail: { value },
-      }),
-    );
-  }
-
-  #emitChannelFilterChange(value: string): void {
-    this.dispatchEvent(
-      new CustomEvent("channel-filter-change", {
-        bubbles: true,
-        composed: true,
-        detail: { value },
-      }),
-    );
-  }
-
-  #handleProviderFilterChange = (event: Event): void => {
-    const target = event.target;
-    if (target instanceof HTMLSelectElement) {
-      this.#emitProviderFilterChange(target.value);
-    }
-  };
-
-  #handleChannelFilterChange = (event: Event): void => {
-    const target = event.target;
-    if (target instanceof HTMLSelectElement) {
-      this.#emitChannelFilterChange(target.value);
-    }
-  };
-
   #clearSearch = (): void => {
     this.#emitSearchChange("");
   };
@@ -279,46 +245,6 @@ export class LineAccountToolbar extends LitElement {
               `
             : ""}
         </div>
-
-        ${this.currentTab === "channel"
-          ? html`
-              <div class="filter-wrapper">
-                <select
-                  .value=${this.selectedProviderId}
-                  @change=${this.#handleProviderFilterChange}
-                  aria-label="Filter by Provider"
-                >
-                  <option value="">All Providers</option>
-                  ${this.providers.map(
-                    (p) =>
-                      html`<option value=${p.id} ?selected=${p.id === this.selectedProviderId}>
-                        ${p.name}
-                      </option>`,
-                  )}
-                </select>
-              </div>
-            `
-          : this.currentTab === "liff"
-            ? html`
-                <div class="filter-wrapper">
-                  <select
-                    .value=${this.selectedChannelId}
-                    @change=${this.#handleChannelFilterChange}
-                    aria-label="Filter by Channel"
-                  >
-                    <option value="">All Channels</option>
-                    ${this.channels
-                      .filter((c) => c.channelType === "login")
-                      .map(
-                        (c) =>
-                          html`<option value=${c.id} ?selected=${c.id === this.selectedChannelId}>
-                            ${c.name} (${c.channelId})
-                          </option>`,
-                      )}
-                  </select>
-                </div>
-              `
-            : ""}
 
         <div class="variant-switcher">
           <button

@@ -3,6 +3,7 @@ import { LineAccountCard } from "./line-account-card.ts";
 import { LineAccountDetailPanel } from "./line-account-detail-panel.ts";
 import { LineAccountDialog } from "./line-account-dialog.ts";
 import { LineAccountForm } from "./line-account-form.ts";
+import { LineAccountHierarchy } from "./line-account-hierarchy.ts";
 import { LineAccountList } from "./line-account-list.ts";
 import { LineAccountManagement } from "./line-account-management.ts";
 import { LineAccountToolbar } from "./line-account-toolbar.ts";
@@ -42,6 +43,10 @@ export const defineLineAccountDetailPanel = (): void => {
   defineElement("line-account-detail-panel", LineAccountDetailPanel);
 };
 
+export const defineLineAccountHierarchy = (): void => {
+  defineElement("line-account-hierarchy", LineAccountHierarchy);
+};
+
 export const defineLineAccountManagement = (): void => {
   defineLineAccountList();
   defineLineAccountForm();
@@ -49,6 +54,7 @@ export const defineLineAccountManagement = (): void => {
   defineLineAccountToolbar();
   defineLineAccountBreadcrumbs();
   defineLineAccountDetailPanel();
+  defineLineAccountHierarchy();
   defineElement("line-account-management", LineAccountManagement);
 };
 
