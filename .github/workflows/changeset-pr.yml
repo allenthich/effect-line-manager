@@ -31,7 +31,7 @@ jobs:
       - name: Version or Publish
         uses: changesets/action@v1
         with:
-          version: vp run version-packages
+          version: vp run version
           publish: vp run release
           commit: "chore: version packages"
           title: "chore: version packages"
