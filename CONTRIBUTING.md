@@ -9,7 +9,7 @@ This package uses [Changesets](https://github.com/changesets/changesets) for ver
 When you make a change that should be included in the next release, run:
 
 ```bash
-vp changeset
+vp run changeset
 ```
 
 You'll be prompted to:
@@ -72,8 +72,8 @@ The old name is removed — no backward compatibility shim.
 One PR can include multiple changeset files if it touches different areas:
 
 ```bash
-vp changeset   # creates .changeset/blue-cats-run.md  — "Added webhook retry"
-vp changeset   # creates .changeset/warm-dogs-fly.md  — "Deprecated `legacyAuth` option"
+vp run changeset   # creates .changeset/blue-cats-run.md  — "Added webhook retry"
+vp run changeset   # creates .changeset/warm-dogs-fly.md  — "Deprecated `legacyAuth` option"
 ```
 
 The bot will batch them into a single release with multiple changelog entries.
