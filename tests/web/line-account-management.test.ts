@@ -270,7 +270,9 @@ describe("LineAccountManagement", () => {
     await settle(element);
 
     // Verify breadcrumbs are rendered
-    const breadcrumbLinks = element.shadowRoot?.querySelectorAll(".breadcrumb-link");
+    const breadcrumbsEl = element.shadowRoot?.querySelector("line-account-breadcrumbs");
+    expect(breadcrumbsEl).toBeDefined();
+    const breadcrumbLinks = breadcrumbsEl?.shadowRoot?.querySelectorAll(".breadcrumb-link");
     expect(breadcrumbLinks).toBeDefined();
 
     // Reset to providers via first breadcrumb link click
@@ -292,9 +294,9 @@ describe("LineAccountManagement", () => {
     await settle(element);
 
     // Verify channels list is rendered in the details pane
-    const detailsPane = element.shadowRoot?.querySelector(".split-details");
-    expect(detailsPane?.textContent).toContain("Channels");
-    expect(detailsPane?.textContent).toContain("Login Channel");
+    const detailPanel = element.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("Channels");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("Login Channel");
 
     // Switch to channel tab and select the login channel
     element.currentTab = "channel";
@@ -302,8 +304,8 @@ describe("LineAccountManagement", () => {
     await settle(element);
 
     // Verify LIFF apps list is rendered in the details pane
-    expect(detailsPane?.textContent).toContain("LIFF Applications");
-    expect(detailsPane?.textContent).toContain("0987654321-AbCdEf12");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("LIFF Applications");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("0987654321-AbCdEf12");
   });
 
   test("form scoped pre-population and disabled selectors", async () => {
