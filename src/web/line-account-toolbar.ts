@@ -215,7 +215,7 @@ export class LineAccountToolbar extends LitElement {
           <input
             class="search-input"
             type="text"
-            placeholder="Search..."
+            placeholder="Search"
             .value=${this.searchQuery}
             @input=${this.#onSearchInput}
             aria-label="Search"

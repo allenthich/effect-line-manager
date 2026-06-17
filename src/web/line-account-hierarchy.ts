@@ -33,6 +33,7 @@ export class LineAccountHierarchy extends LitElement {
     selectedLiffId: { type: String },
     disabled: { type: Boolean },
     searchQuery: { type: String },
+    variant: { type: String },
     expandedProviderIds: { attribute: false },
     expandedChannelIds: { attribute: false },
   };
@@ -113,9 +114,9 @@ export class LineAccountHierarchy extends LitElement {
       flex: 1;
       min-width: 0;
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 0.125rem;
+      align-items: flex-start;
     }
     .node-name {
       font-weight: 600;
@@ -123,11 +124,15 @@ export class LineAccountHierarchy extends LitElement {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 100%;
     }
     .node-subtitle {
       font-size: 0.75rem;
       color: var(--line-account-muted-color, #64748b);
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
     .badge {
       display: inline-flex;
@@ -297,6 +302,7 @@ export class LineAccountHierarchy extends LitElement {
   declare selectedChannelId: string | undefined;
   declare selectedLiffId: string | undefined;
   declare disabled: boolean;
+  declare variant: string;
   declare searchQuery: string;
   declare expandedProviderIds: Set<string>;
   declare expandedChannelIds: Set<string>;
@@ -314,6 +320,7 @@ export class LineAccountHierarchy extends LitElement {
     this.selectedChannelId = undefined;
     this.selectedLiffId = undefined;
     this.disabled = false;
+    this.variant = "grid";
     this.searchQuery = "";
     this.expandedProviderIds = new Set();
     this.expandedChannelIds = new Set();
@@ -512,33 +519,37 @@ export class LineAccountHierarchy extends LitElement {
             >${p.channels.length} channel${p.channels.length !== 1 ? "s" : ""}</span
           >
         </div>
-        <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
-          <button
-            class="node-btn primary"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-add-channel", { providerId: p.item.id })}
-            title="Add Channel"
-          >
-            +
-          </button>
-          <button
-            class="node-btn"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-edit", { item: p.item })}
-          >
-            Edit
-          </button>
-          <button
-            class="node-btn danger"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-delete", { item: p.item })}
-          >
-            Del
-          </button>
-        </div>
+        ${this.variant === "split"
+          ? ""
+          : html`
+              <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
+                <button
+                  class="node-btn primary"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-add-channel", { providerId: p.item.id })}
+                  title="Add Channel"
+                >
+                  +
+                </button>
+                <button
+                  class="node-btn"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-edit", { item: p.item })}
+                >
+                  Edit
+                </button>
+                <button
+                  class="node-btn danger"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-delete", { item: p.item })}
+                >
+                  Del
+                </button>
+              </div>
+            `}
       </div>
       ${error
         ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
@@ -546,24 +557,26 @@ export class LineAccountHierarchy extends LitElement {
       ${expanded && p.channels.length > 0
         ? html` <div class="children">
             ${p.channels.map((c) => this.#renderChannel(c))}
-            <button
-              class="add-child-btn"
-              type="button"
-              @click=${() => this.#emit("hierarchy-add-channel", { providerId: p.item.id })}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Channel
-            </button>
+            ${this.variant === "split"
+              ? ""
+              : html`<button
+                  class="add-child-btn"
+                  type="button"
+                  @click=${() => this.#emit("hierarchy-add-channel", { providerId: p.item.id })}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add Channel
+                </button>`}
           </div>`
         : ""}
     </div>`;
@@ -602,59 +615,63 @@ export class LineAccountHierarchy extends LitElement {
               >`
             : ""}
         </div>
-        <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
-          ${c.item.channelType === "messaging"
-            ? html`<button
-                class="switch ${c.item.isActive ? "checked" : ""}"
-                role="switch"
-                aria-checked=${c.item.isActive ? "true" : "false"}
-                aria-label=${c.item.isActive ? "Deactivate" : "Activate"}
-                ?disabled=${isPending}
-                @click=${() => this.#emit("hierarchy-toggle", { item: c.item })}
-              >
-                <span class="switch-thumb"></span>
-              </button>`
-            : html`<button
-                class="node-btn primary"
-                type="button"
-                ?disabled=${isPending}
-                @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.id })}
-                title="Add LIFF"
-              >
-                +
-              </button>`}
-          ${c.item.channelType === "messaging"
-            ? html`<button
-                class="node-btn"
-                type="button"
-                ?disabled=${isPending}
-                @click=${() => this.#emit("hierarchy-sync", { item: c.item })}
-              >
-                Sync
-              </button>`
-            : ""}
-          <button
-            class="node-btn"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-edit", { item: c.item })}
-          >
-            Edit
-          </button>
-          <button
-            class="node-btn danger"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-delete", { item: c.item })}
-          >
-            Del
-          </button>
-        </div>
+        ${this.variant === "split"
+          ? ""
+          : html`
+              <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
+                ${c.item.channelType === "messaging"
+                  ? html`<button
+                      class="switch ${c.item.isActive ? "checked" : ""}"
+                      role="switch"
+                      aria-checked=${c.item.isActive ? "true" : "false"}
+                      aria-label=${c.item.isActive ? "Deactivate" : "Activate"}
+                      ?disabled=${isPending}
+                      @click=${() => this.#emit("hierarchy-toggle", { item: c.item })}
+                    >
+                      <span class="switch-thumb"></span>
+                    </button>`
+                  : html`<button
+                      class="node-btn primary"
+                      type="button"
+                      ?disabled=${isPending}
+                      @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.id })}
+                      title="Add LIFF"
+                    >
+                      +
+                    </button>`}
+                ${c.item.channelType === "messaging"
+                  ? html`<button
+                      class="node-btn"
+                      type="button"
+                      ?disabled=${isPending}
+                      @click=${() => this.#emit("hierarchy-sync", { item: c.item })}
+                    >
+                      Sync
+                    </button>`
+                  : ""}
+                <button
+                  class="node-btn"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-edit", { item: c.item })}
+                >
+                  Edit
+                </button>
+                <button
+                  class="node-btn danger"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-delete", { item: c.item })}
+                >
+                  Del
+                </button>
+              </div>
+            `}
       </div>
       ${error
         ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
         : ""}
-      ${this.selectedChannelId === c.item.id
+      ${this.variant !== "split" && this.selectedChannelId === c.item.id
         ? html`
             <div
               style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--line-account-border-color, #e4e7eb);"
@@ -676,24 +693,26 @@ export class LineAccountHierarchy extends LitElement {
       ${!isMessaging && expanded && hasLiff
         ? html` <div class="children">
             ${c.liffApps.map((l) => this.#renderLiff(l))}
-            <button
-              class="add-child-btn"
-              type="button"
-              @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.id })}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add LIFF App
-            </button>
+            ${this.variant === "split"
+              ? ""
+              : html`<button
+                  class="add-child-btn"
+                  type="button"
+                  @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.id })}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add LIFF App
+                </button>`}
           </div>`
         : ""}
     </div>`;
@@ -714,29 +733,33 @@ export class LineAccountHierarchy extends LitElement {
           <span class="node-subtitle">LIFF · ${l.view.type.toUpperCase()}</span>
           <span class="badge badge-type">${l.view.type.toUpperCase()}</span>
         </div>
-        <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
-          <button
-            class="node-btn"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-edit", { item: l })}
-          >
-            Edit
-          </button>
-          <button
-            class="node-btn danger"
-            type="button"
-            ?disabled=${isPending}
-            @click=${() => this.#emit("hierarchy-delete", { item: l })}
-          >
-            Del
-          </button>
-        </div>
+        ${this.variant === "split"
+          ? ""
+          : html`
+              <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
+                <button
+                  class="node-btn"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-edit", { item: l })}
+                >
+                  Edit
+                </button>
+                <button
+                  class="node-btn danger"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() => this.#emit("hierarchy-delete", { item: l })}
+                >
+                  Del
+                </button>
+              </div>
+            `}
       </div>
       ${error
         ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
         : ""}
-      ${this.selectedLiffId === l.id
+      ${this.variant !== "split" && this.selectedLiffId === l.id
         ? html`
             <div
               style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--line-account-border-color, #e4e7eb);"

@@ -493,6 +493,39 @@ export class LineAccountManagement extends LitElement {
     }
   }
 
+  willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("selectedItemId")) {
+      if (this.selectedItemId) {
+        const id = this.selectedItemId;
+        const liff = this.liffApps.find((l) => l.id === id);
+        if (liff) {
+          this.selectedLiffId = liff.id;
+          this.selectedChannelId = liff.loginChannelId;
+          const channel = this.channels.find((c) => c.id === liff.loginChannelId);
+          if (channel) {
+            this.selectedProviderId = channel.providerId;
+          }
+        } else {
+          const channel = this.channels.find((c) => c.id === id);
+          if (channel) {
+            this.selectedChannelId = channel.id;
+            this.selectedProviderId = channel.providerId;
+            this.selectedLiffId = undefined;
+          } else {
+            const provider = this.providers.find((p) => p.id === id);
+            if (provider) {
+              this.selectedProviderId = provider.id;
+              this.selectedChannelId = "";
+              this.selectedLiffId = undefined;
+            }
+          }
+        }
+      } else {
+        this.selectedLiffId = undefined;
+      }
+    }
+  }
+
   protected updated(changedProperties: PropertyValues<this>): void {
     if (changedProperties.has("adapter") && this.adapter !== this.#lastAdapter) {
       this.#lastAdapter = this.adapter as any;
@@ -655,6 +688,7 @@ export class LineAccountManagement extends LitElement {
                         .selectedProviderId=${this.selectedProviderId}
                         .selectedChannelId=${this.selectedChannelId}
                         .selectedLiffId=${this.selectedLiffId}
+                        .variant=${this.variant}
                         .searchQuery=${this.searchQuery}
                         @hierarchy-select=${this.#onHierarchySelect}
                         @hierarchy-edit=${this.#onHierarchyEdit}
@@ -947,6 +981,7 @@ export class LineAccountManagement extends LitElement {
             .selectedProviderId=${this.selectedProviderId}
             .selectedChannelId=${this.selectedChannelId}
             .selectedLiffId=${this.selectedLiffId}
+            .variant=${this.variant}
             .searchQuery=${this.searchQuery}
             @hierarchy-select=${this.#onHierarchySelect}
             @hierarchy-edit=${this.#onHierarchyEdit}
@@ -967,7 +1002,7 @@ export class LineAccountManagement extends LitElement {
           .liffApps=${this.liffApps}
           .pendingItemIds=${this.pendingItemIds}
           .messages=${messages}
-          .readonly=${this.currentTab === "channel"}
+          .readonly=${false}
           @detail-edit=${this.#onDetailEdit}
           @detail-delete=${this.#onDetailDelete}
           @detail-toggle=${this.#onDetailToggle}

@@ -471,4 +471,42 @@ describe("LineAccountManagement", () => {
     expect((liffPanel as any).inline).toBe(true);
     expect((liffPanel as any).item.id).toBe("liff-2");
   });
+
+  test("line-account-hierarchy does not expand inline details and hides actions when in split mode", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "split";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Verify provider node-actions is hidden
+    const providerHeader = hierarchy.shadowRoot?.querySelector(".tree-node-header");
+    expect(providerHeader?.querySelector(".node-actions")).toBeNull();
+
+    // Click to expand provider
+    (providerHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify Add Channel dotted button is hidden
+    expect(hierarchy.shadowRoot?.querySelector(".add-child-btn")).toBeNull();
+
+    // Find channel header
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    expect(channelHeader).toBeDefined();
+
+    // Verify channel node-actions is hidden
+    expect(channelHeader!.querySelector(".node-actions")).toBeNull();
+
+    // Click channel
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Details panel should NOT be rendered in the tree view when variant is split
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeNull();
+  });
 });
