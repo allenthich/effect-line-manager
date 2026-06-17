@@ -33,6 +33,6 @@ describe("HTTP API package boundary", () => {
     expect(manifest.dependencies).not.toHaveProperty("express");
     expect(manifest.devDependencies).toHaveProperty("hono");
     expect(manifest.devDependencies).toHaveProperty("express");
-    expect(manifest.exports?.["./httpapi"]).toBe("./dist/httpapi/index.mjs");
+    expect(manifest.exports?.["./httpapi"]).toEqual("./dist/httpapi/index.mjs");
   });
 });
