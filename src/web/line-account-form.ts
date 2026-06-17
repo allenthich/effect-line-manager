@@ -648,9 +648,9 @@ export class LineAccountForm extends LitElement {
         channelType = channel.channelType;
         channelName = channel.name;
         channelId = channel.channelId;
-        channelSecret = channel.hasChannelSecret ? "••••••••••••••••" : "";
+        channelSecret = channel.channelSecret ?? "";
         if (channel.channelType === "messaging") {
-          channelAccessToken = channel.hasChannelAccessToken ? "••••••••••••••••" : "";
+          channelAccessToken = channel.channelAccessToken ?? "";
         }
       } else if (type === "liff") {
         const liff = item as LiffAppView;
@@ -760,12 +760,12 @@ export class LineAccountForm extends LitElement {
           input.channelId = this.#values.channelId.trim();
         }
         const secret = this.#values.channelSecret.trim();
-        if (secret !== "" && secret !== "••••••••••••••••") {
+        if (secret !== "" && secret !== (channel.channelSecret ?? "")) {
           input.channelSecret = secret;
         }
         if (channel.channelType === "messaging") {
           const token = this.#values.channelAccessToken.trim();
-          if (token !== "" && token !== "••••••••••••••••") {
+          if (token !== "" && token !== (channel.channelAccessToken ?? "")) {
             input.channelAccessToken = token;
           }
         }

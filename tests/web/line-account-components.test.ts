@@ -19,8 +19,8 @@ const mockChannel: ChannelView = {
   basicId: null,
   pictureUrl: null,
   isActive: true,
-  hasChannelSecret: true,
-  hasChannelAccessToken: true,
+  channelSecret: "channel-secret",
+  channelAccessToken: "channel-token",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };

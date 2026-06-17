@@ -81,7 +81,7 @@ const run = <A, E>(
   );
 
 describe("LineChannelManagement", () => {
-  test("maps persisted channels to credential-safe views", () => {
+  test("maps persisted channels to views with credentials", () => {
     const view = toChannelView(makeChannel());
     const encoded = Schema.encodeSync(ChannelView)(view);
 
@@ -98,11 +98,11 @@ describe("LineChannelManagement", () => {
       isActive: true,
       createdAt: "2026-06-10T00:00:00.000Z",
       updatedAt: "2026-06-11T00:00:00.000Z",
-      hasChannelSecret: true,
-      hasChannelAccessToken: true,
+      channelSecret: "channel-secret",
+      channelAccessToken: "channel-token",
     });
-    expect(JSON.stringify(encoded)).not.toContain("channel-secret");
-    expect(JSON.stringify(encoded)).not.toContain("channel-token");
+    expect(JSON.stringify(encoded)).toContain("channel-secret");
+    expect(JSON.stringify(encoded)).toContain("channel-token");
   });
 
   test("converts create credentials to redacted values and invalidates the created id", async () => {

@@ -98,10 +98,10 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   channelIdHint: "The LINE Channel ID.",
   channelSecretLabel: "Channel secret",
   channelSecretCreateHint: "Enter the LINE Channel secret.",
-  channelSecretEditHint: "",
+  channelSecretEditHint: "Leave blank to keep the current channel secret.",
   channelAccessTokenLabel: "Channel access token",
   channelAccessTokenCreateHint: "Enter the Messaging API channel access token.",
-  channelAccessTokenEditHint: "",
+  channelAccessTokenEditHint: "Leave blank to keep the current access token.",
   channelStatusLabel: "Channel active",
 
   // LIFF Apps
