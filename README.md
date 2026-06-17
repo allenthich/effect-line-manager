@@ -10,6 +10,10 @@ webhook signatures against exact request bytes.
 The package intentionally does not include a database adapter, authentication
 policy, process-wide runtime, retry policy, or distributed cache.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to trigger a release.
+
 ## Architecture Overview
 
 The library operates on a decoupled, headless core model. Host applications manage their own database relationships (e.g. mapping store models to `LineChannelRecordId`), and use the library's `LineClientRegistry` to fetch authenticated clients at runtime.

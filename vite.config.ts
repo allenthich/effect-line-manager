@@ -9,6 +9,7 @@ export default defineConfig({
   },
   pack: {
     entry: ["src/index.ts", "src/web/index.ts", "src/httpapi/index.ts"],
+    format: ["esm"],
     dts: {
       tsgo: true,
     },
