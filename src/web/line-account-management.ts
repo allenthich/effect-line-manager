@@ -4,15 +4,23 @@ import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountForm } from "./line-account-form.ts";
 import type {
-  CreateLineAccountInput,
-  LineAccountErrorEventDetail,
+  ProviderView,
+  ChannelView,
+  LiffAppView,
+  LineAccountFormType,
   LineAccountFormSubmitDetail,
-  LineAccountManagementAdapter,
+  LineProviderManagementAdapter,
   LineAccountOperation,
+  LineAccountErrorEventDetail,
   LineAccountRequestDetail,
-  LineAccountView,
-  UpdateLineAccountInput,
 } from "./types.ts";
+import "./line-account-dialog.ts";
+import "./line-account-form.ts";
+import "./line-account-list.ts";
+import "./line-account-toolbar.ts";
+import "./line-account-breadcrumbs.ts";
+import "./line-account-detail-panel.ts";
+import "./line-account-hierarchy.ts";
 
 type DialogKind = "create" | "edit" | "delete" | undefined;
 
@@ -26,21 +34,27 @@ export class LineAccountManagement extends LitElement {
   static properties = {
     adapter: { attribute: false },
     messages: { attribute: false },
-    accounts: { state: true },
+    currentTab: { state: true }, // "provider" | "channel" | "liff"
+    providers: { state: true },
+    channels: { state: true },
+    liffApps: { state: true },
     loading: { state: true },
     loadError: { state: true },
     dialogKind: { state: true },
-    selectedAccount: { state: true },
+    selectedItem: { state: true },
     mutationError: { state: true },
     notice: { state: true },
-    accountErrors: { state: true },
+    itemErrors: { state: true },
     createPending: { state: true },
     editPending: { state: true },
     deletePending: { state: true },
-    pendingAccountIds: { state: true },
+    pendingItemIds: { state: true },
     variant: { type: String, reflect: true },
     searchQuery: { state: true },
-    selectedListAccountId: { state: true },
+    selectedItemId: { state: true },
+    selectedProviderId: { type: String, attribute: "selected-provider-id" }, // Filter channels by provider
+    selectedChannelId: { type: String, attribute: "selected-channel-id" }, // Filter LIFF apps by login channel
+    selectedLiffId: { type: String, attribute: "selected-liff-id" },
   };
 
   static styles = css`
@@ -268,126 +282,39 @@ export class LineAccountManagement extends LitElement {
       height: 1rem;
     }
 
-    .state h2,
-    .state p,
-    .error p {
-      margin-bottom: var(--line-account-space-3, 0.75rem);
-    }
-
     .dialog-copy {
       line-height: 1.6;
     }
 
-    @media (max-width: 36rem) {
-      .header {
-        align-items: stretch;
-        flex-direction: column;
-      }
-    }
-
-    /* Toolbar and controls */
-    .toolbar {
+    /* Tabs Bar styling */
+    .tabs-bar {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: var(--line-account-space-5, 1.5rem);
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--line-account-border-color, #e4e7eb);
-      border-radius: var(--line-account-radius, 0.75rem);
-      background: var(--line-account-surface-background, #fff);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 2px solid var(--line-account-border-color, #e4e7eb);
+      padding-bottom: 0.375rem;
     }
 
-    .search-wrapper {
-      position: relative;
-      flex: 1;
-      min-width: 14rem;
-    }
-
-    .search-input {
-      width: 100%;
-      height: 2.5rem;
-      padding: 0.5rem 1rem 0.5rem 2.25rem;
-      border: 1px solid var(--line-account-border-color, #c7d0d9);
-      border-radius: var(--line-account-button-radius, 0.5rem);
-      font: inherit;
-      font-size: 0.9rem;
-      background: var(--line-account-surface-background, #fff);
-      color: inherit;
-      box-sizing: border-box;
-      transition: all 0.15s ease-in-out;
-    }
-
-    .search-input:focus {
-      outline: none;
-      border-color: var(--line-account-primary-color, #06c755);
-      box-shadow: 0 0 0 3px var(--line-account-focus-color, rgb(6 199 85 / 15%));
-    }
-
-    .search-icon {
-      position: absolute;
-      left: 0.75rem;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 1rem;
-      height: 1rem;
-      color: var(--line-account-muted-color, #8a9ba8);
-      pointer-events: none;
-    }
-
-    .clear-search-btn {
-      position: absolute;
-      right: 0.75rem;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
+    .tab-btn {
       min-height: auto;
-      padding: 0.25rem;
-      color: var(--line-account-muted-color, #8a9ba8);
-      cursor: pointer;
-    }
-
-    .clear-search-btn:hover {
-      color: var(--line-account-text-color, #1f2933);
-    }
-
-    .variant-switcher {
-      display: inline-flex;
-      background: var(--line-account-muted-background, #eef2f5);
-      padding: 0.25rem;
-      border-radius: var(--line-account-button-radius, 0.5rem);
-      gap: 0.125rem;
-    }
-
-    .variant-btn {
-      min-height: auto;
-      padding: 0.375rem 0.75rem;
+      padding: 0.5rem 1rem;
       border: none;
-      border-radius: 0.375rem;
-      font-size: 0.8125rem;
-      font-weight: 600;
-      color: var(--line-account-muted-color, #52606d);
       background: transparent;
-      box-shadow: none;
+      color: var(--line-account-muted-color, #52606d);
+      font-weight: 600;
       cursor: pointer;
+      border-radius: 0.375rem;
       transition: all 0.15s ease-in-out;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
     }
 
-    .variant-btn:hover {
+    .tab-btn:hover {
       color: var(--line-account-text-color, #1f2933);
-      background: rgba(255, 255, 255, 0.4);
+      background: var(--line-account-muted-background, #eef2f5);
     }
 
-    .variant-btn.active {
-      color: var(--line-account-text-color, #1f2933);
-      background: var(--line-account-surface-background, #fff);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    .tab-btn.active {
+      color: var(--line-account-primary-color, #06c755);
+      background: var(--line-account-selected-bg, #e6fdf0);
     }
 
     /* Split Pane Layout styles */
@@ -404,217 +331,6 @@ export class LineAccountManagement extends LitElement {
       gap: 1rem;
       border-right: 1px solid var(--line-account-border-color, #e4e7eb);
       padding-right: 1.5rem;
-    }
-
-    .split-details {
-      background: var(--line-account-surface-background, #fff);
-      border: 1px solid var(--line-account-border-color, #e4e7eb);
-      border-radius: var(--line-account-radius, 1rem);
-      padding: 1.5rem;
-      box-shadow: var(--line-account-shadow, 0 1px 3px rgba(0, 0, 0, 0.05));
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      min-height: 28rem;
-    }
-
-    .details-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-      border-bottom: 1px solid var(--line-account-border-color, #e4e7eb);
-      padding-bottom: 1.25rem;
-    }
-
-    .details-identity {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .details-avatar {
-      width: 4rem;
-      height: 4rem;
-      border-radius: 50%;
-      object-fit: cover;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-    }
-
-    .details-initial {
-      display: grid;
-      place-items: center;
-      width: 4rem;
-      height: 4rem;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--line-account-primary-color, #06c755), #049f43);
-      color: white;
-      font-size: 1.5rem;
-      font-weight: 700;
-      box-shadow: 0 4px 10px rgb(6 199 85 / 25%);
-    }
-
-    .details-title-group h2 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin: 0;
-    }
-
-    .details-basic-id {
-      color: var(--line-account-muted-color, #52606d);
-      font-size: 0.9rem;
-      margin-top: 0.125rem;
-    }
-
-    .details-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-      gap: 1.25rem;
-    }
-
-    .details-section {
-      border: 1px solid var(--line-account-border-color, #e4e7eb);
-      border-radius: var(--line-account-radius, 0.75rem);
-      padding: 1rem;
-      background: var(--line-account-fieldset-bg, #fafbfc);
-    }
-
-    .details-section-title {
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: var(--line-account-primary-text-color, #057b38);
-      margin-bottom: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .details-row {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .details-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .details-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--line-account-muted-color, #52606d);
-    }
-
-    .details-value-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .details-value {
-      font-size: 0.875rem;
-      font-family: monospace;
-      background: var(--line-account-muted-background, #eef2f5);
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      word-break: break-all;
-      flex: 1;
-    }
-
-    .copy-btn {
-      background: none;
-      border: none;
-      min-height: auto;
-      padding: 0.25rem;
-      color: var(--line-account-muted-color, #8a9ba8);
-      cursor: pointer;
-      border-radius: 0.25rem;
-      transition: all 0.15s;
-    }
-
-    .copy-btn:hover {
-      color: var(--line-account-primary-color, #06c755);
-      background-color: var(--line-account-muted-background, #eef2f5);
-    }
-
-    .copy-btn svg {
-      width: 1rem;
-      height: 1rem;
-    }
-
-    .details-empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: var(--line-account-muted-color, #52606d);
-      flex: 1;
-      padding: 3rem;
-    }
-
-    .details-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      margin-top: auto;
-      border-top: 1px solid var(--line-account-border-color, #e4e7eb);
-      padding-top: 1.25rem;
-    }
-
-    /* Switch used in split-pane details header */
-    .switch {
-      position: relative;
-      width: 2.75rem;
-      height: 1.5rem;
-      padding: 0;
-      border: 1px solid var(--line-account-border-color, #c7d0d9);
-      border-radius: 999px;
-      background-color: var(--line-account-switch-off-bg, #e4e7eb);
-      cursor: pointer;
-      min-height: auto;
-      transition:
-        background-color 0.2s,
-        border-color 0.2s;
-      flex-shrink: 0;
-    }
-
-    .switch:focus-visible {
-      outline: 3px solid var(--line-account-focus-color, #74d7a1);
-      outline-offset: 2px;
-    }
-
-    .switch.checked {
-      background-color: var(--line-account-primary-color, #06c755);
-      border-color: var(--line-account-primary-color, #06c755);
-    }
-
-    .switch-thumb {
-      position: absolute;
-      top: 1px;
-      left: 1px;
-      width: 1.25rem;
-      height: 1.25rem;
-      border-radius: 50%;
-      background-color: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .switch.checked .switch-thumb {
-      transform: translateX(1.25rem);
-    }
-
-    .switch:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    @container (max-width: 36rem) {
-      .header {
-        align-items: stretch;
-        flex-direction: column;
-      }
     }
 
     @media (max-width: 36rem) {
@@ -635,51 +351,87 @@ export class LineAccountManagement extends LitElement {
     }
   `;
 
-  declare adapter: LineAccountManagementAdapter | undefined;
+  declare adapter: LineProviderManagementAdapter | undefined;
   declare messages: Partial<LineAccountManagementMessages> | undefined;
-  declare accounts: readonly LineAccountView[];
+  declare currentTab: LineAccountFormType;
+  declare providers: readonly ProviderView[];
+  declare channels: readonly ChannelView[];
+  declare liffApps: readonly LiffAppView[];
   declare loading: boolean;
   declare loadError: boolean;
   declare dialogKind: DialogKind;
-  declare selectedAccount: LineAccountView | undefined;
+  declare selectedItem: ProviderView | ChannelView | LiffAppView | undefined;
   declare mutationError: string | undefined;
   declare notice: string | undefined;
-  declare accountErrors: ReadonlyMap<string, string>;
+  declare itemErrors: ReadonlyMap<string, string>;
   declare createPending: boolean;
   declare editPending: boolean;
   declare deletePending: boolean;
-  declare pendingAccountIds: ReadonlySet<string>;
+  declare pendingItemIds: ReadonlySet<string>;
   declare variant: string;
   declare searchQuery: string;
-  declare selectedListAccountId: string | undefined;
+  declare selectedItemId: string | undefined;
+  declare selectedProviderId: string;
+  declare selectedChannelId: string;
+  declare selectedLiffId: string | undefined;
 
   #loadGeneration = 0;
-  #lastAdapter: LineAccountManagementAdapter | undefined;
+  #lastAdapter: LineProviderManagementAdapter | undefined;
   #noticeTimeoutId: number | undefined;
 
   constructor() {
     super();
     this.adapter = undefined;
     this.messages = undefined;
-    this.accounts = [];
+    this.currentTab = "provider";
+    this.providers = [];
+    this.channels = [];
+    this.liffApps = [];
     this.loading = false;
     this.loadError = false;
     this.dialogKind = undefined;
-    this.selectedAccount = undefined;
+    this.selectedItem = undefined;
     this.mutationError = undefined;
     this.notice = undefined;
-    this.accountErrors = new Map();
+    this.itemErrors = new Map();
     this.createPending = false;
     this.editPending = false;
     this.deletePending = false;
-    this.pendingAccountIds = new Set();
+    this.pendingItemIds = new Set();
     this.variant = "grid";
     this.searchQuery = "";
-    this.selectedListAccountId = undefined;
+    this.selectedItemId = undefined;
+    this.selectedProviderId = "";
+    this.selectedChannelId = "";
+    this.selectedLiffId = undefined;
 
     this.addEventListener("line-account-select-request", (event) => {
-      const { account } = (event as CustomEvent<{ account: LineAccountView }>).detail;
-      this.selectedListAccountId = account.id;
+      const { type, item } = (event as CustomEvent<LineAccountRequestDetail>).detail;
+      this.selectedItemId = item.id;
+
+      if (type === "provider") {
+        this.selectedProviderId = item.id;
+        if (this.variant !== "split") {
+          this.currentTab = "channel";
+          this.selectedItemId = undefined;
+        }
+      } else if (type === "channel") {
+        const c = item as ChannelView;
+        this.selectedProviderId = c.providerId;
+        this.selectedChannelId = c.id;
+        if (this.variant !== "split" && c.channelType === "login") {
+          this.currentTab = "liff";
+          this.selectedItemId = undefined;
+        }
+      } else if (type === "liff") {
+        const l = item as LiffAppView;
+        this.selectedLiffId = l.id;
+        this.selectedChannelId = l.loginChannelId;
+        const parentChannel = this.channels.find((c) => c.id === l.loginChannelId);
+        if (parentChannel) {
+          this.selectedProviderId = parentChannel.providerId;
+        }
+      }
     });
   }
 
@@ -703,66 +455,165 @@ export class LineAccountManagement extends LitElement {
 
     if (adapter === undefined) {
       this.loading = false;
-      this.accounts = [];
+      this.providers = [];
+      this.channels = [];
+      this.liffApps = [];
       return;
     }
 
     this.loading = true;
     try {
-      const page = await adapter.list();
+      const [providersPage, channelsPage, liffAppsPage] = await Promise.all([
+        adapter.listProviders(),
+        adapter.listChannels(),
+        adapter.listLiffApps(),
+      ]);
+
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
-      this.accounts = [...page.data];
+      this.providers = [...providersPage.data];
+      this.channels = [...channelsPage.data];
+      this.liffApps = [...liffAppsPage.data];
+
+      const currentItems = this.#currentItems();
       if (
-        this.accounts.length > 0 &&
-        !this.accounts.some((acc) => acc.id === this.selectedListAccountId)
+        currentItems.length > 0 &&
+        !currentItems.some((item) => item.id === this.selectedItemId)
       ) {
-        this.selectedListAccountId = this.accounts[0].id;
+        this.selectedItemId = currentItems[0].id;
       }
     } catch (error) {
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
-      this.accounts = [];
+      this.providers = [];
+      this.channels = [];
+      this.liffApps = [];
       this.loadError = true;
-      this.#emitError("list", error);
+      this.#emitError("listProviders", error);
     } finally {
       if (generation === this.#loadGeneration && this.adapter === adapter) this.loading = false;
     }
   }
 
+  willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("selectedItemId")) {
+      if (this.selectedItemId) {
+        const id = this.selectedItemId;
+        const liff = this.liffApps.find((l) => l.id === id);
+        if (liff) {
+          this.selectedLiffId = liff.id;
+          this.selectedChannelId = liff.loginChannelId;
+          const channel = this.channels.find((c) => c.id === liff.loginChannelId);
+          if (channel) {
+            this.selectedProviderId = channel.providerId;
+          }
+        } else {
+          const channel = this.channels.find((c) => c.id === id);
+          if (channel) {
+            this.selectedChannelId = channel.id;
+            this.selectedProviderId = channel.providerId;
+            this.selectedLiffId = undefined;
+          } else {
+            const provider = this.providers.find((p) => p.id === id);
+            if (provider) {
+              this.selectedProviderId = provider.id;
+              this.selectedChannelId = "";
+              this.selectedLiffId = undefined;
+            }
+          }
+        }
+      } else {
+        this.selectedLiffId = undefined;
+      }
+    }
+  }
+
   protected updated(changedProperties: PropertyValues<this>): void {
     if (changedProperties.has("adapter") && this.adapter !== this.#lastAdapter) {
-      this.#lastAdapter = this.adapter;
+      this.#lastAdapter = this.adapter as any;
       void this.reload();
     }
+  }
+
+  #resolvedItems(): readonly (ProviderView | ChannelView | LiffAppView)[] {
+    const query = this.searchQuery.toLowerCase().trim();
+    let items = this.#currentItems();
+
+    if (this.currentTab === "channel" && this.selectedProviderId) {
+      items = items.filter((c) => (c as ChannelView).providerId === this.selectedProviderId);
+    } else if (this.currentTab === "liff" && this.selectedChannelId) {
+      items = items.filter((l) => (l as LiffAppView).loginChannelId === this.selectedChannelId);
+    }
+
+    if (query) {
+      items = items.filter((item) => {
+        if (this.currentTab === "provider") {
+          return (
+            (item as ProviderView).name.toLowerCase().includes(query) ||
+            item.id.toLowerCase().includes(query)
+          );
+        } else if (this.currentTab === "channel") {
+          const c = item as ChannelView;
+          return (
+            c.name.toLowerCase().includes(query) ||
+            c.channelId.toLowerCase().includes(query) ||
+            (c.channelType === "messaging" &&
+              c.displayName !== null &&
+              c.displayName.toLowerCase().includes(query))
+          );
+        } else {
+          const l = item as LiffAppView;
+          return (
+            l.liffId.toLowerCase().includes(query) ||
+            item.id.toLowerCase().includes(query) ||
+            (l.description && l.description.toLowerCase().includes(query))
+          );
+        }
+      });
+    }
+
+    return items;
+  }
+
+  #currentItems(): readonly (ProviderView | ChannelView | LiffAppView)[] {
+    if (this.currentTab === "provider") return this.providers;
+    if (this.currentTab === "channel") return this.channels;
+    return this.liffApps;
   }
 
   protected render() {
     const messages = this.#resolvedMessages;
 
-    const filtered = this.accounts.filter((account) => {
-      const query = this.searchQuery.toLowerCase().trim();
-      if (!query) return true;
-      return (
-        account.name.toLowerCase().includes(query) ||
-        (account.displayName && account.displayName.toLowerCase().includes(query)) ||
-        account.channelId.includes(query) ||
-        (account.basicId && account.basicId.toLowerCase().includes(query))
-      );
-    });
-
-    let activeAccount = filtered.find((a) => a.id === this.selectedListAccountId);
-    if (!activeAccount && filtered.length > 0) {
-      activeAccount = filtered[0];
+    let activeItem = this.providers.find((p) => p.id === this.selectedItemId) as
+      | ProviderView
+      | ChannelView
+      | LiffAppView
+      | undefined;
+    if (!activeItem) {
+      activeItem = this.channels.find((c) => c.id === this.selectedItemId);
     }
+    if (!activeItem) {
+      activeItem = this.liffApps.find((l) => l.id === this.selectedItemId);
+    }
+
+    if (!activeItem) {
+      const filtered = this.#resolvedItems();
+      if (filtered.length > 0) {
+        activeItem = filtered[0];
+      }
+    }
+
+    let addBtnLabel = messages.addProvider;
+    if (this.currentTab === "channel") addBtnLabel = messages.addChannel;
+    else if (this.currentTab === "liff") addBtnLabel = messages.addLiffApp;
 
     return html`
       <section class="page" part="page">
-        ${this.variant !== "split"
-          ? html`
-              <header class="header" part="header">
-                <div class="header-copy">
-                  <h1 part="title">${messages.title}</h1>
-                  <p class="description">${messages.description}</p>
-                </div>
+        <header class="header" part="header">
+          <div class="header-copy">
+            <h1 part="title">${messages.title}</h1>
+            <p class="description">${messages.description}</p>
+          </div>
+          ${this.variant !== "split"
+            ? html`
                 <button
                   class="primary add-btn"
                   part="add-button"
@@ -783,20 +634,74 @@ export class LineAccountManagement extends LitElement {
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  ${messages.addAccount}
+                  ${addBtnLabel}
                 </button>
-              </header>
-              ${this.#renderToolbar()} ${this.#renderCollection(messages, filtered)}
+              `
+            : ""}
+        </header>
+
+        ${this.loading
+          ? html`
+              <div class="spinner-container" role="status" aria-live="polite">
+                <div class="spinner"></div>
+                <p
+                  style="margin: 0; font-weight: 550; color: var(--line-account-muted-color, #52606d)"
+                >
+                  Loading content...
+                </p>
+              </div>
             `
-          : html`
-              <header class="header" part="header" style="margin-bottom: 1rem;">
-                <div class="header-copy">
-                  <h1 part="title">${messages.title}</h1>
-                  <p class="description">${messages.description}</p>
-                </div>
-              </header>
-              ${this.#renderToolbar()} ${this.#renderSplitPane(messages, filtered, activeAccount)}
-            `}
+          : this.loadError
+            ? html`
+                <section class="error" role="alert">
+                  <p>${messages.loadFailure}</p>
+                  <button part="retry-button" type="button" @click=${this.#retryLoad}>
+                    ${messages.retry}
+                  </button>
+                </section>
+              `
+            : html`
+                <line-account-toolbar
+                  .searchQuery=${this.searchQuery}
+                  .variant=${this.variant}
+                  .currentTab=${this.currentTab}
+                  .providers=${this.providers}
+                  .channels=${this.channels}
+                  .selectedProviderId=${this.selectedProviderId}
+                  .selectedChannelId=${this.selectedChannelId}
+                  @search-change=${this.#onToolbarSearch}
+                  @variant-change=${this.#onToolbarVariant}
+                  @provider-filter-change=${this.#onToolbarProviderFilter}
+                  @channel-filter-change=${this.#onToolbarChannelFilter}
+                ></line-account-toolbar>
+
+                ${this.variant !== "split"
+                  ? html`
+                      <line-account-hierarchy
+                        .providers=${this.providers}
+                        .channels=${this.channels}
+                        .liffApps=${this.liffApps}
+                        .messages=${messages}
+                        .pendingItemIds=${this.pendingItemIds}
+                        .itemErrors=${this.itemErrors}
+                        .selectedItemId=${this.selectedItemId}
+                        .selectedProviderId=${this.selectedProviderId}
+                        .selectedChannelId=${this.selectedChannelId}
+                        .selectedLiffId=${this.selectedLiffId}
+                        .variant=${this.variant}
+                        .searchQuery=${this.searchQuery}
+                        @hierarchy-select=${this.#onHierarchySelect}
+                        @hierarchy-edit=${this.#onHierarchyEdit}
+                        @hierarchy-delete=${this.#onHierarchyDelete}
+                        @hierarchy-toggle=${this.#onHierarchyToggle}
+                        @hierarchy-sync=${this.#onHierarchySync}
+                        @hierarchy-add-provider=${this.#openCreate}
+                        @hierarchy-add-channel=${this.#onHierarchyAddChannel}
+                        @hierarchy-add-liff=${this.#onHierarchyAddLiff}
+                      ></line-account-hierarchy>
+                    `
+                  : this.#renderSplitPane(messages, activeItem)}
+              `}
       </section>
 
       ${this.notice
@@ -839,18 +744,53 @@ export class LineAccountManagement extends LitElement {
             </div>
           `
         : ""}
+      ${this.#renderDialogs(messages)}
+    `;
+  }
 
+  #renderDialogs(messages: LineAccountManagementMessages) {
+    let headingCreate = messages.createProviderHeading;
+    let headingEdit = messages.editProviderHeading;
+    let headingDelete = messages.deleteProviderHeading;
+
+    if (this.currentTab === "channel") {
+      headingCreate = messages.createChannelHeading;
+      headingEdit = messages.editChannelHeading;
+      headingDelete = messages.deleteChannelHeading;
+    } else if (this.currentTab === "liff") {
+      headingCreate = messages.createLiffAppHeading;
+      headingEdit = messages.editLiffAppHeading;
+      headingDelete = messages.deleteLiffAppHeading;
+    }
+
+    const deleteConfirmMsg = this.selectedItem
+      ? this.currentTab === "provider"
+        ? messages.deleteConfirmation("Provider", (this.selectedItem as ProviderView).name)
+        : this.currentTab === "channel"
+          ? messages.deleteConfirmation("Channel", (this.selectedItem as ChannelView).name)
+          : messages.deleteConfirmation(
+              "LIFF Application",
+              (this.selectedItem as LiffAppView).liffId,
+            )
+      : "";
+
+    return html`
       <line-account-dialog
         data-kind="create"
         .open=${this.dialogKind === "create"}
-        .heading=${messages.createHeading}
+        .heading=${headingCreate}
         @line-account-dialog-close-request=${this.#closeDialog}
       >
         <line-account-form
+          .type=${this.currentTab}
           .mode=${"create"}
+          .providers=${this.providers}
+          .channels=${this.channels}
           .messages=${messages}
           .submitting=${this.createPending}
           .error=${this.dialogKind === "create" ? this.mutationError : undefined}
+          .selectedProviderId=${this.selectedProviderId}
+          .selectedChannelId=${this.selectedChannelId}
           @line-account-form-submit=${this.#handleFormSubmit}
         ></line-account-form>
         <button
@@ -869,22 +809,27 @@ export class LineAccountManagement extends LitElement {
           ?disabled=${this.createPending}
           @click=${() => this.#submitDialogForm("create")}
         >
-          ${this.createPending ? messages.creatingAccount : messages.createAccount}
+          ${this.createPending ? messages.loading : "Create"}
         </button>
       </line-account-dialog>
 
       <line-account-dialog
         data-kind="edit"
         .open=${this.dialogKind === "edit"}
-        .heading=${messages.editHeading}
+        .heading=${headingEdit}
         @line-account-dialog-close-request=${this.#closeDialog}
       >
         <line-account-form
+          .type=${this.currentTab}
           .mode=${"edit"}
-          .account=${this.selectedAccount}
+          .item=${this.selectedItem}
+          .providers=${this.providers}
+          .channels=${this.channels}
           .messages=${messages}
           .submitting=${this.editPending}
           .error=${this.dialogKind === "edit" ? this.mutationError : undefined}
+          .selectedProviderId=${this.selectedProviderId}
+          .selectedChannelId=${this.selectedChannelId}
           @line-account-form-submit=${this.#handleFormSubmit}
         ></line-account-form>
         <button
@@ -903,23 +848,17 @@ export class LineAccountManagement extends LitElement {
           ?disabled=${this.editPending}
           @click=${() => this.#submitDialogForm("edit")}
         >
-          ${this.editPending ? messages.savingAccount : messages.saveChanges}
+          ${this.editPending ? messages.loading : messages.saveChanges}
         </button>
       </line-account-dialog>
 
       <line-account-dialog
         data-kind="delete"
         .open=${this.dialogKind === "delete"}
-        .heading=${messages.deleteHeading}
+        .heading=${headingDelete}
         @line-account-dialog-close-request=${this.#closeDialog}
       >
-        <p class="dialog-copy">
-          ${this.selectedAccount === undefined
-            ? ""
-            : messages.deleteConfirmation(
-                this.selectedAccount.displayName?.trim() || this.selectedAccount.name,
-              )}
-        </p>
+        <p class="dialog-copy">${deleteConfirmMsg}</p>
         ${this.dialogKind === "delete" && this.mutationError
           ? html`<p class="error" role="alert">${this.mutationError}</p>`
           : ""}
@@ -937,159 +876,73 @@ export class LineAccountManagement extends LitElement {
           slot="footer"
           type="button"
           ?disabled=${this.deletePending}
-          @click=${this.#deleteSelectedAccount}
+          @click=${this.#deleteSelectedItem}
         >
-          ${this.deletePending ? messages.deletingAccount : messages.confirmDelete}
+          ${this.deletePending ? messages.loading : messages.confirmDelete}
         </button>
       </line-account-dialog>
     `;
   }
 
-  #renderToolbar() {
-    return html`
-      <div class="toolbar">
-        <div class="search-wrapper">
-          <svg
-            class="search-icon"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            class="search-input"
-            type="text"
-            placeholder="Search accounts..."
-            .value=${this.searchQuery}
-            @input=${this.#handleSearchInput}
-            aria-label="Search accounts"
-          />
-          ${this.searchQuery
-            ? html`
-                <button
-                  class="clear-search-btn"
-                  type="button"
-                  @click=${this.#clearSearch}
-                  aria-label="Clear search"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    style="width: 0.875rem; height: 0.875rem;"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
-              `
-            : ""}
-        </div>
-        <div class="variant-switcher">
-          <button
-            class="variant-btn ${this.variant === "grid" ? "active" : ""}"
-            type="button"
-            title="Grid view"
-            @click=${() => this.#setVariant("grid")}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              style="width:0.9rem;height:0.9rem;flex-shrink:0"
-            >
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-            Grid
-          </button>
-          <button
-            class="variant-btn ${this.variant === "list" ? "active" : ""}"
-            type="button"
-            title="Table view"
-            @click=${() => this.#setVariant("list")}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              style="width:0.9rem;height:0.9rem;flex-shrink:0"
-            >
-              <line x1="8" y1="6" x2="21" y2="6"></line>
-              <line x1="8" y1="12" x2="21" y2="12"></line>
-              <line x1="8" y1="18" x2="21" y2="18"></line>
-              <line x1="3" y1="6" x2="3.01" y2="6"></line>
-              <line x1="3" y1="12" x2="3.01" y2="12"></line>
-              <line x1="3" y1="18" x2="3.01" y2="18"></line>
-            </svg>
-            List
-          </button>
-          <button
-            class="variant-btn ${this.variant === "split" ? "active" : ""}"
-            type="button"
-            title="Split pane view"
-            @click=${() => this.#setVariant("split")}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              style="width:0.9rem;height:0.9rem;flex-shrink:0"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="9" y1="3" x2="9" y2="21"></line>
-            </svg>
-            Split
-          </button>
-        </div>
-      </div>
-    `;
-  }
+  #onToolbarSearch = (event: CustomEvent<{ value: string }>): void => {
+    this.searchQuery = event.detail.value;
+  };
 
-  #handleSearchInput = (event: Event): void => {
-    const target = event.target;
-    if (target instanceof HTMLInputElement) {
-      this.searchQuery = target.value;
+  #onToolbarVariant = (event: CustomEvent<{ variant: string }>): void => {
+    this.variant = event.detail.variant;
+  };
+
+  #onToolbarProviderFilter = (event: CustomEvent<{ value: string }>): void => {
+    this.selectedProviderId = event.detail.value;
+    this.selectedItemId = undefined;
+  };
+
+  #onToolbarChannelFilter = (event: CustomEvent<{ value: string }>): void => {
+    this.selectedChannelId = event.detail.value;
+    this.selectedItemId = undefined;
+  };
+
+  #drillDownToChannel = (channel: ChannelView): void => {
+    this.selectedProviderId = channel.providerId;
+    this.selectedChannelId = channel.id;
+    this.selectedItemId = channel.id;
+    this.currentTab = "channel";
+  };
+
+  #drillDownToLiff = (liff: LiffAppView): void => {
+    this.selectedChannelId = liff.loginChannelId;
+    const parentChannel = this.channels.find((c) => c.id === liff.loginChannelId);
+    if (parentChannel) {
+      this.selectedProviderId = parentChannel.providerId;
     }
+    this.selectedItemId = liff.id;
+    this.currentTab = "liff";
   };
 
-  #clearSearch = (): void => {
-    this.searchQuery = "";
+  #openCreateChannelForProvider = (providerId: string): void => {
+    this.selectedProviderId = providerId;
+    this.currentTab = "channel";
+    this.#openCreate();
   };
 
-  #setVariant = (variant: string): void => {
-    this.variant = variant;
+  #openCreateLiffForChannel = (channelId: string): void => {
+    this.selectedChannelId = channelId;
+    const parentChannel = this.channels.find((c) => c.id === channelId);
+    if (parentChannel) {
+      this.selectedProviderId = parentChannel.providerId;
+    }
+    this.currentTab = "liff";
+    this.#openCreate();
   };
 
   #renderSplitPane(
     messages: LineAccountManagementMessages,
-    filtered: readonly LineAccountView[],
-    activeAccount: LineAccountView | undefined,
+    activeItem: ProviderView | ChannelView | LiffAppView | undefined,
   ) {
+    let addBtnLabel = messages.addProvider;
+    if (this.currentTab === "channel") addBtnLabel = messages.addChannel;
+    else if (this.currentTab === "liff") addBtnLabel = messages.addLiffApp;
+
     return html`
       <div class="split-container">
         <div class="split-sidebar">
@@ -1114,307 +967,94 @@ export class LineAccountManagement extends LitElement {
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            ${messages.addAccount}
+            ${addBtnLabel}
           </button>
 
-          ${this.loading
-            ? html`
-                <div class="spinner-container" style="border: none; padding: 2rem;">
-                  <div class="spinner" style="width: 1.5rem; height: 1.5rem;"></div>
-                </div>
-              `
-            : this.loadError
-              ? html`
-                  <div style="text-align: center; padding: 1rem;">
-                    <p
-                      style="color: var(--line-account-danger-color, #c62828); font-size: 0.875rem;"
-                    >
-                      ${messages.loadFailure}
-                    </p>
-                    <button
-                      part="retry-button"
-                      type="button"
-                      @click=${this.#retryLoad}
-                      style="margin-top: 0.5rem; min-height: auto; padding: 0.25rem 0.75rem;"
-                    >
-                      ${messages.retry}
-                    </button>
-                  </div>
-                `
-              : html`
-                  <line-account-list
-                    .accounts=${filtered}
-                    .messages=${messages}
-                    .disabledAccountIds=${this.pendingAccountIds}
-                    .accountErrors=${this.accountErrors}
-                    .variant=${this.variant}
-                    .selectedAccountId=${activeAccount?.id}
-                    @line-account-edit-request=${this.#openEdit}
-                    @line-account-toggle-request=${this.#toggleAccount}
-                    @line-account-delete-request=${this.#openDelete}
-                  ></line-account-list>
-                `}
+          <line-account-hierarchy
+            .providers=${this.providers}
+            .channels=${this.channels}
+            .liffApps=${this.liffApps}
+            .messages=${messages}
+            .pendingItemIds=${this.pendingItemIds}
+            .itemErrors=${this.itemErrors}
+            .selectedItemId=${this.selectedItemId}
+            .selectedProviderId=${this.selectedProviderId}
+            .selectedChannelId=${this.selectedChannelId}
+            .selectedLiffId=${this.selectedLiffId}
+            .variant=${this.variant}
+            .searchQuery=${this.searchQuery}
+            @hierarchy-select=${this.#onHierarchySelect}
+            @hierarchy-edit=${this.#onHierarchyEdit}
+            @hierarchy-delete=${this.#onHierarchyDelete}
+            @hierarchy-toggle=${this.#onHierarchyToggle}
+            @hierarchy-sync=${this.#onHierarchySync}
+            @hierarchy-add-provider=${this.#openCreate}
+            @hierarchy-add-channel=${this.#onHierarchyAddChannel}
+            @hierarchy-add-liff=${this.#onHierarchyAddLiff}
+          ></line-account-hierarchy>
         </div>
 
-        <div class="split-details">
-          ${activeAccount
-            ? this.#renderAccountDetails(messages, activeAccount)
-            : html`
-                <div class="details-empty-state">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    style="width: 3rem; height: 3rem; margin-bottom: 1rem; color: var(--line-account-muted-color, #8a9ba8)"
-                  >
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <h3>No Account Selected</h3>
-                  <p style="font-size: 0.875rem; max-width: 16rem; margin-top: 0.25rem;">
-                    Select an account from the sidebar or add a new one to view details.
-                  </p>
-                </div>
-              `}
-        </div>
+        <line-account-detail-panel
+          .item=${activeItem}
+          .currentTab=${this.currentTab}
+          .providers=${this.providers}
+          .channels=${this.channels}
+          .liffApps=${this.liffApps}
+          .pendingItemIds=${this.pendingItemIds}
+          .messages=${messages}
+          .readonly=${false}
+          @detail-edit=${this.#onDetailEdit}
+          @detail-delete=${this.#onDetailDelete}
+          @detail-toggle=${this.#onDetailToggle}
+          @detail-sync=${this.#onDetailSync}
+          @detail-drill-channel=${this.#onDetailDrillChannel}
+          @detail-drill-liff=${this.#onDetailDrillLiff}
+          @detail-create-channel=${this.#onDetailCreateChannel}
+          @detail-create-liff=${this.#onDetailCreateLiff}
+        ></line-account-detail-panel>
       </div>
     `;
   }
 
-  #renderAccountDetails(messages: LineAccountManagementMessages, account: LineAccountView) {
-    const displayName = account.displayName?.trim() || account.name;
-    const initial = displayName.trim().charAt(0).toUpperCase();
-    const isPending = this.pendingAccountIds.has(account.id);
-
-    return html`
-      <div class="details-header">
-        <div class="details-identity">
-          ${account.pictureUrl
-            ? html`<img class="details-avatar" src=${account.pictureUrl} alt=${displayName} />`
-            : html`<span class="details-initial">${initial}</span>`}
-          <div class="details-title-group">
-            <h2>${displayName}</h2>
-            ${account.basicId ? html`<div class="details-basic-id">${account.basicId}</div>` : ""}
-          </div>
-        </div>
-        <button
-          class="switch ${account.isActive ? "checked" : ""}"
-          part="status-button"
-          role="switch"
-          aria-checked=${account.isActive ? "true" : "false"}
-          aria-label=${account.isActive ? messages.deactivateAccount : messages.activateAccount}
-          ?disabled=${isPending || this.adapter === undefined}
-          @click=${() => this.#performToggle(account)}
-        >
-          <span class="switch-thumb"></span>
-        </button>
-      </div>
-
-      <div class="details-grid">
-        <div class="details-section">
-          <div class="details-section-title">${messages.messagingApiGroup}</div>
-          <div class="details-row">
-            <span class="details-label">${messages.channelIdLabel}</span>
-            <div class="details-value-wrapper">
-              <span class="details-value">${account.channelId}</span>
-              <button
-                class="copy-btn"
-                type="button"
-                aria-label="Copy Channel ID"
-                @click=${() => this.#copyText(account.channelId, "Channel ID copied")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="details-section">
-          <div class="details-section-title">${messages.lineLoginGroup}</div>
-          ${account.loginChannelId
-            ? html`
-                <div class="details-row">
-                  <span class="details-label">${messages.loginChannelIdLabel}</span>
-                  <div class="details-value-wrapper">
-                    <span class="details-value">${account.loginChannelId}</span>
-                    <button
-                      class="copy-btn"
-                      type="button"
-                      aria-label="Copy LINE Login Channel ID"
-                      @click=${() =>
-                        this.#copyText(
-                          account.loginChannelId || "",
-                          "LINE Login Channel ID copied",
-                        )}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              `
-            : html`
-                <div
-                  style="color: var(--line-account-muted-color, #8a9ba8); font-size: 0.875rem; padding: 0.5rem 0;"
-                >
-                  Not Configured
-                </div>
-              `}
-        </div>
-
-        <div class="details-section" style="grid-column: span 1;">
-          <div class="details-section-title">${messages.liffGroup}</div>
-          ${account.liffId
-            ? html`
-                <div class="details-row">
-                  <span class="details-label">${messages.liffIdLabel}</span>
-                  <div class="details-value-wrapper">
-                    <span class="details-value">${account.liffId}</span>
-                    <button
-                      class="copy-btn"
-                      type="button"
-                      aria-label="Copy LIFF ID"
-                      @click=${() => this.#copyText(account.liffId || "", "LIFF ID copied")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              `
-            : html`
-                <div
-                  style="color: var(--line-account-muted-color, #8a9ba8); font-size: 0.875rem; padding: 0.5rem 0;"
-                >
-                  Not Configured
-                </div>
-              `}
-        </div>
-      </div>
-
-      <div class="details-actions">
-        <button
-          class="action-btn"
-          type="button"
-          ?disabled=${isPending}
-          @click=${() => this.#triggerEdit(account)}
-          style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
-        >
-          ${messages.editAccount}
-        </button>
-        <button
-          class="danger"
-          type="button"
-          ?disabled=${isPending}
-          @click=${() => this.#triggerDelete(account)}
-          style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
-        >
-          ${messages.deleteAccount}
-        </button>
-      </div>
-    `;
-  }
-
-  #copyText = (text: string, announcement: string): void => {
-    void navigator.clipboard.writeText(text).then(() => {
-      this.#showNotice(announcement);
-    });
-  };
-
-  #triggerEdit = (account: LineAccountView): void => {
-    this.selectedAccount = account;
+  #onDetailEdit = (
+    event: CustomEvent<{ item: ProviderView | ChannelView | LiffAppView }>,
+  ): void => {
+    this.selectedItem = event.detail.item;
     this.mutationError = undefined;
     this.dialogKind = "edit";
   };
 
-  #triggerDelete = (account: LineAccountView): void => {
-    this.selectedAccount = account;
+  #onDetailDelete = (
+    event: CustomEvent<{ item: ProviderView | ChannelView | LiffAppView }>,
+  ): void => {
+    this.selectedItem = event.detail.item;
     this.mutationError = undefined;
     this.dialogKind = "delete";
   };
 
-  #renderCollection(messages: LineAccountManagementMessages, filtered: readonly LineAccountView[]) {
-    if (this.adapter === undefined) {
-      return html`
-        <section class="state" role="alert" aria-labelledby="adapter-heading">
-          <h2 id="adapter-heading">${messages.adapterMissingHeading}</h2>
-          <p>${messages.adapterMissingDescription}</p>
-        </section>
-      `;
-    }
+  #onDetailToggle = (event: CustomEvent<{ item: ChannelView }>): void => {
+    void this.#performToggle(event.detail.item);
+  };
 
-    if (this.loading) {
-      return html`
-        <div class="spinner-container" role="status" aria-live="polite">
-          <div class="spinner"></div>
-          <p style="margin: 0; font-weight: 550; color: var(--line-account-muted-color, #52606d)">
-            ${messages.loadingAccounts}
-          </p>
-        </div>
-      `;
-    }
+  #onDetailSync = (event: CustomEvent<{ item: ChannelView }>): void => {
+    void this.#performSync(event.detail.item);
+  };
 
-    if (this.loadError) {
-      return html`
-        <section class="error" role="alert">
-          <p>${messages.loadFailure}</p>
-          <button part="retry-button" type="button" @click=${this.#retryLoad}>
-            ${messages.retry}
-          </button>
-        </section>
-      `;
-    }
+  #onDetailDrillChannel = (event: CustomEvent<{ channel: ChannelView }>): void => {
+    this.#drillDownToChannel(event.detail.channel);
+  };
 
-    return html`
-      <line-account-list
-        .accounts=${filtered}
-        .messages=${messages}
-        .disabledAccountIds=${this.pendingAccountIds}
-        .accountErrors=${this.accountErrors}
-        .variant=${this.variant}
-        @line-account-edit-request=${this.#openEdit}
-        @line-account-toggle-request=${this.#toggleAccount}
-        @line-account-delete-request=${this.#openDelete}
-      ></line-account-list>
-    `;
-  }
+  #onDetailDrillLiff = (event: CustomEvent<{ liff: LiffAppView }>): void => {
+    this.#drillDownToLiff(event.detail.liff);
+  };
+
+  #onDetailCreateChannel = (event: CustomEvent<{ providerId: string }>): void => {
+    this.#openCreateChannelForProvider(event.detail.providerId);
+  };
+
+  #onDetailCreateLiff = (event: CustomEvent<{ channelId: string }>): void => {
+    this.#openCreateLiffForChannel(event.detail.channelId);
+  };
 
   get #resolvedMessages(): LineAccountManagementMessages {
     return { ...defaultLineAccountManagementMessages, ...this.messages };
@@ -1444,7 +1084,7 @@ export class LineAccountManagement extends LitElement {
     this.shadowRoot
       ?.querySelector<LineAccountForm>('line-account-dialog[data-kind="create"] line-account-form')
       ?.reset();
-    this.selectedAccount = undefined;
+    this.selectedItem = undefined;
     this.mutationError = undefined;
     this.dialogKind = "create";
   };
@@ -1453,22 +1093,10 @@ export class LineAccountManagement extends LitElement {
     void this.reload();
   };
 
-  #openEdit = (event: CustomEvent<LineAccountRequestDetail>): void => {
-    this.selectedAccount = event.detail.account;
-    this.mutationError = undefined;
-    this.dialogKind = "edit";
-  };
-
-  #openDelete = (event: CustomEvent<LineAccountRequestDetail>): void => {
-    this.selectedAccount = event.detail.account;
-    this.mutationError = undefined;
-    this.dialogKind = "delete";
-  };
-
   #closeDialog = (): void => {
     if (this.createPending || this.editPending || this.deletePending) return;
     this.dialogKind = undefined;
-    this.selectedAccount = undefined;
+    this.selectedItem = undefined;
     this.mutationError = undefined;
   };
 
@@ -1479,33 +1107,46 @@ export class LineAccountManagement extends LitElement {
   }
 
   #handleFormSubmit = (event: CustomEvent<LineAccountFormSubmitDetail>): void => {
-    if (event.detail.mode === "create") void this.#createAccount(event.detail.input);
-    else void this.#updateSelectedAccount(event.detail.input);
+    const detail = event.detail;
+    if (detail.mode === "create") {
+      void this.#createItem(detail.type, detail.input);
+    } else {
+      void this.#updateItem(detail.type, this.selectedItem!.id, detail.input);
+    }
   };
 
-  async #createAccount(input: CreateLineAccountInput): Promise<void> {
+  async #createItem(type: LineAccountFormType, input: any): Promise<void> {
     const adapter = this.adapter;
     if (adapter === undefined || this.createPending) return;
     this.createPending = true;
     this.mutationError = undefined;
     try {
-      const account = await adapter.create(input);
+      let created;
+      if (type === "provider") {
+        created = await adapter.createProvider(input);
+      } else if (type === "channel") {
+        created = await adapter.createChannel(input);
+      } else {
+        created = await adapter.createLiffApp(input);
+      }
+
       this.dialogKind = undefined;
       this.#showNotice(this.#resolvedMessages.createSuccess);
       await this.reload();
-      this.dispatchEvent(new CustomEvent("line-account-created", eventOptions({ account })));
+      this.dispatchEvent(
+        new CustomEvent("line-account-created", eventOptions({ item: created, type })),
+      );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.createFailure;
-      this.#emitError("create", error);
+      this.#emitError("createProvider", error); // Simple fallback operation name
     } finally {
       this.createPending = false;
     }
   }
 
-  async #updateSelectedAccount(input: UpdateLineAccountInput): Promise<void> {
+  async #updateItem(type: LineAccountFormType, id: string, input: any): Promise<void> {
     const adapter = this.adapter;
-    const account = this.selectedAccount;
-    if (adapter === undefined || account === undefined || this.editPending) return;
+    if (adapter === undefined || this.editPending) return;
     if (Object.keys(input).length === 0) {
       this.#closeDialog();
       return;
@@ -1514,76 +1155,207 @@ export class LineAccountManagement extends LitElement {
     this.editPending = true;
     this.mutationError = undefined;
     try {
-      const updated = await adapter.update(account.id, input);
+      let updated;
+      if (type === "provider") {
+        updated = await adapter.updateProvider(id, input);
+      } else if (type === "channel") {
+        updated = await adapter.updateChannel(id, input);
+      } else {
+        updated = await adapter.updateLiffApp(id, input);
+      }
+
       this.dialogKind = undefined;
-      this.selectedAccount = undefined;
+      this.selectedItem = undefined;
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-updated", eventOptions({ account: updated })),
+        new CustomEvent("line-account-updated", eventOptions({ item: updated, type })),
       );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.updateFailure;
-      this.#emitError("update", error);
+      this.#emitError("updateProvider", error);
     } finally {
       this.editPending = false;
     }
   }
 
-  #toggleAccount = (event: CustomEvent<LineAccountRequestDetail>): void => {
-    void this.#performToggle(event.detail.account);
-  };
-
-  async #performToggle(account: LineAccountView): Promise<void> {
+  async #performSync(channel: ChannelView): Promise<void> {
     const adapter = this.adapter;
-    if (adapter === undefined || this.pendingAccountIds.has(account.id)) return;
-    this.pendingAccountIds = new Set([...this.pendingAccountIds, account.id]);
-    const accountErrors = new Map(this.accountErrors);
-    accountErrors.delete(account.id);
-    this.accountErrors = accountErrors;
+    if (!adapter || channel.channelType !== "messaging" || !adapter.syncChannel) return;
+
+    this.pendingItemIds = new Set(this.pendingItemIds).add(channel.id);
+    const itemErrors = new Map(this.itemErrors);
+    itemErrors.delete(channel.id);
+    this.itemErrors = itemErrors;
+
     try {
-      const updated = await adapter.update(account.id, { isActive: !account.isActive });
+      const updated = await adapter.syncChannel(channel.id);
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-updated", eventOptions({ account: updated })),
+        new CustomEvent("line-account-updated", eventOptions({ item: updated, type: "channel" })),
       );
     } catch (error) {
-      this.accountErrors = new Map(this.accountErrors).set(
-        account.id,
-        this.#resolvedMessages.toggleFailure,
+      this.itemErrors = new Map(this.itemErrors).set(
+        channel.id,
+        this.#resolvedMessages.updateFailure,
       );
-      this.#emitError("toggle", error);
+      this.#emitError("syncChannel", error);
     } finally {
-      const pending = new Set(this.pendingAccountIds);
-      pending.delete(account.id);
-      this.pendingAccountIds = pending;
+      const pending = new Set(this.pendingItemIds);
+      pending.delete(channel.id);
+      this.pendingItemIds = pending;
     }
   }
 
-  #deleteSelectedAccount = (): void => {
+  async #performToggle(channel: ChannelView): Promise<void> {
+    const adapter = this.adapter;
+    if (adapter === undefined || this.pendingItemIds.has(channel.id)) return;
+    this.pendingItemIds = new Set([...this.pendingItemIds, channel.id]);
+    const itemErrors = new Map(this.itemErrors);
+    itemErrors.delete(channel.id);
+    this.itemErrors = itemErrors;
+    try {
+      const isActive = channel.channelType === "messaging" ? channel.isActive : false;
+      const updated = await adapter.updateChannel(channel.id, { isActive: !isActive });
+      this.#showNotice(this.#resolvedMessages.updateSuccess);
+      await this.reload();
+      this.dispatchEvent(
+        new CustomEvent("line-account-updated", eventOptions({ item: updated, type: "channel" })),
+      );
+    } catch (error) {
+      this.itemErrors = new Map(this.itemErrors).set(channel.id, "Failed to toggle status");
+      this.#emitError("updateChannel", error);
+    } finally {
+      const pending = new Set(this.pendingItemIds);
+      pending.delete(channel.id);
+      this.pendingItemIds = pending;
+    }
+  }
+
+  #deleteSelectedItem = (): void => {
     void this.#performDelete();
   };
 
   async #performDelete(): Promise<void> {
     const adapter = this.adapter;
-    const account = this.selectedAccount;
-    if (adapter === undefined || account === undefined || this.deletePending) return;
+    const item = this.selectedItem;
+    if (adapter === undefined || item === undefined || this.deletePending) return;
     this.deletePending = true;
     this.mutationError = undefined;
+    const type = this.currentTab;
     try {
-      await adapter.delete(account.id);
+      if (type === "provider") {
+        await adapter.deleteProvider(item.id);
+      } else if (type === "channel") {
+        await adapter.deleteChannel(item.id);
+      } else {
+        await adapter.deleteLiffApp(item.id);
+      }
+
       this.dialogKind = undefined;
-      this.selectedAccount = undefined;
+      this.selectedItem = undefined;
       this.#showNotice(this.#resolvedMessages.deleteSuccess);
       await this.reload();
-      this.dispatchEvent(new CustomEvent("line-account-deleted", eventOptions({ id: account.id })));
+      this.dispatchEvent(
+        new CustomEvent("line-account-deleted", eventOptions({ id: item.id, type })),
+      );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.deleteFailure;
-      this.#emitError("delete", error);
+      this.#emitError("deleteProvider", error);
     } finally {
       this.deletePending = false;
     }
+  }
+
+  #onHierarchySelect = (event: CustomEvent<{ item: any; type: LineAccountFormType }>): void => {
+    const { item, type } = event.detail;
+    if (item === null || item === undefined) {
+      this.selectedItemId = undefined;
+      if (type === "provider") {
+        const oldProviderId = this.selectedProviderId;
+        this.selectedProviderId = "";
+        const channel = this.channels.find((c) => c.id === this.selectedChannelId);
+        if (channel && channel.providerId === oldProviderId) {
+          this.selectedChannelId = "";
+          this.selectedLiffId = undefined;
+        }
+      } else if (type === "channel") {
+        const oldChannelId = this.selectedChannelId;
+        this.selectedChannelId = "";
+        if (this.selectedLiffId) {
+          const liff = this.liffApps.find((l) => l.id === this.selectedLiffId);
+          if (liff && liff.loginChannelId === oldChannelId) {
+            this.selectedLiffId = undefined;
+          }
+        }
+      } else if (type === "liff") {
+        this.selectedLiffId = undefined;
+      }
+      return;
+    }
+    this.selectedItemId = item.id;
+    this.currentTab = type;
+
+    if (type === "provider") {
+      this.selectedProviderId = item.id;
+    } else if (type === "channel") {
+      const c = item as ChannelView;
+      this.selectedProviderId = c.providerId;
+      this.selectedChannelId = c.id;
+    } else if (type === "liff") {
+      const l = item as LiffAppView;
+      this.selectedLiffId = l.id;
+      this.selectedChannelId = l.loginChannelId;
+      const parentChannel = this.channels.find((c) => c.id === l.loginChannelId);
+      if (parentChannel) {
+        this.selectedProviderId = parentChannel.providerId;
+      }
+    }
+  };
+
+  #onHierarchyEdit = (event: CustomEvent<{ item: any }>): void => {
+    this.selectedItem = event.detail.item;
+    this.currentTab = this.#typeOfItem(this.selectedItem!);
+    this.mutationError = undefined;
+    this.dialogKind = "edit";
+  };
+
+  #onHierarchyDelete = (event: CustomEvent<{ item: any }>): void => {
+    this.selectedItem = event.detail.item;
+    this.currentTab = this.#typeOfItem(this.selectedItem!);
+    this.mutationError = undefined;
+    this.dialogKind = "delete";
+  };
+
+  #onHierarchyToggle = (event: CustomEvent<{ item: ChannelView }>): void => {
+    void this.#performToggle(event.detail.item);
+  };
+
+  #onHierarchySync = (event: CustomEvent<{ item: ChannelView }>): void => {
+    void this.#performSync(event.detail.item);
+  };
+
+  #onHierarchyAddChannel = (event: CustomEvent<{ providerId: string }>): void => {
+    this.selectedProviderId = event.detail.providerId;
+    this.currentTab = "channel";
+    this.#openCreate();
+  };
+
+  #onHierarchyAddLiff = (event: CustomEvent<{ channelId: string }>): void => {
+    this.selectedChannelId = event.detail.channelId;
+    const parentChannel = this.channels.find((c) => c.id === event.detail.channelId);
+    if (parentChannel) {
+      this.selectedProviderId = parentChannel.providerId;
+    }
+    this.currentTab = "liff";
+    this.#openCreate();
+  };
+
+  #typeOfItem(item: any): LineAccountFormType {
+    if ("channelType" in item) return "channel";
+    if ("liffId" in item) return "liff";
+    return "provider";
   }
 
   #emitError(operation: LineAccountOperation, error: unknown): void {

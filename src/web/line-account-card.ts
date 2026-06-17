@@ -1,574 +1,563 @@
-import { LitElement, css, html, nothing } from "lit";
+import { LitElement, css, html } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import type { LineAccountRequestDetail, LineAccountView } from "./types.ts";
-
-const requestEvent = (
-  name: string,
-  account: LineAccountView,
-): CustomEvent<LineAccountRequestDetail> =>
-  new CustomEvent(name, {
-    bubbles: true,
-    composed: true,
-    detail: { account },
-  });
+import type { ProviderView, ChannelView, LiffAppView } from "./types.ts";
 
 export class LineAccountCard extends LitElement {
   static properties = {
-    account: { attribute: false },
+    type: { type: String, reflect: true }, // "provider" | "channel" | "liff"
+    item: { attribute: false },
     messages: { attribute: false },
     disabled: { type: Boolean, reflect: true },
-    error: { type: String },
-    variant: { type: String, reflect: true },
     selected: { type: Boolean, reflect: true },
+    variant: { type: String, reflect: true }, // "grid" | "split"
+    error: { type: String },
   };
 
   static styles = css`
     :host {
       display: block;
-      color: var(--line-account-text-color, #1f2933);
-      font-family: var(--line-account-font-family, system-ui, sans-serif);
+      color: var(--line-account-text-color, #0f172a);
+      font-family: var(--line-account-font-family, Inter, system-ui, sans-serif);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    article {
-      display: grid;
-      gap: var(--line-account-space-4, 1rem);
+    .card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
       height: 100%;
-      padding: var(--line-account-space-5, 1.25rem);
-      border: 1px solid var(--line-account-border-color, #d9e0e6);
-      border-radius: var(--line-account-radius, 0.75rem);
-      background: var(--line-account-surface-background, #fff);
-      box-shadow: var(--line-account-shadow, 0 1px 3px rgb(0 0 0 / 8%));
+      min-height: 12rem;
+      padding: var(--line-account-space-4, 1.25rem);
+      border: 1px solid var(--line-account-border-color, #cbd5e1);
+      border-radius: var(--line-account-radius, 1.25rem);
+      background: var(--line-account-surface-background, #ffffff);
+      box-shadow: var(--line-account-shadow, 0 4px 6px -1px rgb(0 0 0 / 0.05));
       box-sizing: border-box;
-      transition:
-        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-        border-color 0.2s ease-in-out,
-        background-color 0.2s ease-in-out;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    article:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--line-account-shadow-hover, 0 12px 24px rgb(29 53 38 / 10%));
-      border-color: var(--line-account-primary-color, #06c755);
+    .card:hover:not(.disabled) {
+      border-color: var(--line-account-primary-color, #10b981);
+      box-shadow: var(--line-account-shadow-hover, 0 20px 25px -5px rgb(0 0 0 / 0.1));
+      transform: translateY(-2px);
     }
 
-    .card-header {
+    .card.selectable {
+      cursor: pointer;
+    }
+
+    .card.selected {
+      border-color: var(--line-account-primary-color, #10b981);
+      background-color: var(--line-account-selected-bg, #ecfdf5);
+    }
+
+    .card.disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
+      align-items: flex-start;
+      gap: 0.875rem;
+      margin-bottom: var(--line-account-space-4, 1rem);
     }
 
-    .identity {
-      display: flex;
-      align-items: center;
-      gap: var(--line-account-space-3, 0.75rem);
-    }
-
-    img,
-    .initial {
+    .avatar {
       width: 3rem;
       height: 3rem;
       border-radius: 50%;
       object-fit: cover;
-      flex: 0 0 auto;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      border: 1.5px solid #fff;
     }
 
-    .initial {
+    .avatar-placeholder {
       display: grid;
       place-items: center;
-      background: var(--line-account-muted-background, #eef2f5);
-      color: var(--line-account-muted-color, #52606d);
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 1.25rem;
       font-weight: 700;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
     }
 
-    h3,
-    p {
-      margin: 0;
+    .avatar-provider {
+      background: linear-gradient(135deg, #10b981, #059669);
     }
 
-    h3 {
+    .avatar-channel-messaging {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    .avatar-channel-login {
+      background: linear-gradient(135deg, #8b5cf6, #5b21b6);
+    }
+
+    .avatar-liff {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .identity {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .name {
       font-size: 1rem;
-      font-weight: 650;
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .metadata {
-      display: flex;
-      flex-direction: column;
-      gap: var(--line-account-space-2, 0.5rem);
-      color: var(--line-account-muted-color, #52606d);
-      font-size: 0.875rem;
-    }
-
-    .channel-id {
-      font-family: monospace;
+    .subtitle {
       font-size: 0.8125rem;
-      background: var(--line-account-muted-background, #eef2f5);
-      padding: 0.2rem 0.4rem;
-      border-radius: 0.25rem;
-      display: inline-block;
+      color: var(--line-account-muted-color, #64748b);
+      margin-top: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .switch {
-      position: relative;
-      width: 2.75rem;
-      height: 1.5rem;
-      padding: 0;
-      border: 1px solid var(--line-account-border-color, #c7d0d9);
-      border-radius: 999px;
-      background-color: var(--line-account-switch-off-bg, #e4e7eb);
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-bottom: var(--line-account-space-4, 1rem);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.1875rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-type {
+      background-color: var(--line-account-badge-unconfigured-bg, #f1f5f9);
+      color: var(--line-account-badge-unconfigured-color, #475569);
+      border: 1.5px solid var(--line-account-badge-unconfigured-border, #e2e8f0);
+    }
+
+    .badge-status {
+      background-color: var(--line-account-badge-configured-bg, #ecfdf5);
+      color: var(--line-account-badge-configured-color, #047a36);
+      border: 1.5px solid var(--line-account-badge-configured-border, #a3f0c2);
+    }
+
+    .badge-status-inactive {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1.5px solid #fca5a5;
+    }
+
+    .description {
+      font-size: 0.8125rem;
+      color: var(--line-account-muted-color, #64748b);
+      line-height: 1.4;
+      margin-bottom: var(--line-account-space-4, 1rem);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .details {
+      margin-bottom: auto;
+      font-size: 0.8125rem;
+      display: grid;
+      gap: 0.375rem;
+    }
+
+    .details-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .details-label {
+      color: var(--line-account-muted-color, #64748b);
+    }
+
+    .details-value {
+      font-weight: 500;
+      font-family: monospace;
+      max-width: 12rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--line-account-border-color, #cbd5e1);
+    }
+
+    .card.variant-split .actions {
+      display: none;
+    }
+
+    button {
+      min-height: 2rem;
+      padding: 0.25rem 0.75rem;
+      border: 1px solid var(--line-account-border-color, #cbd5e1);
+      border-radius: var(--line-account-button-radius, 0.5rem);
+      background: var(--line-account-surface-background, #fff);
+      color: inherit;
       cursor: pointer;
-      min-height: auto;
-      transition:
-        background-color 0.2s,
-        border-color 0.2s;
-      flex-shrink: 0;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      transition: all 0.15s ease-in-out;
     }
 
-    .switch:focus-visible {
+    button:hover:not(:disabled) {
+      background-color: var(--line-account-muted-background, #f1f5f9);
+      border-color: var(--line-account-muted-color, #64748b);
+    }
+
+    button:focus-visible {
       outline: 3px solid var(--line-account-focus-color, #74d7a1);
       outline-offset: 2px;
     }
 
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .danger-action:hover:not(:disabled) {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border-color: #fca5a5;
+    }
+
+    .status-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      margin-left: 0.25rem;
+    }
+
+    .switch {
+      position: relative;
+      width: 2.25rem;
+      height: 1.25rem;
+      padding: 0;
+      border-radius: 999px;
+      background-color: #e2e8f0;
+      cursor: pointer;
+      min-height: auto;
+      border: 1.5px solid transparent;
+      transition: background-color 0.2s;
+    }
+
     .switch.checked {
-      background-color: var(--line-account-primary-color, #06c755);
-      border-color: var(--line-account-primary-color, #06c755);
+      background-color: var(--line-account-primary-color, #10b981);
     }
 
     .switch-thumb {
       position: absolute;
       top: 1px;
       left: 1px;
-      width: 1.25rem;
-      height: 1.25rem;
+      width: 1rem;
+      height: 1rem;
       border-radius: 50%;
       background-color: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
     }
 
     .switch.checked .switch-thumb {
-      transform: translateX(1.25rem);
+      transform: translateX(1rem);
     }
 
-    .switch:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    .badges {
-      display: flex;
-      flex-direction: column;
-      gap: var(--line-account-space-2, 0.5rem);
-      align-items: flex-start;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
-      padding: 0.25rem 0.625rem;
-      border-radius: 999px;
-      font-size: 0.8125rem;
-      font-weight: 600;
-      line-height: 1;
-    }
-
-    .badge.configured {
-      background-color: var(--line-account-badge-configured-bg, #e6fdf0);
-      color: var(--line-account-badge-configured-color, #047a36);
-      border: 1px solid var(--line-account-badge-configured-border, #a3f0c2);
-    }
-
-    .badge.unconfigured {
-      background-color: var(--line-account-badge-unconfigured-bg, #f1f3f5);
-      color: var(--line-account-badge-unconfigured-color, #52606d);
-      border: 1px solid var(--line-account-badge-unconfigured-border, #d9e0e6);
-    }
-
-    .badge-icon {
-      width: 0.875rem;
-      height: 0.875rem;
-      flex-shrink: 0;
-    }
-
-    .actions {
-      display: flex;
-      gap: var(--line-account-space-2, 0.5rem);
-      margin-top: auto;
-      border-top: 1px solid var(--line-account-border-color, #e4e7eb);
-      padding-top: var(--line-account-space-4, 1rem);
-    }
-
-    button.action-btn {
-      flex: 1;
-      min-height: 2.5rem;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--line-account-border-color, #c7d0d9);
-      border-radius: var(--line-account-button-radius, 0.5rem);
-      background: var(--line-account-surface-background, #fff);
-      color: var(--line-account-text-color, #1f2933);
-      cursor: pointer;
-      font: inherit;
-      font-weight: 600;
-      transition: all 0.15s ease-in-out;
-    }
-
-    button.action-btn:focus-visible {
-      outline: 3px solid var(--line-account-focus-color, #74d7a1);
-      outline-offset: 2px;
-    }
-
-    button.action-btn:hover:not(:disabled) {
-      background: var(--line-account-muted-background, #f8f9fa);
-      border-color: var(--line-account-primary-color, #06c755);
-      color: var(--line-account-primary-text-color, #047a36);
-    }
-
-    button.action-btn:active:not(:disabled) {
-      transform: scale(0.97);
-    }
-
-    button.action-btn.danger {
-      border-color: var(--line-account-border-color, #c7d0d9);
-      color: var(--line-account-text-color, #1f2933);
-    }
-
-    button.action-btn.danger:hover:not(:disabled) {
-      background: var(--line-account-danger-background, #fff0f0);
-      border-color: var(--line-account-danger-color, #c62828);
-      color: var(--line-account-danger-color, #c62828);
-    }
-
-    button.action-btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-
-    .error {
-      margin: 0;
-      padding: var(--line-account-space-3, 0.75rem);
-      border-radius: var(--line-account-radius, 0.75rem);
-      background: var(--line-account-danger-background, #fff0f0);
-      color: var(--line-account-danger-color, #a61b1b);
-    }
-
-    /* List Layout Variant */
-    :host([variant="list"]) article {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-      padding: 0.75rem 1.25rem;
-      height: auto;
-    }
-
-    :host([variant="list"]) article:hover {
-      transform: translateX(4px);
-    }
-
-    :host([variant="list"]) .card-header {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      flex: 2;
-    }
-
-    :host([variant="list"]) .identity {
-      flex: 1;
-    }
-
-    :host([variant="list"]) .metadata {
-      flex: 1;
-      flex-direction: row;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    :host([variant="list"]) .badges {
-      flex: 1.2;
-      flex-direction: row;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    :host([variant="list"]) .actions {
-      flex: 0 0 auto;
-      margin-top: 0;
-      border-top: none;
-      padding-top: 0;
-    }
-
-    /* Split Sidebar Item Variant */
-    :host([variant="split"]) article {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      height: auto;
-      cursor: pointer;
-      box-shadow: none;
-      border-radius: var(--line-account-button-radius, 0.5rem);
-      border: 1px solid var(--line-account-border-color, #e4e7eb);
-      background: var(--line-account-surface-background, #fff);
-      transition: all 0.15s ease-in-out;
-    }
-
-    :host([variant="split"]) article:hover {
-      transform: none;
-      border-color: var(--line-account-primary-color, #06c755);
-      background: var(--line-account-muted-background, #f7f9fa);
-    }
-
-    :host([variant="split"][selected]) article {
-      border-color: var(--line-account-primary-color, #06c755);
-      background: var(--line-account-selected-bg, #e6fdf0);
-      box-shadow: 0 0 0 1px var(--line-account-primary-color, #06c755);
-    }
-
-    :host([variant="split"]) .card-header {
-      width: 100%;
-      gap: 0.75rem;
-    }
-
-    :host([variant="split"]) .metadata,
-    :host([variant="split"]) .badges,
-    :host([variant="split"]) .actions {
-      display: none;
-    }
-
-    @media (max-width: 48rem) {
-      :host([variant="list"]) article {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-      }
-      :host([variant="list"]) .card-header {
-        flex-direction: row;
-        width: 100%;
-        justify-content: space-between;
-      }
-      :host([variant="list"]) .metadata {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-      }
-      :host([variant="list"]) .badges {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+    .error-alert {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      background-color: #fef2f2;
+      color: #991b1b;
+      font-size: 0.75rem;
+      border: 1px solid #fca5a5;
     }
   `;
 
-  declare account: LineAccountView | undefined;
+  declare type: "provider" | "channel" | "liff";
+  declare item: ProviderView | ChannelView | LiffAppView | undefined;
   declare messages: LineAccountManagementMessages;
   declare disabled: boolean;
-  declare error: string | undefined;
-  declare variant: string;
   declare selected: boolean;
+  declare variant: "grid" | "split";
+  declare error: string | undefined;
 
   constructor() {
     super();
-    this.account = undefined;
+    this.type = "provider";
+    this.item = undefined;
     this.messages = defaultLineAccountManagementMessages;
     this.disabled = false;
-    this.error = undefined;
-    this.variant = "grid";
     this.selected = false;
+    this.variant = "grid";
+    this.error = undefined;
   }
 
-  protected render() {
-    const account = this.account;
-    if (account === undefined) return nothing;
+  #emitRequest(name: string): void {
+    if (this.disabled) return;
+    this.dispatchEvent(
+      new CustomEvent(name, {
+        bubbles: true,
+        composed: true,
+        detail: { type: this.type, item: this.item },
+      }),
+    );
+  }
 
-    const displayName = account.displayName?.trim() || account.name;
-    const initial = displayName.trim().charAt(0).toUpperCase();
-    const selectable = this.variant === "split";
+  get #isSelectable(): boolean {
+    return (
+      this.variant === "split" ||
+      this.type === "provider" ||
+      (this.type === "channel" && (this.item as ChannelView)?.channelType === "login")
+    );
+  }
+
+  #handleCardClick = (): void => {
+    if (this.#isSelectable) {
+      this.#emitRequest("line-account-select-request");
+    }
+  };
+
+  #handleEdit = (event: Event): void => {
+    event.stopPropagation();
+    this.#emitRequest("line-account-edit-request");
+  };
+
+  #handleDelete = (event: Event): void => {
+    event.stopPropagation();
+    this.#emitRequest("line-account-delete-request");
+  };
+
+  #handleToggle = (event: Event): void => {
+    event.stopPropagation();
+    if (this.disabled) return;
+    this.dispatchEvent(
+      new CustomEvent("line-account-toggle-request", {
+        bubbles: true,
+        composed: true,
+        detail: { type: this.type, item: this.item },
+      }),
+    );
+  };
+
+  #handleSync = (event: Event): void => {
+    event.stopPropagation();
+    if (this.disabled) return;
+    this.dispatchEvent(
+      new CustomEvent("line-account-sync-request", {
+        bubbles: true,
+        composed: true,
+        detail: { item: this.item },
+      }),
+    );
+  };
+
+  render() {
+    if (this.item === undefined) return html``;
+
+    const selectable = this.#isSelectable;
+    const selectClass = selectable ? "selectable" : "";
+    const selectedClass = this.selected ? "selected" : "";
+    const disabledClass = this.disabled ? "disabled" : "";
 
     return html`
       <article
+        class="card ${selectClass} ${selectedClass} ${disabledClass}"
         part="card"
-        tabindex=${selectable ? "0" : undefined}
-        role=${selectable ? "button" : undefined}
+        role=${selectable ? "button" : "article"}
+        tabindex=${selectable ? "0" : "-1"}
         aria-pressed=${selectable ? (this.selected ? "true" : "false") : undefined}
         @click=${this.#handleCardClick}
-        @keydown=${this.#handleCardKeyDown}
+        @keydown=${this.#handleKeydown}
       >
-        <div class="card-header">
-          <div class="identity">
-            ${account.pictureUrl
-              ? html`<img
-                  src=${account.pictureUrl}
-                  alt=${this.messages.profileImageAlt(displayName)}
-                />`
-              : html`<span class="initial" aria-hidden="true">${initial}</span>`}
-            <div>
-              <h3>${displayName}</h3>
-              ${account.basicId
-                ? html`<p style="color:var(--line-account-muted-color, #52606d);font-size:0.875rem">
-                    ${account.basicId}
-                  </p>`
-                : ""}
-            </div>
-          </div>
-          <button
-            class="switch ${account.isActive ? "checked" : ""}"
-            part="status-button"
-            role="switch"
-            aria-checked=${account.isActive ? "true" : "false"}
-            aria-label=${account.isActive
-              ? this.messages.deactivateAccount
-              : this.messages.activateAccount}
-            ?disabled=${this.disabled}
-            @click=${this.#requestToggle}
-          >
-            <span class="switch-thumb"></span>
-          </button>
-        </div>
-        <div class="metadata">
-          <span class="channel-id">${this.messages.channelIdLabel}: ${account.channelId}</span>
-        </div>
-        <div class="badges">
-          <span class="badge ${account.loginChannelId ? "configured" : "unconfigured"}">
-            ${account.loginChannelId
-              ? html`
-                  <svg
-                    class="badge-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  ${this.messages.loginConfigured}
-                `
-              : html`
-                  <svg
-                    class="badge-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  ${this.messages.loginNotConfigured}
-                `}
-          </span>
-          <span class="badge ${account.liffId ? "configured" : "unconfigured"}">
-            ${account.liffId
-              ? html`
-                  <svg
-                    class="badge-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  ${this.messages.liffConfigured}
-                `
-              : html`
-                  <svg
-                    class="badge-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  ${this.messages.liffNotConfigured}
-                `}
-          </span>
-        </div>
-        ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : ""}
-        <div class="actions">
-          <button
-            class="action-btn"
-            part="edit-button"
-            type="button"
-            ?disabled=${this.disabled}
-            @click=${this.#requestEdit}
-          >
-            ${this.messages.editAccount}
-          </button>
-          <button
-            class="action-btn danger"
-            part="delete-button"
-            type="button"
-            ?disabled=${this.disabled}
-            @click=${this.#requestDelete}
-          >
-            ${this.messages.deleteAccount}
-          </button>
-        </div>
+        ${this.type === "provider"
+          ? this.#renderProviderCard(this.item as ProviderView)
+          : this.type === "channel"
+            ? this.#renderChannelCard(this.item as ChannelView)
+            : this.#renderLiffCard(this.item as LiffAppView)}
+        ${this.error ? html`<div class="error-alert" role="alert">${this.error}</div>` : ""}
       </article>
     `;
   }
 
-  #handleCardClick = (event: Event): void => {
-    this.#selectAccount(event);
-  };
-
-  #handleCardKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-
-    event.preventDefault();
-    this.#selectAccount(event);
-  };
-
-  #selectAccount(event: Event): void {
-    if (this.variant !== "split") return;
-
-    const path = event.composedPath();
-    const isSwitch = path.some(
-      (el) => el instanceof HTMLElement && el.classList.contains("switch"),
-    );
-    if (isSwitch) return;
-
-    if (this.account !== undefined) {
-      this.dispatchEvent(
-        new CustomEvent("line-account-select-request", {
-          bubbles: true,
-          composed: true,
-          detail: { account: this.account },
-        }),
-      );
-    }
+  #renderProviderCard(provider: ProviderView) {
+    const initial = provider.name.trim().slice(0, 1).toUpperCase();
+    return html`
+      <div class="header">
+        <div class="avatar-placeholder avatar-provider" aria-hidden="true">${initial}</div>
+        <div class="identity">
+          <h3 class="name" part="name">${provider.name}</h3>
+          <p class="subtitle">Provider ID: ${provider.id}</p>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge badge-type">LINE Provider</span>
+      </div>
+      ${this.#renderCardActions()}
+    `;
   }
 
-  #requestEdit = (): void => {
-    if (this.account !== undefined)
-      this.dispatchEvent(requestEvent("line-account-edit-request", this.account));
-  };
+  #renderChannelCard(channel: ChannelView) {
+    const initial = channel.name.trim().slice(0, 1).toUpperCase();
+    const isMessaging = channel.channelType === "messaging";
 
-  #requestToggle = (): void => {
-    if (this.account !== undefined)
-      this.dispatchEvent(requestEvent("line-account-toggle-request", this.account));
-  };
+    let avatarHtml;
+    if (isMessaging && channel.pictureUrl) {
+      avatarHtml = html`<img
+        class="avatar"
+        src=${channel.pictureUrl}
+        alt=${channel.name}
+        part="avatar"
+      />`;
+    } else {
+      avatarHtml = html`<div
+        class="avatar-placeholder ${isMessaging
+          ? "avatar-channel-messaging"
+          : "avatar-channel-login"}"
+        aria-hidden="true"
+      >
+        ${initial}
+      </div>`;
+    }
 
-  #requestDelete = (): void => {
-    if (this.account !== undefined)
-      this.dispatchEvent(requestEvent("line-account-delete-request", this.account));
+    return html`
+      <div class="header">
+        ${avatarHtml}
+        <div class="identity">
+          <h3 class="name" part="name">${channel.name}</h3>
+          <p class="subtitle">Channel ID: ${channel.channelId}</p>
+        </div>
+        ${isMessaging && !this.disabled && this.variant !== "split"
+          ? html`
+              <div class="status-toggle">
+                <button
+                  class="switch ${channel.isActive ? "checked" : ""}"
+                  role="switch"
+                  part="status-button"
+                  aria-checked=${channel.isActive ? "true" : "false"}
+                  aria-label=${channel.isActive ? "Deactivate Channel" : "Activate Channel"}
+                  ?disabled=${this.disabled}
+                  @click=${this.#handleToggle}
+                >
+                  <span class="switch-thumb"></span>
+                </button>
+              </div>
+            `
+          : ""}
+      </div>
+      <div class="badges">
+        <span class="badge badge-type">${isMessaging ? "Messaging API" : "LINE Login"}</span>
+        ${isMessaging
+          ? html`<span class="badge ${channel.isActive ? "badge-status" : "badge-status-inactive"}"
+              >${channel.isActive ? this.messages.activeStatus : this.messages.inactiveStatus}</span
+            >`
+          : ""}
+      </div>
+      <div class="details">
+        <div class="details-row">
+          <span class="details-label">Record ID:</span>
+          <span class="details-value">${channel.id}</span>
+        </div>
+        ${isMessaging && channel.displayName
+          ? html`<div class="details-row">
+              <span class="details-label">Bot Display Name:</span>
+              <span class="details-value">${channel.displayName}</span>
+            </div>`
+          : ""}
+      </div>
+      ${this.#renderCardActions(isMessaging)}
+    `;
+  }
+
+  #renderLiffCard(liff: LiffAppView) {
+    return html`
+      <div class="header">
+        <div class="avatar-placeholder avatar-liff" aria-hidden="true">L</div>
+        <div class="identity">
+          <h3 class="name" part="name">${liff.liffId}</h3>
+          <p class="subtitle">LIFF App ID: ${liff.id}</p>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge badge-type">LIFF App</span>
+        <span class="badge badge-status">${liff.view.type.toUpperCase()}</span>
+      </div>
+      ${liff.description ? html`<p class="description">${liff.description}</p>` : ""}
+      <div class="details">
+        <div class="details-row">
+          <span class="details-label">URL:</span>
+          <span class="details-value" title=${liff.view.url}>${liff.view.url}</span>
+        </div>
+        <div class="details-row">
+          <span class="details-label">Login Channel Record ID:</span>
+          <span class="details-value">${liff.loginChannelId}</span>
+        </div>
+      </div>
+      ${this.#renderCardActions()}
+    `;
+  }
+
+  #renderCardActions(showSync = false) {
+    return html`
+      <div class="actions" part="actions">
+        ${showSync
+          ? html`<button
+              type="button"
+              part="sync-button"
+              ?disabled=${this.disabled}
+              @click=${this.#handleSync}
+            >
+              Sync
+            </button>`
+          : ""}
+        <button
+          type="button"
+          part="edit-button"
+          ?disabled=${this.disabled}
+          @click=${this.#handleEdit}
+        >
+          Edit
+        </button>
+        <button
+          class="danger-action"
+          type="button"
+          part="delete-button"
+          ?disabled=${this.disabled}
+          @click=${this.#handleDelete}
+        >
+          Delete
+        </button>
+      </div>
+    `;
+  }
+
+  #handleKeydown = (event: KeyboardEvent): void => {
+    if (!this.#isSelectable || this.disabled) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      this.#emitRequest("line-account-select-request");
+    }
   };
 }

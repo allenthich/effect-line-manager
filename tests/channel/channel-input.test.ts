@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Schema } from "effect";
 
-import { CreateChannelInput } from "../../src/account/domain.ts";
+import { CreateChannelInput } from "../../src/channel/domain.ts";
 
 describe("CreateChannelInput", () => {
   test("requires messaging credentials", () => {

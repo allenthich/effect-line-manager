@@ -6,12 +6,11 @@ import * as httpapi from "../../src/httpapi/index.ts";
 describe("HTTP API package boundary", () => {
   test("exports the optional HTTP API surface independently", () => {
     expect([
-      httpapi.LineAccountManagementApi,
-      httpapi.LineAccountManagementHandlers,
-      httpapi.LineAccountManagementApiLayer,
-      httpapi.makeLineAccountManagementClient,
-      httpapi.makeLineAccountManagementAdapter,
-      httpapi.lineAccountManagementOpenApi,
+      httpapi.LineApi,
+      httpapi.LineApiLayer,
+      httpapi.makeLineClient,
+      httpapi.makeLineProviderManagementAdapter,
+      httpapi.lineOpenApi,
     ]).not.toContain(undefined);
   });
 

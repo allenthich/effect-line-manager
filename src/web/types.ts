@@ -1,40 +1,81 @@
+import type { LineProviderManagementAdapter } from "../adapter/types.ts";
 import type {
-  CreateLineAccountInput,
-  LineAccountView,
-  UpdateLineAccountInput,
-} from "../account/domain.ts";
+  ProviderView,
+  CreateProviderInput,
+  UpdateProviderInput,
+  ProviderListPage,
+} from "../provider/domain.ts";
+import type {
+  ChannelView,
+  CreateChannelInput,
+  UpdateChannelInput,
+  ChannelListPage,
+} from "../channel/domain.ts";
+import type {
+  LiffAppView,
+  CreateLiffAppInput,
+  UpdateLiffAppInput,
+  LiffAppListPage,
+} from "../liff/domain.ts";
 
 export type {
-  CreateLineAccountInput,
-  LineAccountManagementAdapter,
-  LineAccountListPage,
-  LineAccountView,
-  UpdateLineAccountInput,
-} from "../account/domain.ts";
+  LineProviderManagementAdapter,
+  ProviderView,
+  ChannelView,
+  LiffAppView,
+  CreateProviderInput,
+  UpdateProviderInput,
+  CreateChannelInput,
+  UpdateChannelInput,
+  CreateLiffAppInput,
+  UpdateLiffAppInput,
+  ProviderListPage,
+  ChannelListPage,
+  LiffAppListPage,
+};
 
 export type LineAccountFormMode = "create" | "edit";
 
-export type LineAccountOperation = "list" | "create" | "update" | "toggle" | "delete";
+export type LineAccountFormType = "provider" | "channel" | "liff";
+
+export type LineAccountOperation =
+  | "listProviders"
+  | "createProvider"
+  | "updateProvider"
+  | "deleteProvider"
+  | "listChannels"
+  | "getChannel"
+  | "createChannel"
+  | "updateChannel"
+  | "deleteChannel"
+  | "listLiffApps"
+  | "getLiffApp"
+  | "createLiffApp"
+  | "updateLiffApp"
+  | "deleteLiffApp"
+  | "syncChannel";
 
 export interface LineAccountRequestDetail {
-  readonly account: LineAccountView;
+  readonly type: LineAccountFormType;
+  readonly item: ProviderView | ChannelView | LiffAppView;
 }
 
 export type LineAccountFormSubmitDetail =
-  | { readonly mode: "create"; readonly input: CreateLineAccountInput }
-  | { readonly mode: "edit"; readonly input: UpdateLineAccountInput };
-
-export interface LineAccountCreatedEventDetail {
-  readonly account: LineAccountView;
-}
-
-export interface LineAccountUpdatedEventDetail {
-  readonly account: LineAccountView;
-}
-
-export interface LineAccountDeletedEventDetail {
-  readonly id: string;
-}
+  | {
+      readonly type: "provider";
+      readonly mode: LineAccountFormMode;
+      readonly input: CreateProviderInput | UpdateProviderInput;
+    }
+  | {
+      readonly type: "channel";
+      readonly mode: LineAccountFormMode;
+      readonly input: CreateChannelInput | UpdateChannelInput;
+    }
+  | {
+      readonly type: "liff";
+      readonly mode: LineAccountFormMode;
+      readonly input: CreateLiffAppInput | UpdateLiffAppInput;
+    };
 
 export interface LineAccountErrorEventDetail {
   readonly operation: LineAccountOperation;

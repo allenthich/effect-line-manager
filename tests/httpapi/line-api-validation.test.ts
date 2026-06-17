@@ -2,15 +2,18 @@ import { describe, expect, test } from "vite-plus/test";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 
+import { type ProviderListPage } from "../../src/provider/domain.ts";
+import { type ChannelListPage } from "../../src/channel/domain.ts";
+import { type LiffAppListPage } from "../../src/liff/domain.ts";
 import {
-  type ChannelListPage,
-  type LiffAppListPage,
-  type ProviderListPage,
-} from "../../src/account/domain.ts";
+  LineProviderManagement,
+  type LineProviderManagementService,
+} from "../../src/provider/service.ts";
 import {
-  LineAccountManagement,
-  type LineAccountManagementService,
-} from "../../src/account/management.ts";
+  LineChannelManagement,
+  type LineChannelManagementService,
+} from "../../src/channel/service.ts";
+import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 import { LineApiLayer } from "../../src/httpapi/handlers.ts";
 
 const emptyProviderPage: ProviderListPage = {
@@ -43,36 +46,41 @@ const emptyLiffPage: LiffAppListPage = {
   },
 };
 
-const makeManagement = (
-  overrides: Partial<LineAccountManagementService>,
-): LineAccountManagementService => ({
+const defaultProviderMgmt: LineProviderManagementService = {
   listProviders: Effect.succeed(emptyProviderPage),
-  getProvider: () => Effect.die("unused in line api validation test"),
-  createProvider: () => Effect.die("unused in line api validation test"),
-  updateProvider: () => Effect.die("unused in line api validation test"),
-  deleteProvider: () => Effect.die("unused in line api validation test"),
-  listChannels: () => Effect.succeed(emptyChannelPage),
-  getChannel: () => Effect.die("unused in line api validation test"),
-  findChannelByBotUserId: () => Effect.die("unused in line api validation test"),
-  createChannel: () => Effect.die("unused in line api validation test"),
-  updateChannel: () => Effect.die("unused in line api validation test"),
-  deleteChannel: () => Effect.die("unused in line api validation test"),
-  listLiffApps: () => Effect.succeed(emptyLiffPage),
-  getLiffApp: () => Effect.die("unused in line api validation test"),
-  createLiffApp: () => Effect.die("unused in line api validation test"),
-  updateLiffApp: () => Effect.die("unused in line api validation test"),
-  deleteLiffApp: () => Effect.die("unused in line api validation test"),
-  list: Effect.die("unused in line api validation test"),
-  create: () => Effect.die("unused in line api validation test"),
-  update: () => Effect.die("unused in line api validation test"),
-  delete: () => Effect.die("unused in line api validation test"),
-  ...overrides,
-});
+  getProvider: () => Effect.die("unused"),
+  createProvider: () => Effect.die("unused"),
+  updateProvider: () => Effect.die("unused"),
+  deleteProvider: () => Effect.die("unused"),
+};
 
-const makeWebHandler = (management: LineAccountManagementService) =>
+const defaultChannelMgmt: LineChannelManagementService = {
+  listChannels: () => Effect.succeed(emptyChannelPage),
+  getChannel: () => Effect.die("unused"),
+  findChannelByBotUserId: () => Effect.die("unused"),
+  createChannel: () => Effect.die("unused"),
+  updateChannel: () => Effect.die("unused"),
+  deleteChannel: () => Effect.die("unused"),
+};
+
+const defaultLiffMgmt: LineLiffManagementService = {
+  listLiffApps: () => Effect.succeed(emptyLiffPage),
+  getLiffApp: () => Effect.die("unused"),
+  createLiffApp: () => Effect.die("unused"),
+  updateLiffApp: () => Effect.die("unused"),
+  deleteLiffApp: () => Effect.die("unused"),
+};
+
+const makeWebHandler = (
+  providerMgmt: LineProviderManagementService,
+  channelMgmt: LineChannelManagementService,
+  liffMgmt: LineLiffManagementService,
+) =>
   HttpRouter.toWebHandler(
     LineApiLayer.pipe(
-      Layer.provide(Layer.succeed(LineAccountManagement)(management)),
+      Layer.provide(Layer.succeed(LineProviderManagement)(providerMgmt)),
+      Layer.provide(Layer.succeed(LineChannelManagement)(channelMgmt)),
+      Layer.provide(Layer.succeed(LineLiffManagement)(liffMgmt)),
       Layer.provide(HttpServer.layerServices),
     ),
     { disableLogger: true },
@@ -82,13 +90,16 @@ describe("LineApi query validation", () => {
   test("rejects an empty providerId before calling listChannels", async () => {
     const calls: Array<unknown> = [];
     const web = makeWebHandler(
-      makeManagement({
+      defaultProviderMgmt,
+      {
+        ...defaultChannelMgmt,
         listChannels: (providerId) =>
           Effect.sync(() => {
             calls.push(providerId);
             return emptyChannelPage;
           }),
-      }),
+      },
+      defaultLiffMgmt,
     );
 
     const response = await web.handler(new Request("http://localhost/line-channels?providerId="));
@@ -99,15 +110,14 @@ describe("LineApi query validation", () => {
 
   test("rejects an empty channelId before calling listLiffApps", async () => {
     const calls: Array<unknown> = [];
-    const web = makeWebHandler(
-      makeManagement({
-        listLiffApps: (channelId) =>
-          Effect.sync(() => {
-            calls.push(channelId);
-            return emptyLiffPage;
-          }),
-      }),
-    );
+    const web = makeWebHandler(defaultProviderMgmt, defaultChannelMgmt, {
+      ...defaultLiffMgmt,
+      listLiffApps: (channelId) =>
+        Effect.sync(() => {
+          calls.push(channelId);
+          return emptyLiffPage;
+        }),
+    });
 
     const response = await web.handler(new Request("http://localhost/line-liff-apps?channelId="));
 

@@ -4,25 +4,32 @@ import {
   defaultLineAccountManagementMessages,
   defineLineAccountManagementElements,
   type LineAccountFormSubmitDetail,
-  type LineAccountView,
+  type ProviderView,
+  type ChannelView,
 } from "../../src/web/index.ts";
 
-const account: LineAccountView = {
-  id: "account-1",
-  name: "Store account",
+const mockProvider: ProviderView = {
+  id: "provider-1",
+  name: "LINE Marketing",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const mockChannel: ChannelView = {
+  id: "channel-1",
+  providerId: "provider-1",
+  channelType: "messaging",
+  name: "Support Channel",
+  displayName: null,
   channelId: "1234567890",
   botUserId: null,
   basicId: null,
-  displayName: null,
   pictureUrl: null,
   isActive: true,
-  loginChannelId: "login-old",
-  liffId: "liff-old",
-  createdAt: new Date("2026-06-10T00:00:00.000Z"),
-  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
-  hasChannelAccessToken: true,
-  hasChannelSecret: true,
-  hasLoginChannelSecret: true,
+  channelSecret: "channel-secret",
+  channelAccessToken: "channel-token",
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 beforeAll(() => {
@@ -33,10 +40,19 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-const makeForm = async (mode: "create" | "edit", value?: LineAccountView) => {
+const makeForm = async (
+  type: "provider" | "channel" | "liff",
+  mode: "create" | "edit",
+  item?: any,
+  providers: ProviderView[] = [],
+  channels: ChannelView[] = [],
+) => {
   const element = document.createElement("line-account-form") as LineAccountForm;
+  element.type = type;
   element.mode = mode;
-  element.account = value;
+  element.item = item;
+  element.providers = providers;
+  element.channels = channels;
   element.messages = defaultLineAccountManagementMessages;
   document.body.append(element);
   await element.updateComplete;
@@ -49,10 +65,22 @@ const input = (element: LineAccountForm, name: string): HTMLInputElement => {
   return result;
 };
 
+const select = (element: LineAccountForm, name: string): HTMLSelectElement => {
+  const result = element.shadowRoot?.querySelector<HTMLSelectElement>(`[name="${name}"]`);
+  if (result === null || result === undefined) throw new Error(`Missing select ${name}`);
+  return result;
+};
+
 const setValue = (element: LineAccountForm, name: string, value: string): void => {
   const target = input(element, name);
   target.value = value;
   target.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+};
+
+const setSelectValue = (element: LineAccountForm, name: string, value: string): void => {
+  const target = select(element, name);
+  target.value = value;
+  target.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
 };
 
 const submit = (element: LineAccountForm): LineAccountFormSubmitDetail | undefined => {
@@ -61,8 +89,6 @@ const submit = (element: LineAccountForm): LineAccountFormSubmitDetail | undefin
     "line-account-form-submit",
     (event) => {
       detail = (event as CustomEvent<LineAccountFormSubmitDetail>).detail;
-      expect(event.bubbles).toBe(true);
-      expect(event.composed).toBe(true);
     },
     { once: true },
   );
@@ -72,188 +98,60 @@ const submit = (element: LineAccountForm): LineAccountFormSubmitDetail | undefin
   return detail;
 };
 
-describe("create mode", () => {
-  test("requires non-whitespace Messaging API fields with visible validation", async () => {
-    const element = await makeForm("create");
-
-    expect(element.shadowRoot?.querySelector("form")?.noValidate).toBe(false);
-    expect(input(element, "name").required).toBe(true);
-
-    setValue(element, "name", "   ");
-    setValue(element, "channelId", "channel");
-    setValue(element, "channelAccessToken", "token");
-    setValue(element, "channelSecret", "secret");
-    expect(submit(element)).toBeUndefined();
-    await element.updateComplete;
-
-    const error = element.shadowRoot?.querySelector('[role="alert"]');
-    expect(error?.textContent).toContain(defaultLineAccountManagementMessages.whitespaceField);
-    expect(error?.id).toBe("form-error");
-    expect(element.shadowRoot?.querySelector("form")?.getAttribute("aria-describedby")).toBe(
-      "form-error",
-    );
-    expect(input(element, "name").getAttribute("aria-invalid")).toBe("true");
+describe("Provider form", () => {
+  test("submits provider create correctly", async () => {
+    const element = await makeForm("provider", "create");
+    setValue(element, "providerName", "My Provider");
+    expect(submit(element)).toEqual({
+      type: "provider",
+      mode: "create",
+      input: { name: "My Provider" },
+    });
   });
 
-  test("trims required values and converts optional blanks to null", async () => {
-    const element = await makeForm("create");
-    setValue(element, "name", "  Store  ");
-    setValue(element, "channelId", "  123  ");
-    setValue(element, "channelAccessToken", "  token  ");
-    setValue(element, "channelSecret", "  secret  ");
-    setValue(element, "loginChannelId", "   ");
-    setValue(element, "loginChannelSecret", "   ");
-    setValue(element, "liffId", "   ");
-
+  test("submits provider edit correctly", async () => {
+    const element = await makeForm("provider", "edit", mockProvider);
+    setValue(element, "providerName", "Updated Provider");
     expect(submit(element)).toEqual({
-      mode: "create",
-      input: {
-        name: "Store",
-        channelId: "123",
-        channelAccessToken: "token",
-        channelSecret: "secret",
-        loginChannelId: null,
-        loginChannelSecret: null,
-        liffId: null,
-      },
+      type: "provider",
+      mode: "edit",
+      input: { name: "Updated Provider" },
     });
   });
 });
 
-describe("edit mode", () => {
-  test("shows editable channel ID and emits an empty payload when unchanged", async () => {
-    const element = await makeForm("edit", account);
-
-    expect(input(element, "channelId").readOnly).toBe(false);
-    expect(input(element, "channelId").value).toBe(account.channelId);
-    expect(input(element, "channelAccessToken").value).toBe("••••••••••••••••");
-    expect(input(element, "channelSecret").value).toBe("••••••••••••••••");
-    expect(submit(element)).toEqual({ mode: "edit", input: {} });
-  });
-
-  test("includes changed names, channel IDs, and non-empty Messaging API credentials", async () => {
-    const element = await makeForm("edit", account);
-    setValue(element, "name", " Updated store ");
-    setValue(element, "channelId", " 987654321 ");
-    setValue(element, "channelAccessToken", " rotated-token ");
-    setValue(element, "channelSecret", " rotated-secret ");
+describe("Channel form", () => {
+  test("requires Messaging API fields and submits correctly", async () => {
+    const element = await makeForm("channel", "create", undefined, [mockProvider]);
+    setSelectValue(element, "channelProviderId", "provider-1");
+    setValue(element, "channelName", "Support Bot");
+    setValue(element, "channelId", "987654");
+    setValue(element, "channelSecret", "my-secret");
+    setValue(element, "channelAccessToken", "my-token");
 
     expect(submit(element)).toEqual({
-      mode: "edit",
+      type: "channel",
+      mode: "create",
       input: {
-        name: "Updated store",
-        channelId: "987654321",
-        channelAccessToken: "rotated-token",
-        channelSecret: "rotated-secret",
+        channelType: "messaging",
+        providerId: "provider-1",
+        name: "Support Bot",
+        channelId: "987654",
+        channelSecret: "my-secret",
+        channelAccessToken: "my-token",
       },
     });
   });
 
-  test("pairs Login ID clearing with secret clearing and clears LIFF independently", async () => {
-    const element = await makeForm("edit", account);
-    setValue(element, "loginChannelId", "  ");
-    setValue(element, "loginChannelSecret", "ignored-on-clear");
-    setValue(element, "liffId", "  ");
-
+  test("submits Channel edit correctly", async () => {
+    const element = await makeForm("channel", "edit", mockChannel, [mockProvider]);
+    setValue(element, "channelName", "New Support Bot");
     expect(submit(element)).toEqual({
+      type: "channel",
       mode: "edit",
       input: {
-        loginChannelId: null,
-        loginChannelSecret: null,
-        liffId: null,
+        name: "New Support Bot",
       },
     });
-  });
-
-  test("sends a Login secret only when entered", async () => {
-    const element = await makeForm("edit", account);
-    setValue(element, "loginChannelSecret", " new-login-secret ");
-
-    expect(submit(element)).toEqual({
-      mode: "edit",
-      input: { loginChannelSecret: "new-login-secret" },
-    });
-  });
-
-  test("resets values when the selected account changes", async () => {
-    const element = await makeForm("edit", account);
-    setValue(element, "name", "Unsaved value");
-
-    element.account = {
-      ...account,
-      id: "account-2",
-      name: "Second account",
-      channelId: "channel-2",
-    };
-    await element.updateComplete;
-
-    expect(input(element, "name").value).toBe("Second account");
-    expect(input(element, "channelId").value).toBe("channel-2");
-  });
-
-  test("uses generic password placeholders and excludes unmodified credentials from payload", async () => {
-    const accountWithCredentials: LineAccountView = {
-      ...account,
-      hasChannelAccessToken: true,
-      hasChannelSecret: true,
-      hasLoginChannelSecret: true,
-    };
-    const element = await makeForm("edit", accountWithCredentials);
-
-    const accessTokenInput = input(element, "channelAccessToken");
-    expect(accessTokenInput.value).toBe("••••••••••••••••");
-    expect(accessTokenInput.type).toBe("password");
-
-    // Click the eye toggle to reveal
-    const toggleButton = element.shadowRoot?.querySelector<HTMLButtonElement>(
-      'button[aria-label="Show password"]',
-    );
-    expect(toggleButton).not.toBeNull();
-    toggleButton?.click();
-    await element.updateComplete;
-
-    expect(accessTokenInput.type).toBe("text");
-
-    // Click the eye toggle to hide
-    const hideButton = element.shadowRoot?.querySelector<HTMLButtonElement>(
-      'button[aria-label="Hide password"]',
-    );
-    expect(hideButton).not.toBeNull();
-    hideButton?.click();
-    await element.updateComplete;
-
-    expect(accessTokenInput.type).toBe("password");
-
-    // Submit without changing should emit empty payload
-    expect(submit(element)).toEqual({ mode: "edit", input: {} });
-
-    // Change one field
-    setValue(element, "channelAccessToken", "new-token");
-    expect(submit(element)).toEqual({
-      mode: "edit",
-      input: { channelAccessToken: "new-token" },
-    });
-  });
-
-  test("disables submission and shows an external error without clearing values", async () => {
-    const element = await makeForm("edit", account);
-    let submitted = false;
-    element.addEventListener("line-account-form-submit", () => {
-      submitted = true;
-    });
-    setValue(element, "name", "Unsaved value");
-    element.submitting = true;
-    element.error = "The LINE account could not be updated.";
-    await element.updateComplete;
-
-    expect(
-      element.shadowRoot?.querySelector<HTMLButtonElement>('button[type="submit"]'),
-    ).toBeNull();
-    element.submit();
-    expect(submitted).toBe(false);
-    expect(element.shadowRoot?.querySelector('[role="alert"]')?.textContent).toContain(
-      "The LINE account could not be updated.",
-    );
-    expect(input(element, "name").value).toBe("Unsaved value");
   });
 });

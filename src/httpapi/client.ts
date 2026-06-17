@@ -1,13 +1,11 @@
 import { Effect, Schema } from "effect";
 import { HttpApi, HttpApiClient, OpenApi } from "effect/unstable/httpapi";
 import type { HttpClient } from "effect/unstable/http";
-import {
-  LineChannelRecordId,
-  LineLiffRecordId,
-  LineProviderId,
-  type LineProviderManagementAdapter,
-} from "../account/domain.ts";
-import { LineApi, LineAccountManagementApi } from "./api.ts";
+import { LineProviderId } from "../provider/domain.ts";
+import { LineChannelRecordId } from "../channel/domain.ts";
+import { LineLiffRecordId } from "../liff/domain.ts";
+import { type LineProviderManagementAdapter } from "../adapter/types.ts";
+import { LineApi } from "./api.ts";
 
 // ── New API Client ────────────────────────────────────────────────────
 
@@ -155,55 +153,3 @@ export const makeLineProviderManagementAdapter = (
 // ── OpenAPI spec ──────────────────────────────────────────────────────
 
 export const lineOpenApi = OpenApi.fromApi(LineApi);
-
-// ═══════════════════════════════════════════════════════════════════════
-// DEPRECATED — kept for backward compatibility
-// ═══════════════════════════════════════════════════════════════════════
-
-import type { LineAccountManagementAdapter } from "../account/domain.ts";
-
-type LineAccountManagementApiGroups =
-  typeof LineAccountManagementApi extends HttpApi.HttpApi<string, infer Groups> ? Groups : never;
-
-/** @deprecated Use {@link LineClient} instead. */
-export type LineAccountManagementClient = HttpApiClient.Client<LineAccountManagementApiGroups>;
-
-/** @deprecated Use {@link LineClientOptions} instead. */
-export interface LineAccountManagementClientOptions {
-  readonly baseUrl?: URL | string | undefined;
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
-  readonly transformResponse?:
-    | ((
-        effect: Effect.Effect<unknown, unknown, unknown>,
-      ) => Effect.Effect<unknown, unknown, unknown>)
-    | undefined;
-}
-
-/** @deprecated Use {@link makeLineClient} instead. */
-export const makeLineAccountManagementClient = (options?: LineAccountManagementClientOptions) =>
-  HttpApiClient.make(LineAccountManagementApi, options);
-
-/** @deprecated Use {@link makeLineProviderManagementAdapter} instead. */
-export const makeLineAccountManagementAdapter = (
-  client: LineAccountManagementClient,
-): LineAccountManagementAdapter => ({
-  list: () => Effect.runPromise(client.lineAccounts.list()),
-  create: (input) => Effect.runPromise(client.lineAccounts.create({ payload: input })),
-  update: (id, input) =>
-    Effect.runPromise(
-      decodeRecordId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineAccounts.update({ params: { id: recordId }, payload: input }),
-        ),
-      ),
-    ),
-  delete: (id) =>
-    Effect.runPromise(
-      decodeRecordId(id).pipe(
-        Effect.flatMap((recordId) => client.lineAccounts.delete({ params: { id: recordId } })),
-      ),
-    ),
-});
-
-/** @deprecated Use {@link lineOpenApi} instead. */
-export const lineAccountManagementOpenApi = OpenApi.fromApi(LineAccountManagementApi);

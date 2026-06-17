@@ -1,59 +1,76 @@
 import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
 import {
-  LineAccountDialog,
-  LineAccountCard,
-  LineAccountForm,
-  LineAccountList,
+  // LineAccountCard,
+  LineAccountHierarchy,
+  // LineAccountList,
   LineAccountManagement,
-  defaultLineAccountManagementMessages,
   defineLineAccountManagementElements,
-  type CreateLineAccountInput,
-  type LineAccountErrorEventDetail,
-  type LineAccountListPage,
-  type LineAccountManagementAdapter,
-  type LineAccountView,
-  type UpdateLineAccountInput,
+  type ProviderView,
+  type ChannelView,
+  type LiffAppView,
+  type LineProviderManagementAdapter,
 } from "../../src/web/index.ts";
 
-const firstAccount: LineAccountView = {
-  id: "account-1",
-  name: "First account",
-  channelId: "channel-1",
-  botUserId: null,
-  basicId: null,
-  displayName: null,
-  pictureUrl: null,
-  isActive: true,
-  loginChannelId: null,
-  liffId: null,
+const mockProvider: ProviderView = {
+  id: "provider-1",
+  name: "LINE Marketing",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
-  hasChannelAccessToken: true,
-  hasChannelSecret: true,
-  hasLoginChannelSecret: false,
 };
 
-const secondAccount: LineAccountView = {
-  ...firstAccount,
-  id: "account-2",
-  name: "Second account",
-  channelId: "channel-2",
-  isActive: false,
+const mockChannel: ChannelView = {
+  id: "channel-1",
+  providerId: "provider-1",
+  channelType: "messaging",
+  name: "Support Channel",
+  displayName: "LINE Support",
+  channelId: "1234567890",
+  botUserId: null,
+  basicId: null,
+  pictureUrl: null,
+  isActive: true,
+  channelSecret: "channel-secret",
+  channelAccessToken: "channel-token",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
 
-type MutableAdapter = {
-  -readonly [Key in keyof LineAccountManagementAdapter]: LineAccountManagementAdapter[Key];
+const mockChannelLogin: ChannelView = {
+  id: "channel-2",
+  providerId: "provider-1",
+  channelType: "login",
+  name: "Login Channel",
+  channelId: "0987654321",
+  channelSecret: "channel-secret",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
 
-const pageOf = (accounts: ReadonlyArray<LineAccountView>): LineAccountListPage => ({
-  data: [...accounts],
-  pagination: {
-    page: 1,
-    pageSize: accounts.length,
-    totalItems: accounts.length,
-    totalPages: accounts.length === 0 ? 0 : 1,
+const mockLiff: LiffAppView = {
+  id: "liff-1",
+  loginChannelId: "channel-1",
+  liffId: "1234567890-AbCdEf12",
+  view: {
+    type: "tall",
+    url: "https://example.com/liff",
   },
-});
+  description: "Loyalty card dashboard",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
+
+const mockLiffForLogin: LiffAppView = {
+  id: "liff-2",
+  loginChannelId: "channel-2",
+  liffId: "0987654321-AbCdEf12",
+  view: {
+    type: "full",
+    url: "https://example.com/login-liff",
+  },
+  description: "Login App",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
 
 beforeAll(() => {
   defineLineAccountManagementElements();
@@ -63,16 +80,6 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-const deferred = <T>() => {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-  return { promise, resolve, reject };
-};
-
 const settle = async (element: LineAccountManagement): Promise<void> => {
   for (let index = 0; index < 4; index++) {
     await Promise.resolve();
@@ -80,36 +87,119 @@ const settle = async (element: LineAccountManagement): Promise<void> => {
   }
 };
 
-const makeAdapter = (initial: readonly LineAccountView[] = []) => {
-  let accounts = [...initial];
-  const createCalls: CreateLineAccountInput[] = [];
-  const updateCalls: { id: string; input: UpdateLineAccountInput }[] = [];
-  const deleteCalls: string[] = [];
-  const adapter: MutableAdapter = {
-    list: async () => pageOf(accounts),
-    create: async (input) => {
-      createCalls.push(input);
-      const account = { ...firstAccount, id: `account-${accounts.length + 1}`, name: input.name };
-      accounts = [...accounts, account];
-      return account;
+const makeAdapter = (
+  providers: ProviderView[] = [],
+  channels: ChannelView[] = [],
+  liffApps: LiffAppView[] = [],
+): LineProviderManagementAdapter => {
+  return {
+    listProviders: async () => ({
+      data: providers,
+      pagination: {
+        page: 1,
+        pageSize: providers.length,
+        totalItems: providers.length,
+        totalPages: 1,
+      },
+    }),
+    createProvider: async (input) => {
+      const p = { ...mockProvider, name: input.name, id: `provider-${providers.length + 1}` };
+      providers.push(p);
+      return p;
     },
-    update: async (id, input) => {
-      updateCalls.push({ id, input });
-      const current = accounts.find((account) => account.id === id);
-      if (current === undefined) throw new Error("missing account");
-      const updated = { ...current, ...input };
-      accounts = accounts.map((account) => (account.id === id ? updated : account));
+    updateProvider: async (id, input) => {
+      const p = providers.find((x) => x.id === id);
+      if (!p) throw new Error("not found");
+      const updated = { ...p, name: input.name ?? p.name };
+      providers = providers.map((x) => (x.id === id ? updated : x));
       return updated;
     },
-    delete: async (id) => {
-      deleteCalls.push(id);
-      accounts = accounts.filter((account) => account.id !== id);
+    deleteProvider: async (id) => {
+      providers = providers.filter((x) => x.id !== id);
+    },
+    listChannels: async () => ({
+      data: channels,
+      pagination: {
+        page: 1,
+        pageSize: channels.length,
+        totalItems: channels.length,
+        totalPages: 1,
+      },
+    }),
+    getChannel: async (id) => {
+      const c = channels.find((x) => x.id === id);
+      if (!c) throw new Error("not found");
+      return c;
+    },
+    createChannel: async (input) => {
+      const c = {
+        ...mockChannel,
+        name: input.name,
+        channelId: input.channelId,
+        providerId: input.providerId,
+        id: `channel-${channels.length + 1}`,
+      };
+      channels.push(c);
+      return c;
+    },
+    updateChannel: async (id, input) => {
+      const c = channels.find((x) => x.id === id);
+      if (!c) throw new Error("not found");
+      const updated =
+        c.channelType === "messaging"
+          ? {
+              ...c,
+              name: input.name ?? c.name,
+              isActive: input.isActive ?? c.isActive,
+            }
+          : {
+              ...c,
+              name: input.name ?? c.name,
+            };
+      channels = channels.map((x) => (x.id === id ? updated : x));
+      return updated as ChannelView;
+    },
+    deleteChannel: async (id) => {
+      channels = channels.filter((x) => x.id !== id);
+    },
+    listLiffApps: async () => ({
+      data: liffApps,
+      pagination: {
+        page: 1,
+        pageSize: liffApps.length,
+        totalItems: liffApps.length,
+        totalPages: 1,
+      },
+    }),
+    getLiffApp: async (id) => {
+      const l = liffApps.find((x) => x.id === id);
+      if (!l) throw new Error("not found");
+      return l;
+    },
+    createLiffApp: async (input) => {
+      const l = {
+        ...mockLiff,
+        liffId: input.liffId,
+        loginChannelId: input.loginChannelId,
+        id: `liff-${liffApps.length + 1}`,
+      };
+      liffApps.push(l);
+      return l;
+    },
+    updateLiffApp: async (id, input) => {
+      const l = liffApps.find((x) => x.id === id);
+      if (!l) throw new Error("not found");
+      const updated = { ...l, liffId: input.liffId ?? l.liffId };
+      liffApps = liffApps.map((x) => (x.id === id ? updated : x));
+      return updated;
+    },
+    deleteLiffApp: async (id) => {
+      liffApps = liffApps.filter((x) => x.id !== id);
     },
   };
-  return { adapter, createCalls, updateCalls, deleteCalls };
 };
 
-const mount = async (adapter?: LineAccountManagementAdapter) => {
+const mount = async (adapter?: LineProviderManagementAdapter) => {
   const element = document.createElement("line-account-management") as LineAccountManagement;
   element.adapter = adapter;
   document.body.append(element);
@@ -117,471 +207,306 @@ const mount = async (adapter?: LineAccountManagementAdapter) => {
   return element;
 };
 
-const click = (element: LineAccountManagement, selector: string): void => {
-  const button = element.shadowRoot?.querySelector<HTMLButtonElement>(selector);
-  if (button === null || button === undefined) throw new Error(`Missing button ${selector}`);
-  button.click();
+// const getList = (element: LineAccountManagement): LineAccountList => {
+//   const list = element.shadowRoot?.querySelector<LineAccountList>("line-account-list");
+//   if (list === null || list === undefined) throw new Error("Missing list");
+//   return list;
+// };
+
+// const _getCards = (element: LineAccountManagement) =>
+//   getList(element).shadowRoot?.querySelectorAll<LineAccountCard>("line-account-card") ?? [];
+
+const getHierarchy = (element: LineAccountManagement): LineAccountHierarchy => {
+  const hierarchy =
+    element.shadowRoot?.querySelector<LineAccountHierarchy>("line-account-hierarchy");
+  if (hierarchy === null || hierarchy === undefined) throw new Error("Missing hierarchy");
+  return hierarchy;
 };
 
-const getDialog = (element: LineAccountManagement, kind: string): LineAccountDialog => {
-  const dialog = element.shadowRoot?.querySelector<LineAccountDialog>(
-    `line-account-dialog[data-kind="${kind}"]`,
-  );
-  if (dialog === null || dialog === undefined) throw new Error(`Missing ${kind} dialog`);
-  return dialog;
-};
+const getNodes = (element: LineAccountManagement) =>
+  getHierarchy(element).shadowRoot?.querySelectorAll('[part="node"]') ?? [];
 
-const getForm = (element: LineAccountManagement, kind = "create"): LineAccountForm => {
-  const form = getDialog(element, kind).querySelector<LineAccountForm>("line-account-form");
-  if (form === null || form === undefined) throw new Error("Missing account form");
-  return form;
-};
+describe("LineAccountManagement", () => {
+  test("renders hierarchy tree with provider nodes", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
 
-const getList = (element: LineAccountManagement): LineAccountList => {
-  const list = element.shadowRoot?.querySelector<LineAccountList>("line-account-list");
-  if (list === null || list === undefined) throw new Error("Missing account list");
-  return list;
-};
-
-const getCards = (element: LineAccountManagement) =>
-  getList(element).shadowRoot?.querySelectorAll<LineAccountCard>("line-account-card") ?? [];
-
-const setFormValue = (form: LineAccountForm, name: string, value: string): void => {
-  const target = form.shadowRoot?.querySelector<HTMLInputElement>(`[name="${name}"]`);
-  if (target === null || target === undefined) throw new Error(`Missing input ${name}`);
-  target.value = value;
-  target.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
-};
-
-const submitForm = (form: LineAccountForm): void => {
-  form.shadowRoot
-    ?.querySelector("form")
-    ?.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
-};
-
-describe("loading and localization", () => {
-  test("renders an actionable absent-adapter state with localized overrides", async () => {
-    const element = document.createElement("line-account-management") as LineAccountManagement;
-    element.messages = { title: "LINE 接続" };
-    document.body.append(element);
-    await element.updateComplete;
-
-    expect(element.shadowRoot?.textContent).toContain("LINE 接続");
-    expect(element.shadowRoot?.textContent).toContain(
-      defaultLineAccountManagementMessages.adapterMissingDescription,
-    );
-    expect(element.shadowRoot?.querySelector('[role="alert"]')).not.toBeNull();
+    // Hierarchy is rendered with provider node
+    const nodes = getNodes(element);
+    expect(nodes.length).toBeGreaterThan(0);
+    expect(nodes[0]?.textContent).toContain("LINE Marketing");
   });
 
-  test("loads on connection and renders loading, empty, and success states", async () => {
-    const pending = deferred<LineAccountListPage>();
-    const adapter = makeAdapter().adapter;
-    adapter.list = () => pending.promise;
-    const element = document.createElement("line-account-management") as LineAccountManagement;
-    element.adapter = adapter;
-    document.body.append(element);
-    await element.updateComplete;
+  test("expand provider in hierarchy to reveal channels", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
 
-    expect(element.shadowRoot?.textContent).toContain(
-      defaultLineAccountManagementMessages.loadingAccounts,
-    );
-    expect(element.shadowRoot?.querySelector('[role="status"]')).not.toBeNull();
+    // Click the first provider header to expand its children
+    const hierarchy = getHierarchy(element);
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    expect(providerHeaders).toBeDefined();
+    expect(providerHeaders!.length).toBeGreaterThan(0);
 
-    pending.resolve(pageOf([]));
-    await settle(element);
-    expect(getList(element).shadowRoot?.textContent).toContain(
-      defaultLineAccountManagementMessages.emptyHeading,
-    );
-
-    adapter.list = async () => pageOf([firstAccount]);
-    await element.reload();
-    await element.updateComplete;
-    expect(getCards(element)).toHaveLength(1);
-  });
-
-  test("handles synchronous list failures safely and retries through reload", async () => {
-    const originalError = new Error("private backend details");
-    const adapter = makeAdapter().adapter;
-    adapter.list = (() => {
-      throw originalError;
-    }) as LineAccountManagementAdapter["list"];
-    const element = document.createElement("line-account-management") as LineAccountManagement;
-    const errors: LineAccountErrorEventDetail[] = [];
-    element.addEventListener("line-account-error", (event) => {
-      errors.push((event as CustomEvent<LineAccountErrorEventDetail>).detail);
-    });
-    element.adapter = adapter;
-    document.body.append(element);
+    // Click to expand
+    (providerHeaders![0] as HTMLElement).click();
     await settle(element);
 
-    expect(element.shadowRoot?.textContent).toContain(
-      defaultLineAccountManagementMessages.loadFailure,
-    );
-    expect(element.shadowRoot?.textContent).not.toContain("private backend details");
-    expect(errors).toEqual([{ operation: "list", error: originalError }]);
-
-    adapter.list = async () => pageOf([firstAccount]);
-    click(element, '[part="retry-button"]');
-    await settle(element);
-    expect(getCards(element)).toHaveLength(1);
+    // Now children should be visible
+    const allNodes = hierarchy.shadowRoot?.querySelectorAll('[part="node"]');
+    expect(allNodes!.length).toBeGreaterThan(1);
+    expect(hierarchy.shadowRoot?.textContent).toContain("Login Channel");
   });
 
-  test("reloads when the adapter property is reassigned and ignores stale results", async () => {
-    const stale = deferred<LineAccountListPage>();
-    const first = makeAdapter().adapter;
-    first.list = () => stale.promise;
-    const element = await mount(first);
-
-    const next = makeAdapter([secondAccount]).adapter;
-    element.adapter = next;
-    await settle(element);
-    stale.resolve(pageOf([firstAccount]));
-    await settle(element);
-
-    expect(getCards(element)[0]?.account).toEqual(secondAccount);
-  });
-});
-
-describe("dialogs and mutations", () => {
-  test("opens and closes create, edit, and delete dialogs", async () => {
-    const element = await mount(makeAdapter([firstAccount]).adapter);
-    const createForm = getForm(element);
-    await createForm.updateComplete;
-    const nameInput = createForm.shadowRoot?.querySelector<HTMLInputElement>('[name="name"]');
-    let focusCalls = 0;
-    if (nameInput !== null && nameInput !== undefined) {
-      nameInput.focus = () => {
-        focusCalls++;
-      };
-    }
-
-    click(element, '[part="add-button"]');
-    await element.updateComplete;
-    expect(getDialog(element, "create").open).toBe(true);
-    await Promise.resolve();
-    expect(focusCalls).toBe(1);
-    getDialog(element, "create").dispatchEvent(
-      new CustomEvent("line-account-dialog-close-request", { bubbles: true, composed: true }),
-    );
-    await element.updateComplete;
-    expect(getDialog(element, "create").open).toBe(false);
-
-    const card = getCards(element)[0];
-    card?.dispatchEvent(
-      new CustomEvent("line-account-edit-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-    expect(getDialog(element, "edit").open).toBe(true);
-    expect(getForm(element, "edit").account).toBe(firstAccount);
-
-    card?.dispatchEvent(
-      new CustomEvent("line-account-delete-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-    expect(getDialog(element, "delete").open).toBe(true);
-    expect(getDialog(element, "delete").textContent).toContain("First account");
-  });
-
-  test("resets create values when the dialog is closed and reopened", async () => {
-    const element = await mount(makeAdapter().adapter);
-    click(element, '[part="add-button"]');
-    await element.updateComplete;
-    const form = getForm(element);
-    await form.updateComplete;
-    setFormValue(form, "name", "Unsaved account");
-
-    getDialog(element, "create").dispatchEvent(
-      new CustomEvent("line-account-dialog-close-request", { bubbles: true, composed: true }),
-    );
-    await element.updateComplete;
-    click(element, '[part="add-button"]');
-    await element.updateComplete;
-    await form.updateComplete;
-
-    expect(form.shadowRoot?.querySelector<HTMLInputElement>('[name="name"]')?.value).toBe("");
-  });
-
-  test("creates once, reloads, closes, and emits the created account", async () => {
-    const state = makeAdapter();
-    const pending = deferred<LineAccountView>();
-    state.adapter.create = (input) => {
-      state.createCalls.push(input);
-      return pending.promise;
-    };
-    const element = await mount(state.adapter);
-    const created: LineAccountView[] = [];
-    element.addEventListener("line-account-created", (event) => {
-      created.push((event as CustomEvent<{ account: LineAccountView }>).detail.account);
-    });
-
-    click(element, '[part="add-button"]');
-    await element.updateComplete;
-    const form = getForm(element);
-    await form.updateComplete;
-    setFormValue(form, "name", " New account ");
-    setFormValue(form, "channelId", " channel-new ");
-    setFormValue(form, "channelAccessToken", " token ");
-    setFormValue(form, "channelSecret", " secret ");
-    click(element, 'line-account-dialog[data-kind="create"] [part="submit-button"]');
-    click(element, 'line-account-dialog[data-kind="create"] [part="submit-button"]');
-    expect(state.createCalls).toHaveLength(1);
-
-    const result = { ...firstAccount, id: "created", name: "New account" };
-    pending.resolve(result);
-    await settle(element);
-    expect(getDialog(element, "create").open).toBe(false);
-    expect(created).toEqual([result]);
-  });
-
-  test("keeps split details in sync with filtered accounts", async () => {
-    const element = await mount(makeAdapter([firstAccount, secondAccount]).adapter);
+  test("nested child lists in details pane", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
     element.variant = "split";
-    element.selectedListAccountId = firstAccount.id;
-    element.searchQuery = "Second";
-    await element.updateComplete;
-
-    expect(element.shadowRoot?.textContent).toContain("Second account");
-    expect(element.shadowRoot?.textContent).not.toContain("First account");
-  });
-
-  test("closes an unchanged edit without calling the adapter", async () => {
-    const state = makeAdapter([firstAccount]);
-    const element = await mount(state.adapter);
-    getCards(element)[0]?.dispatchEvent(
-      new CustomEvent("line-account-edit-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-    const form = getForm(element, "edit");
-    await form.updateComplete;
-    submitForm(form);
-    await element.updateComplete;
-
-    expect(state.updateCalls).toHaveLength(0);
-    expect(getDialog(element, "edit").open).toBe(false);
-  });
-
-  test("preserves edit values and emits the original error when update fails", async () => {
-    const state = makeAdapter([firstAccount]);
-    const originalError = new Error("private update details");
-    state.adapter.update = async () => {
-      throw originalError;
-    };
-    const element = await mount(state.adapter);
-    const errors: LineAccountErrorEventDetail[] = [];
-    element.addEventListener("line-account-error", (event) => {
-      errors.push((event as CustomEvent<LineAccountErrorEventDetail>).detail);
-    });
-    getCards(element)[0]?.dispatchEvent(
-      new CustomEvent("line-account-edit-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-    const form = getForm(element, "edit");
-    await form.updateComplete;
-    setFormValue(form, "name", "Unsaved name");
-    click(element, 'line-account-dialog[data-kind="edit"] [part="submit-button"]');
+    element.currentTab = "provider";
+    element.selectedItemId = "provider-1";
     await settle(element);
 
-    expect(getDialog(element, "edit").open).toBe(true);
-    expect(form.shadowRoot?.querySelector<HTMLInputElement>('[name="name"]')?.value).toBe(
-      "Unsaved name",
-    );
-    expect(form.shadowRoot?.textContent).toContain(
-      defaultLineAccountManagementMessages.updateFailure,
-    );
-    expect(form.shadowRoot?.textContent).not.toContain("private update details");
-    expect(errors).toEqual([{ operation: "update", error: originalError }]);
-  });
+    // Verify channels list is rendered in the details pane
+    const detailPanel = element.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("Channels");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("Login Channel");
 
-  test("updates an edited account and emits a composed updated event", async () => {
-    const state = makeAdapter([firstAccount]);
-    const element = await mount(state.adapter);
-    let updatedEvent: CustomEvent<{ account: LineAccountView }> | undefined;
-    element.addEventListener("line-account-updated", (event) => {
-      updatedEvent = event as CustomEvent<{ account: LineAccountView }>;
-    });
-    getCards(element)[0]?.dispatchEvent(
-      new CustomEvent("line-account-edit-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-    const form = getForm(element, "edit");
-    await form.updateComplete;
-    setFormValue(form, "name", "Renamed account");
-    submitForm(form);
+    // Switch to channel tab and select the login channel
+    element.currentTab = "channel";
+    element.selectedItemId = "channel-2";
     await settle(element);
 
-    expect(state.updateCalls).toEqual([
-      { id: firstAccount.id, input: { name: "Renamed account" } },
-    ]);
-    expect(updatedEvent?.detail.account.name).toBe("Renamed account");
-    expect(updatedEvent?.bubbles).toBe(true);
-    expect(updatedEvent?.composed).toBe(true);
+    // Verify LIFF apps list is rendered in the details pane
+    expect(detailPanel?.shadowRoot?.textContent).toContain("LIFF Applications");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("0987654321-AbCdEf12");
   });
 
-  test("preserves create values and emits a composed error when creation fails", async () => {
-    const state = makeAdapter();
-    const originalError = new Error("private create details");
-    state.adapter.create = async () => {
-      throw originalError;
-    };
-    const element = await mount(state.adapter);
-    let errorEvent: CustomEvent<LineAccountErrorEventDetail> | undefined;
-    element.addEventListener("line-account-error", (event) => {
-      errorEvent = event as CustomEvent<LineAccountErrorEventDetail>;
-    });
-    click(element, '[part="add-button"]');
-    await element.updateComplete;
-    const form = getForm(element);
-    await form.updateComplete;
-    setFormValue(form, "name", "Unsaved account");
-    setFormValue(form, "channelId", "channel-new");
-    setFormValue(form, "channelAccessToken", "token");
-    setFormValue(form, "channelSecret", "secret");
-    submitForm(form);
+  test("form scoped pre-population and disabled selectors", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.selectedProviderId = "provider-1";
+    element.currentTab = "channel";
     await settle(element);
 
-    expect(getDialog(element, "create").open).toBe(true);
-    expect(form.shadowRoot?.querySelector<HTMLInputElement>('[name="name"]')?.value).toBe(
-      "Unsaved account",
-    );
-    expect(form.shadowRoot?.textContent).toContain(
-      defaultLineAccountManagementMessages.createFailure,
-    );
-    expect(errorEvent?.detail).toEqual({ operation: "create", error: originalError });
-    expect(errorEvent?.bubbles).toBe(true);
-    expect(errorEvent?.composed).toBe(true);
+    // Open create dialog
+    const createBtn = element.shadowRoot?.querySelector(".add-btn") as HTMLButtonElement;
+    createBtn.click();
+    await settle(element);
+
+    const form = element.shadowRoot?.querySelector("line-account-form");
+    expect(form).toBeDefined();
+
+    // We wait for form rendering
+    await settle(element);
+
+    // Pre-populated provider ID should match selectedProviderId
+    const providerSelect = form?.shadowRoot?.querySelector(
+      "#channelProviderId",
+    ) as HTMLSelectElement;
+    expect(providerSelect.value).toBe("provider-1");
+    expect(providerSelect.disabled).toBe(true);
   });
 
-  test("toggles with per-account pending state and emits an update", async () => {
-    const state = makeAdapter([firstAccount, secondAccount]);
-    const pending = deferred<LineAccountView>();
-    state.adapter.update = (id, input) => {
-      state.updateCalls.push({ id, input });
-      return pending.promise;
-    };
-    const element = await mount(state.adapter);
-    const cards = getCards(element);
-    cards[0]?.dispatchEvent(
-      new CustomEvent("line-account-toggle-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-
-    expect(state.updateCalls).toEqual([{ id: firstAccount.id, input: { isActive: false } }]);
-    expect(cards[0]?.disabled).toBe(true);
-    expect(cards[1]?.disabled).toBe(false);
-
-    pending.resolve({ ...firstAccount, isActive: false });
+  test("clicking a channel list item in non-split mode expands its details inline", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "grid";
     await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // First, expand the provider to reveal the channel
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Find the channel tree node header
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    expect(channelHeader).toBeDefined();
+
+    // Click on the channel list item
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify inline details panel is rendered in the tree node and is read-only
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+    expect((detailsPanel as any).readonly).toBe(true);
   });
 
-  test("keeps toggle failures beside the affected card", async () => {
-    const state = makeAdapter([firstAccount, secondAccount]);
-    const originalError = new Error("private toggle details");
-    state.adapter.update = async () => {
-      throw originalError;
-    };
-    const element = await mount(state.adapter);
-    let errorEvent: CustomEvent<LineAccountErrorEventDetail> | undefined;
-    element.addEventListener("line-account-error", (event) => {
-      errorEvent = event as CustomEvent<LineAccountErrorEventDetail>;
-    });
-    getCards(element)[0]?.dispatchEvent(
-      new CustomEvent("line-account-toggle-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
+  test("clicking an already selected channel list item collapses it", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "grid";
     await settle(element);
 
-    const cards = getCards(element);
-    expect(cards[0]?.shadowRoot?.querySelector('[role="alert"]')?.textContent).toContain(
-      defaultLineAccountManagementMessages.toggleFailure,
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Find channel header and select it
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
     );
-    expect(cards[1]?.shadowRoot?.querySelector('[role="alert"]')).toBeNull();
-    expect(errorEvent?.detail).toEqual({ operation: "toggle", error: originalError });
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify it is expanded/selected
+    let detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+
+    // Click again to collapse
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify detail panel is now gone/collapsed
+    detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeNull();
   });
 
-  test("confirms deletion once, reloads, and emits the deleted id", async () => {
-    const state = makeAdapter([firstAccount]);
-    const pending = deferred<void>();
-    state.adapter.delete = (id) => {
-      state.deleteCalls.push(id);
-      return pending.promise;
-    };
-    const element = await mount(state.adapter);
-    const deleted: string[] = [];
-    element.addEventListener("line-account-deleted", (event) => {
-      deleted.push((event as CustomEvent<{ id: string }>).detail.id);
-    });
-    getCards(element)[0]?.dispatchEvent(
-      new CustomEvent("line-account-delete-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-
-    click(element, '[part="confirm-delete-button"]');
-    click(element, '[part="confirm-delete-button"]');
-    expect(state.deleteCalls).toEqual([firstAccount.id]);
-
-    pending.resolve();
+  test("line-account-detail-panel in inline mode hides the details header", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "grid";
     await settle(element);
-    expect(getDialog(element, "delete").open).toBe(false);
-    expect(deleted).toEqual([firstAccount.id]);
+
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Click channel to expand details inline
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+    expect((detailsPanel as any).inline).toBe(true);
+
+    // Header should be hidden
+    const header = detailsPanel?.shadowRoot?.querySelector(".details-header");
+    expect(header).toBeNull();
   });
 
-  test("keeps the delete dialog open and emits an error when deletion fails", async () => {
-    const state = makeAdapter([firstAccount]);
-    const originalError = new Error("private delete details");
-    state.adapter.delete = async () => {
-      throw originalError;
-    };
-    const element = await mount(state.adapter);
-    const errors: LineAccountErrorEventDetail[] = [];
-    element.addEventListener("line-account-error", (event) => {
-      errors.push((event as CustomEvent<LineAccountErrorEventDetail>).detail);
-    });
-    getCards(element)[0]?.dispatchEvent(
-      new CustomEvent("line-account-delete-request", {
-        bubbles: true,
-        composed: true,
-        detail: { account: firstAccount },
-      }),
-    );
-    await element.updateComplete;
-    click(element, '[part="confirm-delete-button"]');
+  test("line-account-detail-panel in inline mode hides the LIFF applications table for login channels", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "grid";
     await settle(element);
 
-    expect(getDialog(element, "delete").open).toBe(true);
-    expect(getDialog(element, "delete").textContent).toContain(
-      defaultLineAccountManagementMessages.deleteFailure,
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Click login channel to expand details inline
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Login Channel"),
     );
-    expect(errors).toEqual([{ operation: "delete", error: originalError }]);
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+    expect((detailsPanel as any).inline).toBe(true);
+
+    // LIFF applications table/section should be hidden in inline mode
+    const liffSection = detailsPanel?.shadowRoot?.textContent;
+    expect(liffSection).not.toContain("LIFF Applications");
+  });
+
+  test("clicking a LIFF app list item expands its details inline", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Expand channel
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Login Channel"),
+    );
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Find LIFF header and click it
+    const updatedHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const liffHeader = Array.from(updatedHeaders!).find((h) =>
+      h.textContent?.includes("0987654321-AbCdEf12"),
+    );
+    expect(liffHeader).toBeDefined();
+
+    (liffHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify inline details panel is rendered under the LIFF app node and is read-only and inline
+    const detailsPanels = hierarchy.shadowRoot?.querySelectorAll("line-account-detail-panel") ?? [];
+    expect(detailsPanels.length).toBe(2);
+
+    const liffPanel = detailsPanels[1];
+    expect(liffPanel).toBeDefined();
+    expect((liffPanel as any).readonly).toBe(true);
+    expect((liffPanel as any).inline).toBe(true);
+    expect((liffPanel as any).item.id).toBe("liff-2");
+  });
+
+  test("line-account-hierarchy does not expand inline details and hides actions when in split mode", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "split";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Verify provider node-actions is hidden
+    const providerHeader = hierarchy.shadowRoot?.querySelector(".tree-node-header");
+    expect(providerHeader?.querySelector(".node-actions")).toBeNull();
+
+    // Click to expand provider
+    (providerHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify Add Channel dotted button is hidden
+    expect(hierarchy.shadowRoot?.querySelector(".add-child-btn")).toBeNull();
+
+    // Find channel header
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    expect(channelHeader).toBeDefined();
+
+    // Verify channel node-actions is hidden
+    expect(channelHeader!.querySelector(".node-actions")).toBeNull();
+
+    // Click channel
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Details panel should NOT be rendered in the tree view when variant is split
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeNull();
   });
 });

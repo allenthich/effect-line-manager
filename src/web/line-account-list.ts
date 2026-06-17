@@ -1,18 +1,19 @@
 import { LitElement, css, html } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import type { LineAccountView } from "./types.ts";
+import type { ProviderView, ChannelView, LiffAppView, LineAccountFormType } from "./types.ts";
 import "./line-account-card.ts";
 
 export class LineAccountList extends LitElement {
   static properties = {
-    accounts: { attribute: false },
+    type: { type: String, reflect: true }, // "provider" | "channel" | "liff"
+    items: { attribute: false },
     messages: { attribute: false },
     disabled: { type: Boolean, reflect: true },
-    disabledAccountIds: { attribute: false },
-    accountErrors: { attribute: false },
+    disabledItemIds: { attribute: false },
+    itemErrors: { attribute: false },
     variant: { type: String, reflect: true },
-    selectedAccountId: { type: String, reflect: true },
+    selectedItemId: { type: String, reflect: true },
   };
 
   static styles = css`
@@ -75,27 +76,36 @@ export class LineAccountList extends LitElement {
     }
   `;
 
-  declare accounts: readonly LineAccountView[];
+  declare type: LineAccountFormType;
+  declare items: readonly (ProviderView | ChannelView | LiffAppView)[];
   declare messages: LineAccountManagementMessages;
   declare disabled: boolean;
-  declare disabledAccountIds: ReadonlySet<string>;
-  declare accountErrors: ReadonlyMap<string, string>;
+  declare disabledItemIds: ReadonlySet<string>;
+  declare itemErrors: ReadonlyMap<string, string>;
   declare variant: string;
-  declare selectedAccountId: string | undefined;
+  declare selectedItemId: string | undefined;
 
   constructor() {
     super();
-    this.accounts = [];
+    this.type = "provider";
+    this.items = [];
     this.messages = defaultLineAccountManagementMessages;
     this.disabled = false;
-    this.disabledAccountIds = new Set();
-    this.accountErrors = new Map();
+    this.disabledItemIds = new Set();
+    this.itemErrors = new Map();
     this.variant = "grid";
-    this.selectedAccountId = undefined;
+    this.selectedItemId = undefined;
   }
 
   protected render() {
-    if (this.accounts.length === 0) {
+    if (this.items.length === 0) {
+      let emptyMsg = this.messages.emptyProviders;
+      if (this.type === "channel") {
+        emptyMsg = this.messages.emptyChannels;
+      } else if (this.type === "liff") {
+        emptyMsg = this.messages.emptyLiffApps;
+      }
+
       return html`
         <section class="empty" part="list" aria-labelledby="empty-heading">
           <svg
@@ -111,23 +121,23 @@ export class LineAccountList extends LitElement {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-          <h2 id="empty-heading">${this.messages.emptyHeading}</h2>
-          <p>${this.messages.emptyDescription}</p>
+          <h2 id="empty-heading">${emptyMsg}</h2>
         </section>
       `;
     }
 
     return html`
       <div class="grid" part="list">
-        ${this.accounts.map(
-          (account) => html`
+        ${this.items.map(
+          (item) => html`
             <line-account-card
-              .account=${account}
+              .type=${this.type}
+              .item=${item}
               .messages=${this.messages}
-              .disabled=${this.disabled || this.disabledAccountIds.has(account.id)}
-              .error=${this.accountErrors.get(account.id)}
+              .disabled=${this.disabled || this.disabledItemIds.has(item.id)}
+              .error=${this.itemErrors.get(item.id)}
               .variant=${this.variant}
-              ?selected=${account.id === this.selectedAccountId}
+              ?selected=${item.id === this.selectedItemId}
             ></line-account-card>
           `,
         )}
