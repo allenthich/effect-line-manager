@@ -32,7 +32,7 @@ jobs:
         uses: changesets/action@v1
         with:
           version: vp run version-packages
-          publish: vp run build && vpx jsr publish --allow-slow-types
+          publish: vp run release
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
