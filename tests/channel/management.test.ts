@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Effect, Layer, Option, Redacted, Schema } from "effect";
+import { Effect, Layer, Logger, Option, Redacted, Schema } from "effect";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import {
   LineProviderRepository,
@@ -184,10 +184,19 @@ describe("LineChannelManagement", () => {
       cause: new Error("database password leaked here"),
     });
 
+    const loggedMessages: string[] = [];
+    const testLogger = Logger.make(({ message }) => {
+      if (Array.isArray(message)) {
+        loggedMessages.push(...message.map(String));
+      } else {
+        loggedMessages.push(String(message));
+      }
+    });
+
     const result = await run(
       Effect.flatMap(LineChannelManagement, (management) =>
         management.updateChannel(recordId, { name: "test" }),
-      ).pipe(Effect.flip),
+      ).pipe(Effect.flip, Effect.provide(Logger.layer([testLogger]))),
       makeChannelRepository({ updateChannel: () => Effect.fail(repositoryFailure) }),
       makeProviderRepository(),
       makeRegistry(invalidated),
@@ -196,6 +205,7 @@ describe("LineChannelManagement", () => {
     expect(result).toEqual(new LineAccountPersistenceError({ operation: "updateChannel" }));
     expect(JSON.stringify(result)).not.toContain("database password");
     expect(invalidated).toEqual([]);
+    expect(loggedMessages).toContain("LINE channel repository operation failed");
   });
 });
 

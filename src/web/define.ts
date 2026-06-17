@@ -1,8 +1,12 @@
+import { LineAccountBreadcrumbs } from "./line-account-breadcrumbs.ts";
 import { LineAccountCard } from "./line-account-card.ts";
+import { LineAccountDetailPanel } from "./line-account-detail-panel.ts";
 import { LineAccountDialog } from "./line-account-dialog.ts";
 import { LineAccountForm } from "./line-account-form.ts";
+import { LineAccountHierarchy } from "./line-account-hierarchy.ts";
 import { LineAccountList } from "./line-account-list.ts";
 import { LineAccountManagement } from "./line-account-management.ts";
+import { LineAccountToolbar } from "./line-account-toolbar.ts";
 
 const defineElement = (name: string, constructor: CustomElementConstructor): void => {
   if (customElements.get(name) === undefined) {
@@ -27,10 +31,30 @@ export const defineLineAccountForm = (): void => {
   defineElement("line-account-form", LineAccountForm);
 };
 
+export const defineLineAccountToolbar = (): void => {
+  defineElement("line-account-toolbar", LineAccountToolbar);
+};
+
+export const defineLineAccountBreadcrumbs = (): void => {
+  defineElement("line-account-breadcrumbs", LineAccountBreadcrumbs);
+};
+
+export const defineLineAccountDetailPanel = (): void => {
+  defineElement("line-account-detail-panel", LineAccountDetailPanel);
+};
+
+export const defineLineAccountHierarchy = (): void => {
+  defineElement("line-account-hierarchy", LineAccountHierarchy);
+};
+
 export const defineLineAccountManagement = (): void => {
   defineLineAccountList();
   defineLineAccountForm();
   defineLineAccountDialog();
+  defineLineAccountToolbar();
+  defineLineAccountBreadcrumbs();
+  defineLineAccountDetailPanel();
+  defineLineAccountHierarchy();
   defineElement("line-account-management", LineAccountManagement);
 };
 

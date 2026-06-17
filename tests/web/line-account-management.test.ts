@@ -1,7 +1,8 @@
 import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
 import {
-  LineAccountCard,
-  LineAccountList,
+  // LineAccountCard,
+  LineAccountHierarchy,
+  // LineAccountList,
   LineAccountManagement,
   defineLineAccountManagementElements,
   type ProviderView,
@@ -34,6 +35,17 @@ const mockChannel: ChannelView = {
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
 
+const mockChannelLogin: ChannelView = {
+  id: "channel-2",
+  providerId: "provider-1",
+  channelType: "login",
+  name: "Login Channel",
+  channelId: "0987654321",
+  hasChannelSecret: true,
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
+
 const mockLiff: LiffAppView = {
   id: "liff-1",
   loginChannelId: "channel-1",
@@ -43,6 +55,19 @@ const mockLiff: LiffAppView = {
     url: "https://example.com/liff",
   },
   description: "Loyalty card dashboard",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
+
+const mockLiffForLogin: LiffAppView = {
+  id: "liff-2",
+  loginChannelId: "channel-2",
+  liffId: "0987654321-AbCdEf12",
+  view: {
+    type: "full",
+    url: "https://example.com/login-liff",
+  },
+  description: "Login App",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
@@ -182,33 +207,306 @@ const mount = async (adapter?: LineProviderManagementAdapter) => {
   return element;
 };
 
-const getList = (element: LineAccountManagement): LineAccountList => {
-  const list = element.shadowRoot?.querySelector<LineAccountList>("line-account-list");
-  if (list === null || list === undefined) throw new Error("Missing list");
-  return list;
+// const getList = (element: LineAccountManagement): LineAccountList => {
+//   const list = element.shadowRoot?.querySelector<LineAccountList>("line-account-list");
+//   if (list === null || list === undefined) throw new Error("Missing list");
+//   return list;
+// };
+
+// const _getCards = (element: LineAccountManagement) =>
+//   getList(element).shadowRoot?.querySelectorAll<LineAccountCard>("line-account-card") ?? [];
+
+const getHierarchy = (element: LineAccountManagement): LineAccountHierarchy => {
+  const hierarchy =
+    element.shadowRoot?.querySelector<LineAccountHierarchy>("line-account-hierarchy");
+  if (hierarchy === null || hierarchy === undefined) throw new Error("Missing hierarchy");
+  return hierarchy;
 };
 
-const getCards = (element: LineAccountManagement) =>
-  getList(element).shadowRoot?.querySelectorAll<LineAccountCard>("line-account-card") ?? [];
+const getNodes = (element: LineAccountManagement) =>
+  getHierarchy(element).shadowRoot?.querySelectorAll('[part="node"]') ?? [];
 
 describe("LineAccountManagement", () => {
-  test("renders tab bar and updates active tab", async () => {
+  test("renders hierarchy tree with provider nodes", async () => {
     const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
     const element = await mount(adapter);
 
-    const tabs = element.shadowRoot?.querySelectorAll(".tab-btn");
-    expect(tabs).toHaveLength(3);
+    // Hierarchy is rendered with provider node
+    const nodes = getNodes(element);
+    expect(nodes.length).toBeGreaterThan(0);
+    expect(nodes[0]?.textContent).toContain("LINE Marketing");
+  });
 
-    // Initial tab is provider
-    expect(element.currentTab).toBe("provider");
-    expect(getCards(element)).toHaveLength(1);
+  test("expand provider in hierarchy to reveal channels", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
 
-    // Click channels tab
-    const channelsTabBtn = element.shadowRoot?.querySelectorAll(".tab-btn")[1] as HTMLButtonElement;
-    channelsTabBtn.click();
+    // Click the first provider header to expand its children
+    const hierarchy = getHierarchy(element);
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    expect(providerHeaders).toBeDefined();
+    expect(providerHeaders!.length).toBeGreaterThan(0);
+
+    // Click to expand
+    (providerHeaders![0] as HTMLElement).click();
     await settle(element);
 
-    expect(element.currentTab).toBe("channel");
-    expect(getCards(element)).toHaveLength(1);
+    // Now children should be visible
+    const allNodes = hierarchy.shadowRoot?.querySelectorAll('[part="node"]');
+    expect(allNodes!.length).toBeGreaterThan(1);
+    expect(hierarchy.shadowRoot?.textContent).toContain("Login Channel");
+  });
+
+  test("nested child lists in details pane", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "split";
+    element.currentTab = "provider";
+    element.selectedItemId = "provider-1";
+    await settle(element);
+
+    // Verify channels list is rendered in the details pane
+    const detailPanel = element.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("Channels");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("Login Channel");
+
+    // Switch to channel tab and select the login channel
+    element.currentTab = "channel";
+    element.selectedItemId = "channel-2";
+    await settle(element);
+
+    // Verify LIFF apps list is rendered in the details pane
+    expect(detailPanel?.shadowRoot?.textContent).toContain("LIFF Applications");
+    expect(detailPanel?.shadowRoot?.textContent).toContain("0987654321-AbCdEf12");
+  });
+
+  test("form scoped pre-population and disabled selectors", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.selectedProviderId = "provider-1";
+    element.currentTab = "channel";
+    await settle(element);
+
+    // Open create dialog
+    const createBtn = element.shadowRoot?.querySelector(".add-btn") as HTMLButtonElement;
+    createBtn.click();
+    await settle(element);
+
+    const form = element.shadowRoot?.querySelector("line-account-form");
+    expect(form).toBeDefined();
+
+    // We wait for form rendering
+    await settle(element);
+
+    // Pre-populated provider ID should match selectedProviderId
+    const providerSelect = form?.shadowRoot?.querySelector(
+      "#channelProviderId",
+    ) as HTMLSelectElement;
+    expect(providerSelect.value).toBe("provider-1");
+    expect(providerSelect.disabled).toBe(true);
+  });
+
+  test("clicking a channel list item in non-split mode expands its details inline", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // First, expand the provider to reveal the channel
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Find the channel tree node header
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    expect(channelHeader).toBeDefined();
+
+    // Click on the channel list item
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify inline details panel is rendered in the tree node and is read-only
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+    expect((detailsPanel as any).readonly).toBe(true);
+  });
+
+  test("clicking an already selected channel list item collapses it", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Find channel header and select it
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify it is expanded/selected
+    let detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+
+    // Click again to collapse
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify detail panel is now gone/collapsed
+    detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeNull();
+  });
+
+  test("line-account-detail-panel in inline mode hides the details header", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Click channel to expand details inline
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+    expect((detailsPanel as any).inline).toBe(true);
+
+    // Header should be hidden
+    const header = detailsPanel?.shadowRoot?.querySelector(".details-header");
+    expect(header).toBeNull();
+  });
+
+  test("line-account-detail-panel in inline mode hides the LIFF applications table for login channels", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Click login channel to expand details inline
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Login Channel"),
+    );
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeDefined();
+    expect((detailsPanel as any).inline).toBe(true);
+
+    // LIFF applications table/section should be hidden in inline mode
+    const liffSection = detailsPanel?.shadowRoot?.textContent;
+    expect(liffSection).not.toContain("LIFF Applications");
+  });
+
+  test("clicking a LIFF app list item expands its details inline", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannelLogin], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    element.variant = "grid";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Expand provider
+    const providerHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    (providerHeaders![0] as HTMLElement).click();
+    await settle(element);
+
+    // Expand channel
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Login Channel"),
+    );
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Find LIFF header and click it
+    const updatedHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const liffHeader = Array.from(updatedHeaders!).find((h) =>
+      h.textContent?.includes("0987654321-AbCdEf12"),
+    );
+    expect(liffHeader).toBeDefined();
+
+    (liffHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify inline details panel is rendered under the LIFF app node and is read-only and inline
+    const detailsPanels = hierarchy.shadowRoot?.querySelectorAll("line-account-detail-panel") ?? [];
+    expect(detailsPanels.length).toBe(2);
+
+    const liffPanel = detailsPanels[1];
+    expect(liffPanel).toBeDefined();
+    expect((liffPanel as any).readonly).toBe(true);
+    expect((liffPanel as any).inline).toBe(true);
+    expect((liffPanel as any).item.id).toBe("liff-2");
+  });
+
+  test("line-account-hierarchy does not expand inline details and hides actions when in split mode", async () => {
+    const adapter = makeAdapter([mockProvider], [mockChannel], [mockLiff]);
+    const element = await mount(adapter);
+    element.variant = "split";
+    await settle(element);
+
+    const hierarchy = getHierarchy(element);
+
+    // Verify provider node-actions is hidden
+    const providerHeader = hierarchy.shadowRoot?.querySelector(".tree-node-header");
+    expect(providerHeader?.querySelector(".node-actions")).toBeNull();
+
+    // Click to expand provider
+    (providerHeader as HTMLElement).click();
+    await settle(element);
+
+    // Verify Add Channel dotted button is hidden
+    expect(hierarchy.shadowRoot?.querySelector(".add-child-btn")).toBeNull();
+
+    // Find channel header
+    const treeNodeHeaders = hierarchy.shadowRoot?.querySelectorAll(".tree-node-header");
+    const channelHeader = Array.from(treeNodeHeaders!).find((h) =>
+      h.textContent?.includes("Support Channel"),
+    );
+    expect(channelHeader).toBeDefined();
+
+    // Verify channel node-actions is hidden
+    expect(channelHeader!.querySelector(".node-actions")).toBeNull();
+
+    // Click channel
+    (channelHeader as HTMLElement).click();
+    await settle(element);
+
+    // Details panel should NOT be rendered in the tree view when variant is split
+    const detailsPanel = hierarchy.shadowRoot?.querySelector("line-account-detail-panel");
+    expect(detailsPanel).toBeNull();
   });
 });
