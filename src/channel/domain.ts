@@ -124,8 +124,8 @@ export const MessagingChannelView = Schema.Struct({
   displayName: Schema.NullOr(Schema.String),
   pictureUrl: Schema.NullOr(Schema.String),
   isActive: Schema.Boolean,
-  hasChannelSecret: Schema.Boolean,
-  hasChannelAccessToken: Schema.Boolean,
+  channelSecret: Schema.NullOr(NonEmptyTrimmedString),
+  channelAccessToken: Schema.NullOr(NonEmptyTrimmedString),
   createdAt: Schema.DateFromString,
   updatedAt: Schema.DateFromString,
 });
@@ -136,7 +136,7 @@ export const LoginChannelView = Schema.Struct({
   providerId: NonEmptyTrimmedString,
   name: NonEmptyTrimmedString,
   channelId: NonEmptyTrimmedString,
-  hasChannelSecret: Schema.Boolean,
+  channelSecret: Schema.NullOr(NonEmptyTrimmedString),
   createdAt: Schema.DateFromString,
   updatedAt: Schema.DateFromString,
 });

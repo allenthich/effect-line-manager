@@ -58,8 +58,8 @@ export const toChannelView = (channel: LineChannel): ChannelView => {
       displayName: channel.displayName ?? null,
       pictureUrl: channel.pictureUrl ?? null,
       isActive: channel.isActive,
-      hasChannelSecret: true,
-      hasChannelAccessToken: true,
+      channelSecret: Redacted.value(channel.channelSecret),
+      channelAccessToken: Redacted.value(channel.channelAccessToken),
       createdAt: channel.createdAt,
       updatedAt: channel.updatedAt,
     };
@@ -70,7 +70,7 @@ export const toChannelView = (channel: LineChannel): ChannelView => {
     providerId: channel.providerId,
     name: channel.name,
     channelId: channel.channelId,
-    hasChannelSecret: true,
+    channelSecret: Redacted.value(channel.channelSecret),
     createdAt: channel.createdAt,
     updatedAt: channel.updatedAt,
   };

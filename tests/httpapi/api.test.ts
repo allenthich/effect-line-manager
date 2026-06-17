@@ -53,8 +53,8 @@ const channelView = Schema.decodeUnknownSync(ChannelView)({
   displayName: null,
   pictureUrl: null,
   isActive: true,
-  hasChannelSecret: true,
-  hasChannelAccessToken: true,
+  channelSecret: "channel-secret",
+  channelAccessToken: "channel-token",
   createdAt: "2026-06-10T00:00:00.000Z",
   updatedAt: "2026-06-11T00:00:00.000Z",
 });
