@@ -345,31 +345,6 @@ export class LineAccountToolbar extends LitElement {
             Grid
           </button>
           <button
-            class="variant-btn ${this.variant === "list" ? "active" : ""}"
-            type="button"
-            title="Table view"
-            @click=${() => this.#setVariant("list")}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              style="width:0.9rem;height:0.9rem;flex-shrink:0"
-            >
-              <line x1="8" y1="6" x2="21" y2="6"></line>
-              <line x1="8" y1="12" x2="21" y2="12"></line>
-              <line x1="8" y1="18" x2="21" y2="18"></line>
-              <line x1="3" y1="6" x2="3.01" y2="6"></line>
-              <line x1="3" y1="12" x2="3.01" y2="12"></line>
-              <line x1="3" y1="18" x2="3.01" y2="18"></line>
-            </svg>
-            List
-          </button>
-          <button
             class="variant-btn ${this.variant === "split" ? "active" : ""}"
             type="button"
             title="Split pane view"
