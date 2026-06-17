@@ -8,7 +8,8 @@ import {
   LineLiffApiTransportError,
   LineLiffRequestEncodingError,
   type LineLiffOperation,
-} from "./errors.ts";
+} from "./client-errors.ts";
+import { sanitizedCause, withoutTrailingSlash } from "../shared/http-client-utils.ts";
 
 const defaultBaseUrl = "https://api.line.me";
 const defaultRequestTimeout = "30 seconds";
@@ -79,18 +80,6 @@ export interface LineLiffClient {
 
   readonly deleteLiffApp: (liffId: string) => Effect.Effect<void, LineLiffClientError>;
 }
-
-const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, "");
-
-const sanitizedCause = (cause: unknown): Error => {
-  if (typeof cause === "object" && cause !== null && "reason" in cause) {
-    const reason = cause.reason;
-    if (typeof reason === "object" && reason !== null && "_tag" in reason) {
-      return new Error(String(reason._tag));
-    }
-  }
-  return new Error("UnknownHttpError");
-};
 
 export const makeLineLiffClient = (
   httpClient: HttpClient.HttpClient,

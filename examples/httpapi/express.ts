@@ -2,11 +2,17 @@ import { Effect, Exit, Layer, Scope } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { NodeHttpServer } from "@effect/platform-node";
 import type { RequestHandler } from "express";
-import { LineAccountManagement } from "../../src/account/management.ts";
-import { LineAccountManagementApiLayer } from "../../src/httpapi/index.ts";
+import { LineProviderManagement } from "../../src/provider/service.ts";
+import { LineChannelManagement } from "../../src/channel/service.ts";
+import { LineLiffManagement } from "../../src/liff/service.ts";
+import { LineApiLayer } from "../../src/httpapi/index.ts";
 
 export interface ExpressLineAccountManagementOptions {
-  readonly managementLayer: Layer.Layer<LineAccountManagement, unknown, never>;
+  readonly managementLayer: Layer.Layer<
+    LineProviderManagement | LineChannelManagement | LineLiffManagement,
+    unknown,
+    never
+  >;
 }
 
 export interface ExpressLineAccountManagementMiddleware {
@@ -18,7 +24,7 @@ export const createExpressLineAccountManagementMiddleware = (
   options: ExpressLineAccountManagementOptions,
 ): ExpressLineAccountManagementMiddleware => {
   const scope = Effect.runSync(Scope.make());
-  const apiLayer = LineAccountManagementApiLayer.pipe(
+  const apiLayer = LineApiLayer.pipe(
     Layer.provide(options.managementLayer),
     Layer.provide(HttpServer.layerServices),
   );

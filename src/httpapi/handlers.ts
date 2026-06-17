@@ -1,6 +1,8 @@
 import { Effect, Layer } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
-import { LineAccountManagement } from "../account/management.ts";
+import { LineProviderManagement } from "../provider/service.ts";
+import { LineChannelManagement } from "../channel/service.ts";
+import { LineLiffManagement } from "../liff/service.ts";
 import { LineApi } from "./api.ts";
 import {
   ChannelDuplicateHttpError,
@@ -20,9 +22,9 @@ const mapPersistenceError = (error: { operation: string }) =>
 
 // ── Provider Handlers ──────────────────────────────────────────────────
 
-const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (handlers) =>
+export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineAccountManagement;
+    const management = yield* LineProviderManagement;
 
     return handlers
       .handle("listProviders", () =>
@@ -73,9 +75,9 @@ const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (handler
 
 // ── Channel Handlers ───────────────────────────────────────────────────
 
-const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers) =>
+export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineAccountManagement;
+    const management = yield* LineChannelManagement;
 
     return handlers
       .handle("listChannels", ({ query }) => {
@@ -126,9 +128,9 @@ const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers)
 
 // ── LIFF App Handlers ──────────────────────────────────────────────────
 
-const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (handlers) =>
+export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineAccountManagement;
+    const management = yield* LineLiffManagement;
 
     return handlers
       .handle("listLiffApps", ({ query }) => {
@@ -185,77 +187,4 @@ export const LineApiLayer = HttpApiBuilder.layer(LineApi).pipe(
   Layer.provide(providerHandlers),
   Layer.provide(channelHandlers),
   Layer.provide(liffAppHandlers),
-);
-
-// ═══════════════════════════════════════════════════════════════════════
-// DEPRECATED — old LineAccount handlers kept for backward compatibility
-// ═══════════════════════════════════════════════════════════════════════
-
-import {
-  LineAccountDuplicateChannelHttpError,
-  LineAccountNotFoundHttpError,
-  LineAccountPersistenceHttpError,
-  LineAccountValidationMiddlewareLayer,
-} from "./errors.ts";
-import { LineAccountManagementApi } from "./api.ts";
-
-/** @deprecated Use {@link LineApiLayer} instead. */
-export const LineAccountManagementHandlers = HttpApiBuilder.group(
-  LineAccountManagementApi,
-  "lineAccounts",
-  (handlers) =>
-    Effect.gen(function* () {
-      const management = yield* LineAccountManagement;
-
-      return handlers
-        .handle("list", () =>
-          management.list.pipe(
-            Effect.catchTags({
-              LineAccountPersistenceError: (error) =>
-                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            }),
-          ),
-        )
-        .handle("create", ({ payload }) =>
-          management.create(payload).pipe(
-            Effect.catchTags({
-              LineAccountDuplicateChannelError: (error) =>
-                Effect.fail(
-                  new LineAccountDuplicateChannelHttpError({ channelId: error.channelId }),
-                ),
-              LineAccountPersistenceError: (error) =>
-                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            }),
-          ),
-        )
-        .handle("update", ({ params, payload }) =>
-          management.update(params.id, payload).pipe(
-            Effect.catchTags({
-              LineAccountNotFoundError: (error) =>
-                Effect.fail(new LineAccountNotFoundHttpError({ recordId: error.recordId })),
-              LineAccountDuplicateChannelError: (error) =>
-                Effect.fail(
-                  new LineAccountDuplicateChannelHttpError({ channelId: error.channelId }),
-                ),
-              LineAccountPersistenceError: (error) =>
-                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            }),
-          ),
-        )
-        .handle("delete", ({ params }) =>
-          management.delete(params.id).pipe(
-            Effect.catchTags({
-              LineAccountNotFoundError: (error) =>
-                Effect.fail(new LineAccountNotFoundHttpError({ recordId: error.recordId })),
-              LineAccountPersistenceError: (error) =>
-                Effect.fail(new LineAccountPersistenceHttpError({ operation: error.operation })),
-            }),
-          ),
-        );
-    }),
-).pipe(Layer.provide(LineAccountValidationMiddlewareLayer));
-
-/** @deprecated Use {@link LineApiLayer} instead. */
-export const LineAccountManagementApiLayer = HttpApiBuilder.layer(LineAccountManagementApi).pipe(
-  Layer.provide(LineAccountManagementHandlers),
 );

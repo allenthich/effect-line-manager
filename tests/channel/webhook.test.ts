@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { Schema } from "effect";
-import { LineMessages } from "../../src/messaging/client.ts";
+import { LineMessages } from "../../src/messaging/schemas.ts";
 import {
   LineEventSource,
   LineFollowEvent,

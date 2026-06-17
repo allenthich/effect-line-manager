@@ -4,15 +4,19 @@ import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountForm } from "./line-account-form.ts";
 import type {
-  CreateLineAccountInput,
-  LineAccountErrorEventDetail,
+  ProviderView,
+  ChannelView,
+  LiffAppView,
+  LineAccountFormType,
   LineAccountFormSubmitDetail,
-  LineAccountManagementAdapter,
+  LineProviderManagementAdapter,
   LineAccountOperation,
+  LineAccountErrorEventDetail,
   LineAccountRequestDetail,
-  LineAccountView,
-  UpdateLineAccountInput,
 } from "./types.ts";
+import "./line-account-dialog.ts";
+import "./line-account-form.ts";
+import "./line-account-list.ts";
 
 type DialogKind = "create" | "edit" | "delete" | undefined;
 
@@ -26,21 +30,26 @@ export class LineAccountManagement extends LitElement {
   static properties = {
     adapter: { attribute: false },
     messages: { attribute: false },
-    accounts: { state: true },
+    currentTab: { state: true }, // "provider" | "channel" | "liff"
+    providers: { state: true },
+    channels: { state: true },
+    liffApps: { state: true },
     loading: { state: true },
     loadError: { state: true },
     dialogKind: { state: true },
-    selectedAccount: { state: true },
+    selectedItem: { state: true },
     mutationError: { state: true },
     notice: { state: true },
-    accountErrors: { state: true },
+    itemErrors: { state: true },
     createPending: { state: true },
     editPending: { state: true },
     deletePending: { state: true },
-    pendingAccountIds: { state: true },
+    pendingItemIds: { state: true },
     variant: { type: String, reflect: true },
     searchQuery: { state: true },
-    selectedListAccountId: { state: true },
+    selectedItemId: { state: true },
+    selectedProviderId: { state: true }, // Filter channels by provider
+    selectedChannelId: { state: true }, // Filter LIFF apps by login channel
   };
 
   static styles = css`
@@ -268,21 +277,39 @@ export class LineAccountManagement extends LitElement {
       height: 1rem;
     }
 
-    .state h2,
-    .state p,
-    .error p {
-      margin-bottom: var(--line-account-space-3, 0.75rem);
-    }
-
     .dialog-copy {
       line-height: 1.6;
     }
 
-    @media (max-width: 36rem) {
-      .header {
-        align-items: stretch;
-        flex-direction: column;
-      }
+    /* Tabs Bar styling */
+    .tabs-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 2px solid var(--line-account-border-color, #e4e7eb);
+      padding-bottom: 0.375rem;
+    }
+
+    .tab-btn {
+      min-height: auto;
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      color: var(--line-account-muted-color, #52606d);
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 0.375rem;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .tab-btn:hover {
+      color: var(--line-account-text-color, #1f2933);
+      background: var(--line-account-muted-background, #eef2f5);
+    }
+
+    .tab-btn.active {
+      color: var(--line-account-primary-color, #06c755);
+      background: var(--line-account-selected-bg, #e6fdf0);
     }
 
     /* Toolbar and controls */
@@ -352,6 +379,25 @@ export class LineAccountManagement extends LitElement {
 
     .clear-search-btn:hover {
       color: var(--line-account-text-color, #1f2933);
+    }
+
+    /* Filters Select styling */
+    .filter-wrapper select {
+      height: 2.5rem;
+      padding: 0 1.5rem 0 0.75rem;
+      border: 1px solid var(--line-account-border-color, #c7d0d9);
+      border-radius: var(--line-account-button-radius, 0.5rem);
+      background: var(--line-account-surface-background, #fff);
+      color: inherit;
+      font: inherit;
+      font-size: 0.875rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .filter-wrapper select:focus {
+      border-color: var(--line-account-primary-color, #06c755);
     }
 
     .variant-switcher {
@@ -447,11 +493,26 @@ export class LineAccountManagement extends LitElement {
       width: 4rem;
       height: 4rem;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--line-account-primary-color, #06c755), #049f43);
       color: white;
       font-size: 1.5rem;
       font-weight: 700;
-      box-shadow: 0 4px 10px rgb(6 199 85 / 25%);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .details-initial-provider {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .details-initial-channel-messaging {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    .details-initial-channel-login {
+      background: linear-gradient(135deg, #8b5cf6, #5b21b6);
+    }
+
+    .details-initial-liff {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
     }
 
     .details-title-group h2 {
@@ -610,13 +671,6 @@ export class LineAccountManagement extends LitElement {
       opacity: 0.6;
     }
 
-    @container (max-width: 36rem) {
-      .header {
-        align-items: stretch;
-        flex-direction: column;
-      }
-    }
-
     @media (max-width: 36rem) {
       .header {
         align-items: stretch;
@@ -635,51 +689,61 @@ export class LineAccountManagement extends LitElement {
     }
   `;
 
-  declare adapter: LineAccountManagementAdapter | undefined;
+  declare adapter: LineProviderManagementAdapter | undefined;
   declare messages: Partial<LineAccountManagementMessages> | undefined;
-  declare accounts: readonly LineAccountView[];
+  declare currentTab: LineAccountFormType;
+  declare providers: readonly ProviderView[];
+  declare channels: readonly ChannelView[];
+  declare liffApps: readonly LiffAppView[];
   declare loading: boolean;
   declare loadError: boolean;
   declare dialogKind: DialogKind;
-  declare selectedAccount: LineAccountView | undefined;
+  declare selectedItem: ProviderView | ChannelView | LiffAppView | undefined;
   declare mutationError: string | undefined;
   declare notice: string | undefined;
-  declare accountErrors: ReadonlyMap<string, string>;
+  declare itemErrors: ReadonlyMap<string, string>;
   declare createPending: boolean;
   declare editPending: boolean;
   declare deletePending: boolean;
-  declare pendingAccountIds: ReadonlySet<string>;
+  declare pendingItemIds: ReadonlySet<string>;
   declare variant: string;
   declare searchQuery: string;
-  declare selectedListAccountId: string | undefined;
+  declare selectedItemId: string | undefined;
+  declare selectedProviderId: string;
+  declare selectedChannelId: string;
 
   #loadGeneration = 0;
-  #lastAdapter: LineAccountManagementAdapter | undefined;
+  #lastAdapter: LineProviderManagementAdapter | undefined;
   #noticeTimeoutId: number | undefined;
 
   constructor() {
     super();
     this.adapter = undefined;
     this.messages = undefined;
-    this.accounts = [];
+    this.currentTab = "provider";
+    this.providers = [];
+    this.channels = [];
+    this.liffApps = [];
     this.loading = false;
     this.loadError = false;
     this.dialogKind = undefined;
-    this.selectedAccount = undefined;
+    this.selectedItem = undefined;
     this.mutationError = undefined;
     this.notice = undefined;
-    this.accountErrors = new Map();
+    this.itemErrors = new Map();
     this.createPending = false;
     this.editPending = false;
     this.deletePending = false;
-    this.pendingAccountIds = new Set();
+    this.pendingItemIds = new Set();
     this.variant = "grid";
     this.searchQuery = "";
-    this.selectedListAccountId = undefined;
+    this.selectedItemId = undefined;
+    this.selectedProviderId = "";
+    this.selectedChannelId = "";
 
     this.addEventListener("line-account-select-request", (event) => {
-      const { account } = (event as CustomEvent<{ account: LineAccountView }>).detail;
-      this.selectedListAccountId = account.id;
+      const { item } = (event as CustomEvent<LineAccountRequestDetail>).detail;
+      this.selectedItemId = item.id;
     });
   }
 
@@ -703,26 +767,39 @@ export class LineAccountManagement extends LitElement {
 
     if (adapter === undefined) {
       this.loading = false;
-      this.accounts = [];
+      this.providers = [];
+      this.channels = [];
+      this.liffApps = [];
       return;
     }
 
     this.loading = true;
     try {
-      const page = await adapter.list();
+      const [providersPage, channelsPage, liffAppsPage] = await Promise.all([
+        adapter.listProviders(),
+        adapter.listChannels(),
+        adapter.listLiffApps(),
+      ]);
+
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
-      this.accounts = [...page.data];
+      this.providers = [...providersPage.data];
+      this.channels = [...channelsPage.data];
+      this.liffApps = [...liffAppsPage.data];
+
+      const currentItems = this.#currentItems();
       if (
-        this.accounts.length > 0 &&
-        !this.accounts.some((acc) => acc.id === this.selectedListAccountId)
+        currentItems.length > 0 &&
+        !currentItems.some((item) => item.id === this.selectedItemId)
       ) {
-        this.selectedListAccountId = this.accounts[0].id;
+        this.selectedItemId = currentItems[0].id;
       }
     } catch (error) {
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
-      this.accounts = [];
+      this.providers = [];
+      this.channels = [];
+      this.liffApps = [];
       this.loadError = true;
-      this.#emitError("list", error);
+      this.#emitError("listProviders", error);
     } finally {
       if (generation === this.#loadGeneration && this.adapter === adapter) this.loading = false;
     }
@@ -730,39 +807,79 @@ export class LineAccountManagement extends LitElement {
 
   protected updated(changedProperties: PropertyValues<this>): void {
     if (changedProperties.has("adapter") && this.adapter !== this.#lastAdapter) {
-      this.#lastAdapter = this.adapter;
+      this.#lastAdapter = this.adapter as any;
       void this.reload();
     }
   }
 
+  #resolvedItems(): readonly (ProviderView | ChannelView | LiffAppView)[] {
+    const query = this.searchQuery.toLowerCase().trim();
+    let items = this.#currentItems();
+
+    if (this.currentTab === "channel" && this.selectedProviderId) {
+      items = items.filter((c) => (c as ChannelView).providerId === this.selectedProviderId);
+    } else if (this.currentTab === "liff" && this.selectedChannelId) {
+      items = items.filter((l) => (l as LiffAppView).loginChannelId === this.selectedChannelId);
+    }
+
+    if (query) {
+      items = items.filter((item) => {
+        if (this.currentTab === "provider") {
+          return (
+            (item as ProviderView).name.toLowerCase().includes(query) ||
+            item.id.toLowerCase().includes(query)
+          );
+        } else if (this.currentTab === "channel") {
+          const c = item as ChannelView;
+          return (
+            c.name.toLowerCase().includes(query) ||
+            c.channelId.toLowerCase().includes(query) ||
+            (c.channelType === "messaging" &&
+              c.displayName !== null &&
+              c.displayName.toLowerCase().includes(query))
+          );
+        } else {
+          const l = item as LiffAppView;
+          return (
+            l.liffId.toLowerCase().includes(query) ||
+            item.id.toLowerCase().includes(query) ||
+            (l.description && l.description.toLowerCase().includes(query))
+          );
+        }
+      });
+    }
+
+    return items;
+  }
+
+  #currentItems(): readonly (ProviderView | ChannelView | LiffAppView)[] {
+    if (this.currentTab === "provider") return this.providers;
+    if (this.currentTab === "channel") return this.channels;
+    return this.liffApps;
+  }
+
   protected render() {
     const messages = this.#resolvedMessages;
+    const filtered = this.#resolvedItems();
 
-    const filtered = this.accounts.filter((account) => {
-      const query = this.searchQuery.toLowerCase().trim();
-      if (!query) return true;
-      return (
-        account.name.toLowerCase().includes(query) ||
-        (account.displayName && account.displayName.toLowerCase().includes(query)) ||
-        account.channelId.includes(query) ||
-        (account.basicId && account.basicId.toLowerCase().includes(query))
-      );
-    });
-
-    let activeAccount = filtered.find((a) => a.id === this.selectedListAccountId);
-    if (!activeAccount && filtered.length > 0) {
-      activeAccount = filtered[0];
+    let activeItem = filtered.find((item) => item.id === this.selectedItemId);
+    if (!activeItem && filtered.length > 0) {
+      activeItem = filtered[0];
     }
+
+    let addBtnLabel = messages.addProvider;
+    if (this.currentTab === "channel") addBtnLabel = messages.addChannel;
+    else if (this.currentTab === "liff") addBtnLabel = messages.addLiffApp;
 
     return html`
       <section class="page" part="page">
-        ${this.variant !== "split"
-          ? html`
-              <header class="header" part="header">
-                <div class="header-copy">
-                  <h1 part="title">${messages.title}</h1>
-                  <p class="description">${messages.description}</p>
-                </div>
+        <header class="header" part="header">
+          <div class="header-copy">
+            <h1 part="title">${messages.title}</h1>
+            <p class="description">${messages.description}</p>
+          </div>
+          ${this.variant !== "split"
+            ? html`
                 <button
                   class="primary add-btn"
                   part="add-button"
@@ -783,19 +900,44 @@ export class LineAccountManagement extends LitElement {
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  ${messages.addAccount}
+                  ${addBtnLabel}
                 </button>
-              </header>
-              ${this.#renderToolbar()} ${this.#renderCollection(messages, filtered)}
-            `
+              `
+            : ""}
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-bar" role="tablist">
+          <button
+            class="tab-btn ${this.currentTab === "provider" ? "active" : ""}"
+            role="tab"
+            aria-selected=${this.currentTab === "provider" ? "true" : "false"}
+            @click=${() => this.#setTab("provider")}
+          >
+            ${messages.providersTab}
+          </button>
+          <button
+            class="tab-btn ${this.currentTab === "channel" ? "active" : ""}"
+            role="tab"
+            aria-selected=${this.currentTab === "channel" ? "true" : "false"}
+            @click=${() => this.#setTab("channel")}
+          >
+            ${messages.channelsTab}
+          </button>
+          <button
+            class="tab-btn ${this.currentTab === "liff" ? "active" : ""}"
+            role="tab"
+            aria-selected=${this.currentTab === "liff" ? "true" : "false"}
+            @click=${() => this.#setTab("liff")}
+          >
+            ${messages.liffAppsTab}
+          </button>
+        </div>
+
+        ${this.variant !== "split"
+          ? html` ${this.#renderToolbar()} ${this.#renderCollection(messages, filtered)} `
           : html`
-              <header class="header" part="header" style="margin-bottom: 1rem;">
-                <div class="header-copy">
-                  <h1 part="title">${messages.title}</h1>
-                  <p class="description">${messages.description}</p>
-                </div>
-              </header>
-              ${this.#renderToolbar()} ${this.#renderSplitPane(messages, filtered, activeAccount)}
+              ${this.#renderToolbar()} ${this.#renderSplitPane(messages, filtered, activeItem)}
             `}
       </section>
 
@@ -839,15 +981,48 @@ export class LineAccountManagement extends LitElement {
             </div>
           `
         : ""}
+      ${this.#renderDialogs(messages)}
+    `;
+  }
 
+  #renderDialogs(messages: LineAccountManagementMessages) {
+    let headingCreate = messages.createProviderHeading;
+    let headingEdit = messages.editProviderHeading;
+    let headingDelete = messages.deleteProviderHeading;
+
+    if (this.currentTab === "channel") {
+      headingCreate = messages.createChannelHeading;
+      headingEdit = messages.editChannelHeading;
+      headingDelete = messages.deleteChannelHeading;
+    } else if (this.currentTab === "liff") {
+      headingCreate = messages.createLiffAppHeading;
+      headingEdit = messages.editLiffAppHeading;
+      headingDelete = messages.deleteLiffAppHeading;
+    }
+
+    const deleteConfirmMsg = this.selectedItem
+      ? this.currentTab === "provider"
+        ? messages.deleteConfirmation("Provider", (this.selectedItem as ProviderView).name)
+        : this.currentTab === "channel"
+          ? messages.deleteConfirmation("Channel", (this.selectedItem as ChannelView).name)
+          : messages.deleteConfirmation(
+              "LIFF Application",
+              (this.selectedItem as LiffAppView).liffId,
+            )
+      : "";
+
+    return html`
       <line-account-dialog
         data-kind="create"
         .open=${this.dialogKind === "create"}
-        .heading=${messages.createHeading}
+        .heading=${headingCreate}
         @line-account-dialog-close-request=${this.#closeDialog}
       >
         <line-account-form
+          .type=${this.currentTab}
           .mode=${"create"}
+          .providers=${this.providers}
+          .channels=${this.channels}
           .messages=${messages}
           .submitting=${this.createPending}
           .error=${this.dialogKind === "create" ? this.mutationError : undefined}
@@ -869,19 +1044,22 @@ export class LineAccountManagement extends LitElement {
           ?disabled=${this.createPending}
           @click=${() => this.#submitDialogForm("create")}
         >
-          ${this.createPending ? messages.creatingAccount : messages.createAccount}
+          ${this.createPending ? messages.loading : "Create"}
         </button>
       </line-account-dialog>
 
       <line-account-dialog
         data-kind="edit"
         .open=${this.dialogKind === "edit"}
-        .heading=${messages.editHeading}
+        .heading=${headingEdit}
         @line-account-dialog-close-request=${this.#closeDialog}
       >
         <line-account-form
+          .type=${this.currentTab}
           .mode=${"edit"}
-          .account=${this.selectedAccount}
+          .item=${this.selectedItem}
+          .providers=${this.providers}
+          .channels=${this.channels}
           .messages=${messages}
           .submitting=${this.editPending}
           .error=${this.dialogKind === "edit" ? this.mutationError : undefined}
@@ -903,23 +1081,17 @@ export class LineAccountManagement extends LitElement {
           ?disabled=${this.editPending}
           @click=${() => this.#submitDialogForm("edit")}
         >
-          ${this.editPending ? messages.savingAccount : messages.saveChanges}
+          ${this.editPending ? messages.loading : messages.saveChanges}
         </button>
       </line-account-dialog>
 
       <line-account-dialog
         data-kind="delete"
         .open=${this.dialogKind === "delete"}
-        .heading=${messages.deleteHeading}
+        .heading=${headingDelete}
         @line-account-dialog-close-request=${this.#closeDialog}
       >
-        <p class="dialog-copy">
-          ${this.selectedAccount === undefined
-            ? ""
-            : messages.deleteConfirmation(
-                this.selectedAccount.displayName?.trim() || this.selectedAccount.name,
-              )}
-        </p>
+        <p class="dialog-copy">${deleteConfirmMsg}</p>
         ${this.dialogKind === "delete" && this.mutationError
           ? html`<p class="error" role="alert">${this.mutationError}</p>`
           : ""}
@@ -937,9 +1109,9 @@ export class LineAccountManagement extends LitElement {
           slot="footer"
           type="button"
           ?disabled=${this.deletePending}
-          @click=${this.#deleteSelectedAccount}
+          @click=${this.#deleteSelectedItem}
         >
-          ${this.deletePending ? messages.deletingAccount : messages.confirmDelete}
+          ${this.deletePending ? messages.loading : messages.confirmDelete}
         </button>
       </line-account-dialog>
     `;
@@ -965,10 +1137,10 @@ export class LineAccountManagement extends LitElement {
           <input
             class="search-input"
             type="text"
-            placeholder="Search accounts..."
+            placeholder="Search..."
             .value=${this.searchQuery}
             @input=${this.#handleSearchInput}
-            aria-label="Search accounts"
+            aria-label="Search"
           />
           ${this.searchQuery
             ? html`
@@ -995,6 +1167,48 @@ export class LineAccountManagement extends LitElement {
               `
             : ""}
         </div>
+
+        <!-- Dynamic Dropdown Filters -->
+        ${this.currentTab === "channel"
+          ? html`
+              <div class="filter-wrapper">
+                <select
+                  .value=${this.selectedProviderId}
+                  @change=${this.#handleProviderFilterChange}
+                  aria-label="Filter by Provider"
+                >
+                  <option value="">All Providers</option>
+                  ${this.providers.map(
+                    (p) =>
+                      html`<option value=${p.id} ?selected=${p.id === this.selectedProviderId}>
+                        ${p.name}
+                      </option>`,
+                  )}
+                </select>
+              </div>
+            `
+          : this.currentTab === "liff"
+            ? html`
+                <div class="filter-wrapper">
+                  <select
+                    .value=${this.selectedChannelId}
+                    @change=${this.#handleChannelFilterChange}
+                    aria-label="Filter by Channel"
+                  >
+                    <option value="">All Channels</option>
+                    ${this.channels
+                      .filter((c) => c.channelType === "login")
+                      .map(
+                        (c) =>
+                          html`<option value=${c.id} ?selected=${c.id === this.selectedChannelId}>
+                            ${c.name}
+                          </option>`,
+                      )}
+                  </select>
+                </div>
+              `
+            : ""}
+
         <div class="variant-switcher">
           <button
             class="variant-btn ${this.variant === "grid" ? "active" : ""}"
@@ -1077,6 +1291,20 @@ export class LineAccountManagement extends LitElement {
     }
   };
 
+  #handleProviderFilterChange = (event: Event): void => {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) {
+      this.selectedProviderId = target.value;
+    }
+  };
+
+  #handleChannelFilterChange = (event: Event): void => {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) {
+      this.selectedChannelId = target.value;
+    }
+  };
+
   #clearSearch = (): void => {
     this.searchQuery = "";
   };
@@ -1085,11 +1313,21 @@ export class LineAccountManagement extends LitElement {
     this.variant = variant;
   };
 
+  #setTab = (tab: LineAccountFormType): void => {
+    this.currentTab = tab;
+    this.selectedItemId = undefined;
+    this.searchQuery = "";
+  };
+
   #renderSplitPane(
     messages: LineAccountManagementMessages,
-    filtered: readonly LineAccountView[],
-    activeAccount: LineAccountView | undefined,
+    filtered: readonly (ProviderView | ChannelView | LiffAppView)[],
+    activeItem: ProviderView | ChannelView | LiffAppView | undefined,
   ) {
+    let addBtnLabel = messages.addProvider;
+    if (this.currentTab === "channel") addBtnLabel = messages.addChannel;
+    else if (this.currentTab === "liff") addBtnLabel = messages.addLiffApp;
+
     return html`
       <div class="split-container">
         <div class="split-sidebar">
@@ -1114,7 +1352,7 @@ export class LineAccountManagement extends LitElement {
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            ${messages.addAccount}
+            ${addBtnLabel}
           </button>
 
           ${this.loading
@@ -1143,22 +1381,23 @@ export class LineAccountManagement extends LitElement {
                 `
               : html`
                   <line-account-list
-                    .accounts=${filtered}
+                    .type=${this.currentTab}
+                    .items=${filtered}
                     .messages=${messages}
-                    .disabledAccountIds=${this.pendingAccountIds}
-                    .accountErrors=${this.accountErrors}
+                    .disabledItemIds=${this.pendingItemIds}
+                    .itemErrors=${this.itemErrors}
                     .variant=${this.variant}
-                    .selectedAccountId=${activeAccount?.id}
+                    .selectedItemId=${activeItem?.id}
                     @line-account-edit-request=${this.#openEdit}
-                    @line-account-toggle-request=${this.#toggleAccount}
+                    @line-account-toggle-request=${this.#toggleItem}
                     @line-account-delete-request=${this.#openDelete}
                   ></line-account-list>
                 `}
         </div>
 
         <div class="split-details">
-          ${activeAccount
-            ? this.#renderAccountDetails(messages, activeAccount)
+          ${activeItem
+            ? this.#renderItemDetails(messages, activeItem)
             : html`
                 <div class="details-empty-state">
                   <svg
@@ -1176,9 +1415,9 @@ export class LineAccountManagement extends LitElement {
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                   </svg>
-                  <h3>No Account Selected</h3>
+                  <h3>No Selection</h3>
                   <p style="font-size: 0.875rem; max-width: 16rem; margin-top: 0.25rem;">
-                    Select an account from the sidebar or add a new one to view details.
+                    Select an item from the sidebar or add a new one to view details.
                   </p>
                 </div>
               `}
@@ -1187,146 +1426,228 @@ export class LineAccountManagement extends LitElement {
     `;
   }
 
-  #renderAccountDetails(messages: LineAccountManagementMessages, account: LineAccountView) {
-    const displayName = account.displayName?.trim() || account.name;
-    const initial = displayName.trim().charAt(0).toUpperCase();
-    const isPending = this.pendingAccountIds.has(account.id);
+  #renderItemDetails(
+    messages: LineAccountManagementMessages,
+    item: ProviderView | ChannelView | LiffAppView,
+  ) {
+    const isPending = this.pendingItemIds.has(item.id);
 
-    return html`
-      <div class="details-header">
-        <div class="details-identity">
-          ${account.pictureUrl
-            ? html`<img class="details-avatar" src=${account.pictureUrl} alt=${displayName} />`
-            : html`<span class="details-initial">${initial}</span>`}
-          <div class="details-title-group">
-            <h2>${displayName}</h2>
-            ${account.basicId ? html`<div class="details-basic-id">${account.basicId}</div>` : ""}
-          </div>
-        </div>
-        <button
-          class="switch ${account.isActive ? "checked" : ""}"
-          part="status-button"
-          role="switch"
-          aria-checked=${account.isActive ? "true" : "false"}
-          aria-label=${account.isActive ? messages.deactivateAccount : messages.activateAccount}
-          ?disabled=${isPending || this.adapter === undefined}
-          @click=${() => this.#performToggle(account)}
-        >
-          <span class="switch-thumb"></span>
-        </button>
-      </div>
+    if (this.currentTab === "provider") {
+      const provider = item as ProviderView;
+      const initial = provider.name.trim().charAt(0).toUpperCase();
 
-      <div class="details-grid">
-        <div class="details-section">
-          <div class="details-section-title">${messages.messagingApiGroup}</div>
-          <div class="details-row">
-            <span class="details-label">${messages.channelIdLabel}</span>
-            <div class="details-value-wrapper">
-              <span class="details-value">${account.channelId}</span>
-              <button
-                class="copy-btn"
-                type="button"
-                aria-label="Copy Channel ID"
-                @click=${() => this.#copyText(account.channelId, "Channel ID copied")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </button>
+      return html`
+        <div class="details-header">
+          <div class="details-identity">
+            <span class="details-initial details-initial-provider">${initial}</span>
+            <div class="details-title-group">
+              <h2>${provider.name}</h2>
+              <div class="details-basic-id">Provider ID: ${provider.id}</div>
             </div>
           </div>
         </div>
 
-        <div class="details-section">
-          <div class="details-section-title">${messages.lineLoginGroup}</div>
-          ${account.loginChannelId
-            ? html`
-                <div class="details-row">
-                  <span class="details-label">${messages.loginChannelIdLabel}</span>
-                  <div class="details-value-wrapper">
-                    <span class="details-value">${account.loginChannelId}</span>
-                    <button
-                      class="copy-btn"
-                      type="button"
-                      aria-label="Copy LINE Login Channel ID"
-                      @click=${() =>
-                        this.#copyText(
-                          account.loginChannelId || "",
-                          "LINE Login Channel ID copied",
-                        )}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              `
-            : html`
-                <div
-                  style="color: var(--line-account-muted-color, #8a9ba8); font-size: 0.875rem; padding: 0.5rem 0;"
-                >
-                  Not Configured
-                </div>
-              `}
+        <div class="details-grid">
+          <div class="details-section">
+            <div class="details-section-title">Timeline</div>
+            <div class="details-row">
+              <span class="details-label">Created At</span>
+              <span class="details-value">${provider.createdAt.toLocaleString()}</span>
+            </div>
+            <div class="details-row">
+              <span class="details-label">Updated At</span>
+              <span class="details-value">${provider.updatedAt.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
 
-        <div class="details-section" style="grid-column: span 1;">
-          <div class="details-section-title">${messages.liffGroup}</div>
-          ${account.liffId
+        <div class="details-actions">
+          <button
+            class="action-btn"
+            type="button"
+            ?disabled=${isPending}
+            @click=${() => this.#triggerEdit(provider)}
+            style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
+          >
+            Edit
+          </button>
+          <button
+            class="danger"
+            type="button"
+            ?disabled=${isPending}
+            @click=${() => this.#triggerDelete(provider)}
+            style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
+          >
+            Delete
+          </button>
+        </div>
+      `;
+    }
+
+    if (this.currentTab === "channel") {
+      const channel = item as ChannelView;
+      const isMessaging = channel.channelType === "messaging";
+      const messagingChannel = channel.channelType === "messaging" ? channel : undefined;
+      const initial = channel.name.trim().charAt(0).toUpperCase();
+
+      return html`
+        <div class="details-header">
+          <div class="details-identity">
+            ${isMessaging && channel.pictureUrl
+              ? html`<img class="details-avatar" src=${channel.pictureUrl} alt=${channel.name} />`
+              : html`<span
+                  class="details-initial ${isMessaging
+                    ? "details-initial-channel-messaging"
+                    : "details-initial-channel-login"}"
+                  >${initial}</span
+                >`}
+            <div class="details-title-group">
+              <h2>${channel.name}</h2>
+              <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
+            </div>
+          </div>
+          ${isMessaging && this.adapter !== undefined
             ? html`
-                <div class="details-row">
-                  <span class="details-label">${messages.liffIdLabel}</span>
-                  <div class="details-value-wrapper">
-                    <span class="details-value">${account.liffId}</span>
-                    <button
-                      class="copy-btn"
-                      type="button"
-                      aria-label="Copy LIFF ID"
-                      @click=${() => this.#copyText(account.liffId || "", "LIFF ID copied")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </button>
-                  </div>
+                <button
+                  class="switch ${channel.isActive ? "checked" : ""}"
+                  part="status-button"
+                  role="switch"
+                  aria-checked=${channel.isActive ? "true" : "false"}
+                  aria-label=${channel.isActive ? "Deactivate Channel" : "Activate Channel"}
+                  ?disabled=${isPending}
+                  @click=${() => this.#performToggle(channel)}
+                >
+                  <span class="switch-thumb"></span>
+                </button>
+              `
+            : ""}
+        </div>
+
+        <div class="details-grid">
+          <div class="details-section">
+            <div class="details-section-title">Channel Details</div>
+            <div class="details-row">
+              <span class="details-label">Type</span>
+              <span class="details-value"
+                >${channel.channelType === "messaging" ? "Messaging API" : "LINE Login"}</span
+              >
+            </div>
+            <div class="details-row">
+              <span class="details-label">Record ID</span>
+              <span class="details-value">${channel.id}</span>
+            </div>
+            <div class="details-row">
+              <span class="details-label">Provider ID</span>
+              <span class="details-value">${channel.providerId}</span>
+            </div>
+          </div>
+
+          ${isMessaging
+            ? html`
+                <div class="details-section">
+                  <div class="details-section-title">Messaging Info</div>
+                  ${messagingChannel?.displayName
+                    ? html`<div class="details-row">
+                        <span class="details-label">Display Name</span>
+                        <span class="details-value">${messagingChannel.displayName}</span>
+                      </div>`
+                    : ""}
+                  ${messagingChannel?.botUserId
+                    ? html`<div class="details-row">
+                        <span class="details-label">Bot User ID</span>
+                        <span class="details-value">${messagingChannel.botUserId}</span>
+                      </div>`
+                    : ""}
                 </div>
               `
-            : html`
-                <div
-                  style="color: var(--line-account-muted-color, #8a9ba8); font-size: 0.875rem; padding: 0.5rem 0;"
-                >
-                  Not Configured
-                </div>
-              `}
+            : ""}
         </div>
+
+        <div class="details-actions">
+          ${isMessaging
+            ? html`<button
+                class="action-btn"
+                type="button"
+                ?disabled=${isPending}
+                @click=${(e: Event) => {
+                  e.stopPropagation();
+                  this.dispatchEvent(
+                    new CustomEvent("line-account-sync-request", {
+                      bubbles: true,
+                      composed: true,
+                      detail: { item: channel },
+                    }),
+                  );
+                }}
+                style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem; margin-right: auto;"
+              >
+                Sync
+              </button>`
+            : ""}
+          <button
+            class="action-btn"
+            type="button"
+            ?disabled=${isPending}
+            @click=${() => this.#triggerEdit(channel)}
+            style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
+          >
+            Edit
+          </button>
+          <button
+            class="danger"
+            type="button"
+            ?disabled=${isPending}
+            @click=${() => this.#triggerDelete(channel)}
+            style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
+          >
+            Delete
+          </button>
+        </div>
+      `;
+    }
+
+    // LIFF
+    const liff = item as LiffAppView;
+    return html`
+      <div class="details-header">
+        <div class="details-identity">
+          <span class="details-initial details-initial-liff">L</span>
+          <div class="details-title-group">
+            <h2>LIFF: ${liff.liffId}</h2>
+            <div class="details-basic-id">Login Channel Record ID: ${liff.loginChannelId}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="details-grid">
+        <div class="details-section">
+          <div class="details-section-title">LIFF Settings</div>
+          <div class="details-row">
+            <span class="details-label">LIFF App ID</span>
+            <span class="details-value">${liff.id}</span>
+          </div>
+          <div class="details-row">
+            <span class="details-label">View Type</span>
+            <span class="details-value">${liff.view.type.toUpperCase()}</span>
+          </div>
+          <div class="details-row">
+            <span class="details-label">View URL</span>
+            <span class="details-value">${liff.view.url}</span>
+          </div>
+        </div>
+
+        ${liff.description
+          ? html`
+              <div class="details-section">
+                <div class="details-section-title">Description</div>
+                <div
+                  style="font-size: 0.875rem; line-height: 1.5; color: var(--line-account-text-color, #1f2933)"
+                >
+                  ${liff.description}
+                </div>
+              </div>
+            `
+          : ""}
       </div>
 
       <div class="details-actions">
@@ -1334,47 +1655,44 @@ export class LineAccountManagement extends LitElement {
           class="action-btn"
           type="button"
           ?disabled=${isPending}
-          @click=${() => this.#triggerEdit(account)}
+          @click=${() => this.#triggerEdit(liff)}
           style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
         >
-          ${messages.editAccount}
+          Edit
         </button>
         <button
           class="danger"
           type="button"
           ?disabled=${isPending}
-          @click=${() => this.#triggerDelete(account)}
+          @click=${() => this.#triggerDelete(liff)}
           style="min-height: 2.5rem; font-weight: 600; padding: 0.5rem 1.25rem;"
         >
-          ${messages.deleteAccount}
+          Delete
         </button>
       </div>
     `;
   }
 
-  #copyText = (text: string, announcement: string): void => {
-    void navigator.clipboard.writeText(text).then(() => {
-      this.#showNotice(announcement);
-    });
-  };
-
-  #triggerEdit = (account: LineAccountView): void => {
-    this.selectedAccount = account;
+  #triggerEdit = (item: ProviderView | ChannelView | LiffAppView): void => {
+    this.selectedItem = item;
     this.mutationError = undefined;
     this.dialogKind = "edit";
   };
 
-  #triggerDelete = (account: LineAccountView): void => {
-    this.selectedAccount = account;
+  #triggerDelete = (item: ProviderView | ChannelView | LiffAppView): void => {
+    this.selectedItem = item;
     this.mutationError = undefined;
     this.dialogKind = "delete";
   };
 
-  #renderCollection(messages: LineAccountManagementMessages, filtered: readonly LineAccountView[]) {
+  #renderCollection(
+    messages: LineAccountManagementMessages,
+    filtered: readonly (ProviderView | ChannelView | LiffAppView)[],
+  ) {
     if (this.adapter === undefined) {
       return html`
         <section class="state" role="alert" aria-labelledby="adapter-heading">
-          <h2 id="adapter-heading">${messages.adapterMissingHeading}</h2>
+          <h2 id="adapter-heading">Adapter Missing</h2>
           <p>${messages.adapterMissingDescription}</p>
         </section>
       `;
@@ -1385,7 +1703,7 @@ export class LineAccountManagement extends LitElement {
         <div class="spinner-container" role="status" aria-live="polite">
           <div class="spinner"></div>
           <p style="margin: 0; font-weight: 550; color: var(--line-account-muted-color, #52606d)">
-            ${messages.loadingAccounts}
+            Loading content...
           </p>
         </div>
       `;
@@ -1404,13 +1722,14 @@ export class LineAccountManagement extends LitElement {
 
     return html`
       <line-account-list
-        .accounts=${filtered}
+        .type=${this.currentTab}
+        .items=${filtered}
         .messages=${messages}
-        .disabledAccountIds=${this.pendingAccountIds}
-        .accountErrors=${this.accountErrors}
+        .disabledItemIds=${this.pendingItemIds}
+        .itemErrors=${this.itemErrors}
         .variant=${this.variant}
         @line-account-edit-request=${this.#openEdit}
-        @line-account-toggle-request=${this.#toggleAccount}
+        @line-account-toggle-request=${this.#toggleItem}
         @line-account-delete-request=${this.#openDelete}
       ></line-account-list>
     `;
@@ -1444,7 +1763,7 @@ export class LineAccountManagement extends LitElement {
     this.shadowRoot
       ?.querySelector<LineAccountForm>('line-account-dialog[data-kind="create"] line-account-form')
       ?.reset();
-    this.selectedAccount = undefined;
+    this.selectedItem = undefined;
     this.mutationError = undefined;
     this.dialogKind = "create";
   };
@@ -1454,13 +1773,13 @@ export class LineAccountManagement extends LitElement {
   };
 
   #openEdit = (event: CustomEvent<LineAccountRequestDetail>): void => {
-    this.selectedAccount = event.detail.account;
+    this.selectedItem = event.detail.item;
     this.mutationError = undefined;
     this.dialogKind = "edit";
   };
 
   #openDelete = (event: CustomEvent<LineAccountRequestDetail>): void => {
-    this.selectedAccount = event.detail.account;
+    this.selectedItem = event.detail.item;
     this.mutationError = undefined;
     this.dialogKind = "delete";
   };
@@ -1468,7 +1787,7 @@ export class LineAccountManagement extends LitElement {
   #closeDialog = (): void => {
     if (this.createPending || this.editPending || this.deletePending) return;
     this.dialogKind = undefined;
-    this.selectedAccount = undefined;
+    this.selectedItem = undefined;
     this.mutationError = undefined;
   };
 
@@ -1479,33 +1798,46 @@ export class LineAccountManagement extends LitElement {
   }
 
   #handleFormSubmit = (event: CustomEvent<LineAccountFormSubmitDetail>): void => {
-    if (event.detail.mode === "create") void this.#createAccount(event.detail.input);
-    else void this.#updateSelectedAccount(event.detail.input);
+    const detail = event.detail;
+    if (detail.mode === "create") {
+      void this.#createItem(detail.type, detail.input);
+    } else {
+      void this.#updateItem(detail.type, this.selectedItem!.id, detail.input);
+    }
   };
 
-  async #createAccount(input: CreateLineAccountInput): Promise<void> {
+  async #createItem(type: LineAccountFormType, input: any): Promise<void> {
     const adapter = this.adapter;
     if (adapter === undefined || this.createPending) return;
     this.createPending = true;
     this.mutationError = undefined;
     try {
-      const account = await adapter.create(input);
+      let created;
+      if (type === "provider") {
+        created = await adapter.createProvider(input);
+      } else if (type === "channel") {
+        created = await adapter.createChannel(input);
+      } else {
+        created = await adapter.createLiffApp(input);
+      }
+
       this.dialogKind = undefined;
       this.#showNotice(this.#resolvedMessages.createSuccess);
       await this.reload();
-      this.dispatchEvent(new CustomEvent("line-account-created", eventOptions({ account })));
+      this.dispatchEvent(
+        new CustomEvent("line-account-created", eventOptions({ item: created, type })),
+      );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.createFailure;
-      this.#emitError("create", error);
+      this.#emitError("createProvider", error); // Simple fallback operation name
     } finally {
       this.createPending = false;
     }
   }
 
-  async #updateSelectedAccount(input: UpdateLineAccountInput): Promise<void> {
+  async #updateItem(type: LineAccountFormType, id: string, input: any): Promise<void> {
     const adapter = this.adapter;
-    const account = this.selectedAccount;
-    if (adapter === undefined || account === undefined || this.editPending) return;
+    if (adapter === undefined || this.editPending) return;
     if (Object.keys(input).length === 0) {
       this.#closeDialog();
       return;
@@ -1514,73 +1846,89 @@ export class LineAccountManagement extends LitElement {
     this.editPending = true;
     this.mutationError = undefined;
     try {
-      const updated = await adapter.update(account.id, input);
+      let updated;
+      if (type === "provider") {
+        updated = await adapter.updateProvider(id, input);
+      } else if (type === "channel") {
+        updated = await adapter.updateChannel(id, input);
+      } else {
+        updated = await adapter.updateLiffApp(id, input);
+      }
+
       this.dialogKind = undefined;
-      this.selectedAccount = undefined;
+      this.selectedItem = undefined;
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-updated", eventOptions({ account: updated })),
+        new CustomEvent("line-account-updated", eventOptions({ item: updated, type })),
       );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.updateFailure;
-      this.#emitError("update", error);
+      this.#emitError("updateProvider", error);
     } finally {
       this.editPending = false;
     }
   }
 
-  #toggleAccount = (event: CustomEvent<LineAccountRequestDetail>): void => {
-    void this.#performToggle(event.detail.account);
+  #toggleItem = (event: CustomEvent<LineAccountRequestDetail>): void => {
+    void this.#performToggle(event.detail.item as ChannelView);
   };
 
-  async #performToggle(account: LineAccountView): Promise<void> {
+  async #performToggle(channel: ChannelView): Promise<void> {
     const adapter = this.adapter;
-    if (adapter === undefined || this.pendingAccountIds.has(account.id)) return;
-    this.pendingAccountIds = new Set([...this.pendingAccountIds, account.id]);
-    const accountErrors = new Map(this.accountErrors);
-    accountErrors.delete(account.id);
-    this.accountErrors = accountErrors;
+    if (adapter === undefined || this.pendingItemIds.has(channel.id)) return;
+    this.pendingItemIds = new Set([...this.pendingItemIds, channel.id]);
+    const itemErrors = new Map(this.itemErrors);
+    itemErrors.delete(channel.id);
+    this.itemErrors = itemErrors;
     try {
-      const updated = await adapter.update(account.id, { isActive: !account.isActive });
+      const isActive = channel.channelType === "messaging" ? channel.isActive : false;
+      const updated = await adapter.updateChannel(channel.id, { isActive: !isActive });
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-updated", eventOptions({ account: updated })),
+        new CustomEvent("line-account-updated", eventOptions({ item: updated, type: "channel" })),
       );
     } catch (error) {
-      this.accountErrors = new Map(this.accountErrors).set(
-        account.id,
-        this.#resolvedMessages.toggleFailure,
-      );
-      this.#emitError("toggle", error);
+      this.itemErrors = new Map(this.itemErrors).set(channel.id, "Failed to toggle status");
+      this.#emitError("updateChannel", error);
     } finally {
-      const pending = new Set(this.pendingAccountIds);
-      pending.delete(account.id);
-      this.pendingAccountIds = pending;
+      const pending = new Set(this.pendingItemIds);
+      pending.delete(channel.id);
+      this.pendingItemIds = pending;
     }
   }
 
-  #deleteSelectedAccount = (): void => {
+  #deleteSelectedItem = (): void => {
     void this.#performDelete();
   };
 
   async #performDelete(): Promise<void> {
     const adapter = this.adapter;
-    const account = this.selectedAccount;
-    if (adapter === undefined || account === undefined || this.deletePending) return;
+    const item = this.selectedItem;
+    if (adapter === undefined || item === undefined || this.deletePending) return;
     this.deletePending = true;
     this.mutationError = undefined;
+    const type = this.currentTab;
     try {
-      await adapter.delete(account.id);
+      if (type === "provider") {
+        await adapter.deleteProvider(item.id);
+      } else if (type === "channel") {
+        await adapter.deleteChannel(item.id);
+      } else {
+        await adapter.deleteLiffApp(item.id);
+      }
+
       this.dialogKind = undefined;
-      this.selectedAccount = undefined;
+      this.selectedItem = undefined;
       this.#showNotice(this.#resolvedMessages.deleteSuccess);
       await this.reload();
-      this.dispatchEvent(new CustomEvent("line-account-deleted", eventOptions({ id: account.id })));
+      this.dispatchEvent(
+        new CustomEvent("line-account-deleted", eventOptions({ id: item.id, type })),
+      );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.deleteFailure;
-      this.#emitError("delete", error);
+      this.#emitError("deleteProvider", error);
     } finally {
       this.deletePending = false;
     }

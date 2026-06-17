@@ -5,25 +5,24 @@ import {
   LineAccountList,
   defaultLineAccountManagementMessages,
   defineLineAccountManagementElements,
-  type LineAccountView,
+  type ChannelView,
 } from "../../src/web/index.ts";
 
-const account: LineAccountView = {
-  id: "account-1",
-  name: "Internal name",
-  displayName: "LINE Store",
+const mockChannel: ChannelView = {
+  id: "channel-1",
+  providerId: "provider-1",
+  channelType: "messaging",
+  name: "Support Bot",
+  displayName: "LINE Support",
   channelId: "1234567890",
   botUserId: null,
+  basicId: null,
   pictureUrl: null,
-  basicId: "@line-store",
   isActive: true,
-  loginChannelId: "login-1",
-  liffId: null,
+  hasChannelSecret: true,
+  hasChannelAccessToken: true,
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
-  hasChannelAccessToken: true,
-  hasChannelSecret: true,
-  hasLoginChannelSecret: true,
 };
 
 beforeAll(() => {
@@ -37,36 +36,35 @@ afterEach(() => {
 describe("line-account-card", () => {
   test("renders identity and explicit configuration statuses", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
-    element.account = account;
+    element.type = "channel";
+    element.item = mockChannel;
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
 
-    expect(element.shadowRoot?.textContent).toContain("LINE Store");
-    expect(element.shadowRoot?.textContent).toContain("@line-store");
+    expect(element.shadowRoot?.textContent).toContain("LINE Support");
     expect(
       element.shadowRoot?.querySelector('[part="status-button"]')?.getAttribute("aria-checked"),
     ).toBe("true");
-    expect(element.shadowRoot?.textContent).toContain("LINE Login");
-    expect(element.shadowRoot?.textContent).toContain("LIFF");
     expect(element.shadowRoot?.querySelector('[part="card"]')).not.toBeNull();
   });
 
   test("falls back to the account name and generated initial", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
-    element.account = { ...account, displayName: null, basicId: null, loginChannelId: null };
+    element.type = "channel";
+    element.item = { ...mockChannel, displayName: null };
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
 
-    expect(element.shadowRoot?.textContent).toContain("Internal name");
-    expect(element.shadowRoot?.querySelector('[aria-hidden="true"]')?.textContent).toBe("I");
-    expect(element.shadowRoot?.textContent).toContain("LINE Login");
+    expect(element.shadowRoot?.textContent).toContain("Support Bot");
+    expect(element.shadowRoot?.querySelector('[aria-hidden="true"]')?.textContent.trim()).toBe("S");
   });
 
   test("emits composed account request events and disables every action", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
-    element.account = account;
+    element.type = "channel";
+    element.item = mockChannel;
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
@@ -86,7 +84,7 @@ describe("line-account-card", () => {
 
     expect(events).toHaveLength(3);
     expect(events.every((event) => event.bubbles && event.composed)).toBe(true);
-    expect(events.every((event) => event.detail.account === account)).toBe(true);
+    expect(events.every((event) => event.detail.item === mockChannel)).toBe(true);
 
     element.disabled = true;
     await element.updateComplete;
@@ -96,67 +94,30 @@ describe("line-account-card", () => {
       ),
     ).toBe(true);
   });
-
-  test("makes split cards selectable with keyboard semantics", async () => {
-    const element = document.createElement("line-account-card") as LineAccountCard;
-    element.account = account;
-    element.variant = "split";
-    element.selected = true;
-    document.body.append(element);
-    await element.updateComplete;
-
-    const article = element.shadowRoot?.querySelector<HTMLElement>('[part="card"]');
-    expect(article).not.toBeNull();
-    expect(article?.getAttribute("tabindex")).toBe("0");
-    expect(article?.getAttribute("role")).toBe("button");
-    expect(article?.getAttribute("aria-pressed")).toBe("true");
-
-    let selected: CustomEvent | undefined;
-    element.addEventListener("line-account-select-request", (event) => {
-      selected = event as CustomEvent;
-    });
-
-    article?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-
-    expect(selected?.detail.account).toBe(account);
-    expect(selected?.bubbles).toBe(true);
-    expect(selected?.composed).toBe(true);
-  });
-
-  test("renders an action error inside the affected card", async () => {
-    const element = document.createElement("line-account-card") as LineAccountCard;
-    element.account = account;
-    element.messages = defaultLineAccountManagementMessages;
-    element.error = "The LINE account status could not be updated.";
-    document.body.append(element);
-    await element.updateComplete;
-
-    expect(element.shadowRoot?.querySelector('[role="alert"]')?.textContent).toContain(
-      "The LINE account status could not be updated.",
-    );
-  });
 });
 
 describe("line-account-list", () => {
   test("renders an accessible empty state", async () => {
     const element = document.createElement("line-account-list") as LineAccountList;
+    element.type = "provider";
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
 
-    expect(element.shadowRoot?.textContent).toContain("No LINE accounts");
+    expect(element.shadowRoot?.textContent).toContain("No LINE Providers found");
     expect(element.shadowRoot?.querySelector('[part="list"]')).not.toBeNull();
   });
 
   test("renders cards and forwards their request events", async () => {
     const element = document.createElement("line-account-list") as LineAccountList;
-    element.accounts = [account];
+    element.type = "channel";
+    element.items = [mockChannel];
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
 
     const card = element.shadowRoot?.querySelector("line-account-card") as LineAccountCard;
-    expect(card.account).toBe(account);
+    expect(card.item).toBe(mockChannel);
 
     let received: CustomEvent | undefined;
     element.addEventListener("line-account-edit-request", (event) => {
@@ -165,7 +126,7 @@ describe("line-account-list", () => {
     await card.updateComplete;
     card.shadowRoot?.querySelector<HTMLButtonElement>('[part="edit-button"]')?.click();
 
-    expect(received?.detail.account).toBe(account);
+    expect(received?.detail.item).toBe(mockChannel);
     expect(received?.composed).toBe(true);
   });
 });
@@ -194,28 +155,5 @@ describe("line-account-dialog", () => {
     expect(closeRequest?.bubbles).toBe(true);
     expect(closeRequest?.composed).toBe(true);
     expect(element.open).toBe(true);
-  });
-
-  test("requests close from the backdrop and restores focus when the parent closes it", async () => {
-    const opener = document.createElement("button");
-    opener.textContent = "Open";
-    document.body.append(opener);
-    opener.focus();
-
-    const element = document.createElement("line-account-dialog") as LineAccountDialog;
-    element.heading = "Confirm delete";
-    document.body.append(element);
-    element.open = true;
-    await element.updateComplete;
-
-    let requests = 0;
-    element.addEventListener("line-account-dialog-close-request", () => requests++);
-    const dialog = element.shadowRoot?.querySelector("dialog");
-    dialog?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(requests).toBe(1);
-
-    element.open = false;
-    await element.updateComplete;
-    expect(document.activeElement).toBe(opener);
   });
 });

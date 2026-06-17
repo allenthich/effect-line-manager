@@ -10,7 +10,11 @@
   "types": "./dist/index.d.mts",
   "exports": {
     ".": "./dist/index.mjs",
+    "./adapter": "./dist/adapter/index.mjs",
     "./httpapi": "./dist/httpapi/index.mjs",
+    "./login": "./dist/login/index.mjs",
+    "./messaging": "./dist/messaging/index.mjs",
+    "./registry": "./dist/registry/index.mjs",
     "./web": "./dist/web/index.mjs",
     "./package.json": "./package.json"
   },
@@ -20,6 +24,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
+    "dev:demo": "vp dev demo",
     "test": "vp test",
     "check": "vp check && vpx tsgo --noEmit",
     "prepublishOnly": "vp run build",

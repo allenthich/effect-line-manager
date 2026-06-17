@@ -1,64 +1,24 @@
 import { Schema } from "effect";
+import { LineLiffRecordId } from "./domain.ts";
 
-export const LineLiffOperation = Schema.Literals([
-  "getLiffApps",
-  "createLiffApp",
-  "updateLiffApp",
-  "deleteLiffApp",
-]);
-
-export type LineLiffOperation = typeof LineLiffOperation.Type;
-
-export class LineLiffApiTransportError extends Schema.TaggedErrorClass<LineLiffApiTransportError>()(
-  "LineLiffApiTransportError",
+export class LiffAppNotFoundError extends Schema.TaggedErrorClass<LiffAppNotFoundError>()(
+  "LiffAppNotFoundError",
   {
-    operation: LineLiffOperation,
-    cause: Schema.Defect(),
+    recordId: LineLiffRecordId,
   },
 ) {}
 
-export class LineLiffApiTimeoutError extends Schema.TaggedErrorClass<LineLiffApiTimeoutError>()(
-  "LineLiffApiTimeoutError",
+export class LiffAppDuplicateError extends Schema.TaggedErrorClass<LiffAppDuplicateError>()(
+  "LiffAppDuplicateError",
   {
-    operation: LineLiffOperation,
+    liffId: Schema.String,
   },
 ) {}
 
-const LineLiffApiResponseFields = {
-  operation: LineLiffOperation,
-  body: Schema.String,
-  requestId: Schema.optional(Schema.String),
-};
-
-export class LineLiffApiAuthenticationError extends Schema.TaggedErrorClass<LineLiffApiAuthenticationError>()(
-  "LineLiffApiAuthenticationError",
+/** Error raised when a LIFF client is requested but no OAuth access token is provided. */
+export class LiffLoginConfigMissingError extends Schema.TaggedErrorClass<LiffLoginConfigMissingError>()(
+  "LiffLoginConfigMissingError",
   {
-    ...LineLiffApiResponseFields,
-    status: Schema.Literals([401, 403]),
-  },
-) {}
-
-export class LineLiffApiRateLimitError extends Schema.TaggedErrorClass<LineLiffApiRateLimitError>()(
-  "LineLiffApiRateLimitError",
-  {
-    ...LineLiffApiResponseFields,
-    status: Schema.Literal(429),
-    retryAfter: Schema.optional(Schema.String),
-  },
-) {}
-
-export class LineLiffApiResponseError extends Schema.TaggedErrorClass<LineLiffApiResponseError>()(
-  "LineLiffApiResponseError",
-  {
-    ...LineLiffApiResponseFields,
-    status: Schema.Finite,
-  },
-) {}
-
-export class LineLiffRequestEncodingError extends Schema.TaggedErrorClass<LineLiffRequestEncodingError>()(
-  "LineLiffRequestEncodingError",
-  {
-    operation: LineLiffOperation,
-    cause: Schema.Defect(),
+    recordId: LineLiffRecordId,
   },
 ) {}
