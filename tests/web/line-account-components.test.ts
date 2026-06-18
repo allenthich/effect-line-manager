@@ -156,4 +156,64 @@ describe("line-account-dialog", () => {
     expect(closeRequest?.composed).toBe(true);
     expect(element.open).toBe(true);
   });
+
+  test("emits close request on true backdrop click (both mousedown and click on dialog itself)", async () => {
+    const element = document.createElement("line-account-dialog") as LineAccountDialog;
+    element.heading = "Add LINE account";
+    element.open = true;
+    document.body.append(element);
+    await element.updateComplete;
+
+    const dialog = element.shadowRoot!.querySelector("dialog")!;
+    let closeRequestCalled = false;
+    element.addEventListener("line-account-dialog-close-request", () => {
+      closeRequestCalled = true;
+    });
+
+    dialog.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    dialog.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(closeRequestCalled).toBe(true);
+  });
+
+  test("does not emit close request when mousedown is inside content but click ends on backdrop", async () => {
+    const element = document.createElement("line-account-dialog") as LineAccountDialog;
+    element.heading = "Add LINE account";
+    element.open = true;
+    document.body.append(element);
+    await element.updateComplete;
+
+    const dialog = element.shadowRoot!.querySelector("dialog")!;
+    const heading = element.shadowRoot!.querySelector("h2")!;
+    let closeRequestCalled = false;
+    element.addEventListener("line-account-dialog-close-request", () => {
+      closeRequestCalled = true;
+    });
+
+    // Mousedown starts inside content (heading)
+    heading.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    // Click (mouseup) ends on the backdrop (dialog itself)
+    dialog.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(closeRequestCalled).toBe(false);
+  });
+
+  test("does not emit close request when clicking inside dialog content", async () => {
+    const element = document.createElement("line-account-dialog") as LineAccountDialog;
+    element.heading = "Add LINE account";
+    element.open = true;
+    document.body.append(element);
+    await element.updateComplete;
+
+    const heading = element.shadowRoot!.querySelector("h2")!;
+    let closeRequestCalled = false;
+    element.addEventListener("line-account-dialog-close-request", () => {
+      closeRequestCalled = true;
+    });
+
+    heading.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    heading.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    expect(closeRequestCalled).toBe(false);
+  });
 });

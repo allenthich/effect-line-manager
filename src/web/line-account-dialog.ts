@@ -89,6 +89,7 @@ export class LineAccountDialog extends LitElement {
   declare heading: string;
 
   #restoreFocusTo: HTMLElement | undefined;
+  #isBackdropClick = false;
 
   constructor() {
     super();
@@ -103,6 +104,7 @@ export class LineAccountDialog extends LitElement {
         aria-labelledby="dialog-heading"
         tabindex="-1"
         @cancel=${this.#handleCancel}
+        @mousedown=${this.#handleMousedown}
         @click=${this.#handleBackdropClick}
       >
         <h2 id="dialog-heading">${this.heading}</h2>
@@ -178,7 +180,14 @@ export class LineAccountDialog extends LitElement {
     this.#requestClose();
   };
 
+  #handleMousedown = (event: MouseEvent): void => {
+    this.#isBackdropClick = event.target === event.currentTarget;
+  };
+
   #handleBackdropClick = (event: MouseEvent): void => {
-    if (event.target === event.currentTarget) this.#requestClose();
+    if (this.#isBackdropClick && event.target === event.currentTarget) {
+      this.#requestClose();
+    }
+    this.#isBackdropClick = false;
   };
 }
