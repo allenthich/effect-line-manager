@@ -7,7 +7,7 @@
  *
  * @example
  * ```ts
- * import { LineClientRegistry, LineChannelRepository, LineAccountManagementAdapter } from "@allenthich/effect-line-manager";
+ * import { LineClientRegistry, LineChannelRepository, LineProviderManagementAdapter } from "@allenthich/effect-line-manager";
  * import { Effect, Layer } from "effect";
  *
  * // Compose services into a dependency layer
