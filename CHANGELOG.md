@@ -1,5 +1,11 @@
 # effect-line-manager
 
+## 0.0.5
+
+### Patch Changes
+
+- 950e977: Added inline jsdocs
+
 ## 0.0.4
 
 ### Patch Changes
