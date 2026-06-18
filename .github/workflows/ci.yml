@@ -40,6 +40,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch base branch
+        run: git fetch origin main:main
+
       - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: "24"
