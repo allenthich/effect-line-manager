@@ -31,3 +31,21 @@ jobs:
       - run: vp test
 
       - run: vp run build
+
+  check-changeset:
+    name: Check Changeset Presence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+
+      - run: vp install
+
+      - name: Verify changeset presence
+        run: vp run changeset status
