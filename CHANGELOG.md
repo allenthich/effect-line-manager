@@ -1,5 +1,11 @@
 # effect-line-manager
 
+## 0.0.4
+
+### Patch Changes
+
+- 64dc1e2: Resolved gh release tags
+
 ## 0.0.3
 
 ### Patch Changes
