@@ -1,6 +1,7 @@
 import { LitElement, css, html } from "lit";
 import type { ProviderView, ChannelView } from "./types.ts";
 
+/** LitElement breadcrumbs component showing provider > channel navigation hierarchy. */
 export class LineAccountBreadcrumbs extends LitElement {
   static properties = {
     providers: { attribute: false },

@@ -3,6 +3,7 @@ import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type { ProviderView, ChannelView, LiffAppView } from "./types.ts";
 
+/** LitElement card component displaying a provider, channel, or LIFF app summary with action buttons. */
 export class LineAccountCard extends LitElement {
   static properties = {
     type: { type: String, reflect: true }, // "provider" | "channel" | "liff"

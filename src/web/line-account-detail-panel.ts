@@ -3,6 +3,7 @@ import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type { ProviderView, ChannelView, LiffAppView } from "./types.ts";
 
+/** LitElement detail panel component rendering full metadata for a selected provider, channel, or LIFF app. */
 export class LineAccountDetailPanel extends LitElement {
   static properties = {
     item: { attribute: false },

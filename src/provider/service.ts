@@ -12,6 +12,7 @@ import { LineAccountPersistenceError, type LineRepositoryError } from "../shared
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "./repository.ts";
 
+/** Service interface for LINE provider management operations. */
 export interface LineProviderManagementService {
   readonly listProviders: Effect.Effect<ProviderListPage, LineAccountPersistenceError>;
   readonly getProvider: (
@@ -29,6 +30,7 @@ export interface LineProviderManagementService {
   ) => Effect.Effect<void, LineProviderNotFoundError | LineAccountPersistenceError>;
 }
 
+/** Service implementation for LINE provider management. */
 export class LineProviderManagement extends Context.Service<
   LineProviderManagement,
   LineProviderManagementService
@@ -38,6 +40,7 @@ export class LineProviderManagement extends Context.Service<
   }
 }
 
+/** Converts a domain provider entity to a public-facing view. */
 export const toProviderView = (provider: LineProvider): ProviderView => ({
   id: provider.id,
   name: provider.name,
@@ -45,6 +48,7 @@ export const toProviderView = (provider: LineProvider): ProviderView => ({
   updatedAt: provider.updatedAt,
 });
 
+/** Converts an array of domain provider entities to a paginated list view. */
 export const toProviderListPage = (providers: ReadonlyArray<LineProvider>): ProviderListPage => ({
   data: providers.map(toProviderView),
   pagination: {
@@ -67,6 +71,7 @@ const persistenceFailure = (error: LineRepositoryError) =>
     Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
   );
 
+/** Constructs the LINE provider management service with its dependencies. */
 export const makeLineProviderManagement = Effect.gen(function* () {
   const repository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;

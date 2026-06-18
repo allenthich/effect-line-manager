@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 
+/** Valid LINE Login API operation identifiers. */
 export const LineLoginOperation = Schema.Literals([
   "getAccessToken",
   "getProfile",
@@ -7,8 +8,10 @@ export const LineLoginOperation = Schema.Literals([
   "verifyIdToken",
 ]);
 
+/** {@link LineLoginOperation} type alias. */
 export type LineLoginOperation = typeof LineLoginOperation.Type;
 
+/** Error raised when a transport-level failure occurs during a LINE Login API HTTP request. */
 export class LineLoginApiTransportError extends Schema.TaggedErrorClass<LineLoginApiTransportError>()(
   "LineLoginApiTransportError",
   {
@@ -17,6 +20,7 @@ export class LineLoginApiTransportError extends Schema.TaggedErrorClass<LineLogi
   },
 ) {}
 
+/** Error raised when a LINE Login API request exceeds the configured timeout. */
 export class LineLoginApiTimeoutError extends Schema.TaggedErrorClass<LineLoginApiTimeoutError>()(
   "LineLoginApiTimeoutError",
   {
@@ -30,6 +34,7 @@ const LineLoginApiResponseFields = {
   requestId: Schema.optional(Schema.String),
 };
 
+/** Error raised when the LINE Login API returns a 401 or 403 authentication failure. */
 export class LineLoginApiAuthenticationError extends Schema.TaggedErrorClass<LineLoginApiAuthenticationError>()(
   "LineLoginApiAuthenticationError",
   {
@@ -38,6 +43,7 @@ export class LineLoginApiAuthenticationError extends Schema.TaggedErrorClass<Lin
   },
 ) {}
 
+/** Error raised when the LINE Login API returns a 429 rate-limit response. */
 export class LineLoginApiRateLimitError extends Schema.TaggedErrorClass<LineLoginApiRateLimitError>()(
   "LineLoginApiRateLimitError",
   {
@@ -47,6 +53,7 @@ export class LineLoginApiRateLimitError extends Schema.TaggedErrorClass<LineLogi
   },
 ) {}
 
+/** Error raised when the LINE Login API returns an unexpected or unhandled HTTP status. */
 export class LineLoginApiResponseError extends Schema.TaggedErrorClass<LineLoginApiResponseError>()(
   "LineLoginApiResponseError",
   {
@@ -55,6 +62,7 @@ export class LineLoginApiResponseError extends Schema.TaggedErrorClass<LineLogin
   },
 ) {}
 
+/** Error raised when encoding a LINE Login API request fails. */
 export class LineLoginRequestEncodingError extends Schema.TaggedErrorClass<LineLoginRequestEncodingError>()(
   "LineLoginRequestEncodingError",
   {

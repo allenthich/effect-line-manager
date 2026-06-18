@@ -4,6 +4,7 @@ import type { LineAccountManagementMessages } from "./messages.ts";
 import type { ProviderView, ChannelView, LiffAppView, LineAccountFormType } from "./types.ts";
 import "./line-account-card.ts";
 
+/** LitElement list component rendering a grid or list of line-account-card elements. */
 export class LineAccountList extends LitElement {
   static properties = {
     type: { type: String, reflect: true }, // "provider" | "channel" | "liff"

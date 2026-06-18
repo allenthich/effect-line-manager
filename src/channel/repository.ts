@@ -10,6 +10,7 @@ import type {
 import type { ChannelDuplicateError, ChannelNotFoundError } from "./errors.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
 
+/** Repository service for LINE channel data persistence. */
 export class LineChannelRepository extends Context.Service<
   LineChannelRepository,
   {
@@ -44,4 +45,5 @@ export class LineChannelRepository extends Context.Service<
   }
 >()("effect-line-manager/LineChannelRepository") {}
 
+/** Service type extracted from LineChannelRepository. */
 export type LineChannelRepositoryService = LineChannelRepository["Service"];

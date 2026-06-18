@@ -8,6 +8,7 @@ import type {
 import type { LineProviderDuplicateError, LineProviderNotFoundError } from "./errors.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
 
+/** Repository service for LINE provider data persistence. */
 export class LineProviderRepository extends Context.Service<
   LineProviderRepository,
   {
@@ -32,4 +33,5 @@ export class LineProviderRepository extends Context.Service<
   }
 >()("effect-line-manager/LineProviderRepository") {}
 
+/** Service type extracted from LineProviderRepository. */
 export type LineProviderRepositoryService = LineProviderRepository["Service"];

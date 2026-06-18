@@ -15,12 +15,14 @@ const defaultBaseUrl = "https://api.line.me";
 const defaultAuthorizeUrl = "https://access.line.me";
 const defaultRequestTimeout = "30 seconds";
 
+/** Configuration for the LINE Login client. */
 export interface LineLoginClientConfig {
   readonly baseUrl?: string | undefined;
   readonly authorizeUrl?: string | undefined;
   readonly requestTimeout?: Duration.Input | undefined;
 }
 
+/** Union of all errors the LINE Login client can produce. */
 export type LineLoginClientError =
   | LineLoginApiTransportError
   | LineLoginApiTimeoutError
@@ -29,6 +31,7 @@ export type LineLoginClientError =
   | LineLoginApiResponseError
   | LineLoginRequestEncodingError;
 
+/** Client interface for the LINE Login API (OAuth 2.1). */
 export interface LineLoginClient {
   readonly getAuthorizeUrl: (options: {
     readonly redirectUri: string;
@@ -92,6 +95,7 @@ export interface LineLoginClient {
   >;
 }
 
+/** Creates a LINE Login client backed by the given HTTP client and channel credentials. */
 export const makeLineLoginClient = (
   httpClient: HttpClient.HttpClient,
   loginChannelId: string,

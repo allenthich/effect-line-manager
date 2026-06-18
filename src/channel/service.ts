@@ -14,6 +14,7 @@ import { LineAccountPersistenceError, type LineRepositoryError } from "../shared
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineChannelRepository } from "./repository.ts";
 
+/** Service interface for LINE channel management operations. */
 export interface LineChannelManagementService {
   readonly listChannels: (
     providerId: LineProviderId | undefined,
@@ -36,6 +37,7 @@ export interface LineChannelManagementService {
   ) => Effect.Effect<void, ChannelNotFoundError | LineAccountPersistenceError>;
 }
 
+/** Service implementation for LINE channel management. */
 export class LineChannelManagement extends Context.Service<
   LineChannelManagement,
   LineChannelManagementService
@@ -45,6 +47,7 @@ export class LineChannelManagement extends Context.Service<
   }
 }
 
+/** Converts a domain channel entity to a public-facing view. */
 export const toChannelView = (channel: LineChannel): ChannelView => {
   if (channel.channelType === "messaging") {
     return {
@@ -76,6 +79,7 @@ export const toChannelView = (channel: LineChannel): ChannelView => {
   };
 };
 
+/** Converts an array of domain channel entities to a paginated list view. */
 export const toChannelListPage = (channels: ReadonlyArray<LineChannel>): ChannelListPage => ({
   data: channels.map(toChannelView),
   pagination: {
@@ -124,6 +128,7 @@ const persistenceFailure = (error: LineRepositoryError) =>
     Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
   );
 
+/** Constructs the LINE channel management service with its dependencies. */
 export const makeLineChannelManagement = Effect.gen(function* () {
   const repository = yield* LineChannelRepository;
   const providerRepository = yield* LineProviderRepository;

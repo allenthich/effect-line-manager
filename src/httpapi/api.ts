@@ -32,13 +32,15 @@ import {
   ProviderNotFoundHttpError,
 } from "./errors.ts";
 
-// ── Status-code annotated schemas ──────────────────────────────────────
+//#region Status-code annotated schemas
 
 const CreatedProviderView = ProviderView.pipe(HttpApiSchema.status(201));
 const CreatedChannelView = ChannelView.pipe(HttpApiSchema.status(201));
 const CreatedLiffAppView = LiffAppView.pipe(HttpApiSchema.status(201));
 
-// ── Query parameter schemas ────────────────────────────────────────────
+//#endregion
+
+//#region Query parameter schemas
 
 const ProviderIdQuery = Schema.Struct({
   providerId: Schema.optional(LineProviderId),
@@ -47,7 +49,9 @@ const ChannelIdQuery = Schema.Struct({
   channelId: Schema.optional(LineChannelRecordId),
 });
 
-// ── Providers group ────────────────────────────────────────────────────
+//#endregion
+
+//#region Providers group
 
 const listProviders = HttpApiEndpoint.get("listProviders", "/line-providers", {
   success: ProviderListPage,
@@ -87,7 +91,9 @@ const providersGroup = HttpApiGroup.make("lineProviders").add(
   deleteProvider,
 );
 
-// ── Channels group ─────────────────────────────────────────────────────
+//#endregion
+
+//#region Channels group
 
 const listChannels = HttpApiEndpoint.get("listChannels", "/line-channels", {
   query: ProviderIdQuery,
@@ -128,7 +134,9 @@ const channelsGroup = HttpApiGroup.make("lineChannels").add(
   deleteChannel,
 );
 
-// ── LIFF Apps group ────────────────────────────────────────────────────
+//#endregion
+
+//#region LIFF Apps group
 
 const listLiffApps = HttpApiEndpoint.get("listLiffApps", "/line-liff-apps", {
   query: ChannelIdQuery,
@@ -169,6 +177,11 @@ const liffAppsGroup = HttpApiGroup.make("lineLiffApps").add(
   deleteLiffApp,
 );
 
-// ── Top-level API ──────────────────────────────────────────────────────
+//#endregion
 
+//#region Top-level API
+
+/** Top-level HTTP API definition for LINE account management endpoints. */
 export const LineApi = HttpApi.make("LineApi").add(providersGroup, channelsGroup, liffAppsGroup);
+
+//#endregion

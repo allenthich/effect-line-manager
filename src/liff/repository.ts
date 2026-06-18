@@ -9,6 +9,7 @@ import type {
 import type { LiffAppDuplicateError, LiffAppNotFoundError } from "./errors.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
 
+/** Repository service for persisting LIFF application data. */
 export class LineLiffRepository extends Context.Service<
   LineLiffRepository,
   {
@@ -35,4 +36,5 @@ export class LineLiffRepository extends Context.Service<
   }
 >()("effect-line-manager/LineLiffRepository") {}
 
+/** Extracted service type for the LIFF repository. */
 export type LineLiffRepositoryService = LineLiffRepository["Service"];

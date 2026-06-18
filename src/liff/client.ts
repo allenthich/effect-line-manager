@@ -14,11 +14,13 @@ import { sanitizedCause, withoutTrailingSlash } from "../shared/http-client-util
 const defaultBaseUrl = "https://api.line.me";
 const defaultRequestTimeout = "30 seconds";
 
+/** Configuration for the LINE LIFF API client. */
 export interface LineLiffClientConfig {
   readonly baseUrl?: string | undefined;
   readonly requestTimeout?: Duration.Input | undefined;
 }
 
+/** Union of all errors the LINE LIFF API client can produce. */
 export type LineLiffClientError =
   | LineLiffApiTransportError
   | LineLiffApiTimeoutError
@@ -46,6 +48,7 @@ const CreateLiffAppResponseSchema = Schema.Struct({
   liffId: Schema.String,
 });
 
+/** Low-level client interface for the LINE LIFF API. */
 export interface LineLiffClient {
   readonly getLiffApps: Effect.Effect<
     ReadonlyArray<{
@@ -81,6 +84,7 @@ export interface LineLiffClient {
   readonly deleteLiffApp: (liffId: string) => Effect.Effect<void, LineLiffClientError>;
 }
 
+/** Creates a LINE LIFF API client backed by the given HTTP client and channel access token. */
 export const makeLineLiffClient = (
   httpClient: HttpClient.HttpClient,
   channelAccessToken: Redacted.Redacted<string>,

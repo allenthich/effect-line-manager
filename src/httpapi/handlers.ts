@@ -15,13 +15,16 @@ import {
   ProviderNotFoundHttpError,
 } from "./errors.ts";
 
-// ── Error Mapping Helpers ──────────────────────────────────────────────
+//#region Error Mapping Helpers
 
 const mapPersistenceError = (error: { operation: string }) =>
   Effect.fail(new LinePersistenceHttpError({ operation: error.operation as any }));
 
-// ── Provider Handlers ──────────────────────────────────────────────────
+//#endregion
 
+//#region Provider Handlers
+
+/** HTTP API handler implementations for the LINE providers group. */
 export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (handlers) =>
   Effect.gen(function* () {
     const management = yield* LineProviderManagement;
@@ -73,8 +76,11 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
   }),
 ).pipe(Layer.provide(LineValidationMiddlewareLayer));
 
-// ── Channel Handlers ───────────────────────────────────────────────────
+//#endregion
 
+//#region Channel Handlers
+
+/** HTTP API handler implementations for the LINE channels group. */
 export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers) =>
   Effect.gen(function* () {
     const management = yield* LineChannelManagement;
@@ -126,8 +132,11 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
   }),
 ).pipe(Layer.provide(LineValidationMiddlewareLayer));
 
-// ── LIFF App Handlers ──────────────────────────────────────────────────
+//#endregion
 
+//#region LIFF App Handlers
+
+/** HTTP API handler implementations for the LINE LIFF apps group. */
 export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (handlers) =>
   Effect.gen(function* () {
     const management = yield* LineLiffManagement;
@@ -181,10 +190,15 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
   }),
 ).pipe(Layer.provide(LineValidationMiddlewareLayer));
 
-// ── Top-level API layer ────────────────────────────────────────────────
+//#endregion
 
+//#region Top-level API layer
+
+/** Top-level HTTP API layer aggregating all handler groups. */
 export const LineApiLayer = HttpApiBuilder.layer(LineApi).pipe(
   Layer.provide(providerHandlers),
   Layer.provide(channelHandlers),
   Layer.provide(liffAppHandlers),
 );
+
+//#endregion

@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 
+/** Valid LINE messaging API operation identifiers. */
 export const LineApiOperation = Schema.Literals([
   "pushMessage",
   "replyMessage",
@@ -8,8 +9,10 @@ export const LineApiOperation = Schema.Literals([
   "narrowcastMessage",
 ]);
 
+/** {@link LineApiOperation} type alias. */
 export type LineApiOperation = typeof LineApiOperation.Type;
 
+/** Error raised when a transport-level failure occurs during a LINE API HTTP request. */
 export class LineApiTransportError extends Schema.TaggedErrorClass<LineApiTransportError>()(
   "LineApiTransportError",
   {
@@ -18,6 +21,7 @@ export class LineApiTransportError extends Schema.TaggedErrorClass<LineApiTransp
   },
 ) {}
 
+/** Error raised when a LINE API request exceeds the configured timeout. */
 export class LineApiTimeoutError extends Schema.TaggedErrorClass<LineApiTimeoutError>()(
   "LineApiTimeoutError",
   {
@@ -32,6 +36,7 @@ const LineApiResponseFields = {
   acceptedRequestId: Schema.optional(Schema.String),
 };
 
+/** Error raised when the LINE API returns a 401 or 403 authentication failure. */
 export class LineApiAuthenticationError extends Schema.TaggedErrorClass<LineApiAuthenticationError>()(
   "LineApiAuthenticationError",
   {
@@ -40,6 +45,7 @@ export class LineApiAuthenticationError extends Schema.TaggedErrorClass<LineApiA
   },
 ) {}
 
+/** Error raised when the LINE API returns a 429 rate-limit response. */
 export class LineApiRateLimitError extends Schema.TaggedErrorClass<LineApiRateLimitError>()(
   "LineApiRateLimitError",
   {
@@ -49,6 +55,7 @@ export class LineApiRateLimitError extends Schema.TaggedErrorClass<LineApiRateLi
   },
 ) {}
 
+/** Error raised when the LINE API returns an unexpected or unhandled HTTP status. */
 export class LineApiResponseError extends Schema.TaggedErrorClass<LineApiResponseError>()(
   "LineApiResponseError",
   {
@@ -57,6 +64,7 @@ export class LineApiResponseError extends Schema.TaggedErrorClass<LineApiRespons
   },
 ) {}
 
+/** Error raised when encoding a LINE API request body fails. */
 export class LineRequestEncodingError extends Schema.TaggedErrorClass<LineRequestEncodingError>()(
   "LineRequestEncodingError",
   {
@@ -65,6 +73,7 @@ export class LineRequestEncodingError extends Schema.TaggedErrorClass<LineReques
   },
 ) {}
 
+/** Error raised when the LINE webhook signature is missing, malformed, or does not match. */
 export class LineSignatureError extends Schema.TaggedErrorClass<LineSignatureError>()(
   "LineSignatureError",
   {

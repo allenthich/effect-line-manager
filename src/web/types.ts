@@ -18,6 +18,7 @@ import type {
   LiffAppListPage,
 } from "../liff/domain.ts";
 
+/** Re-export commonly used domain types for web component consumers. */
 export type {
   LineProviderManagementAdapter,
   ProviderView,
@@ -34,10 +35,13 @@ export type {
   LiffAppListPage,
 };
 
+/** Form operation mode: "create" for new entities or "edit" for existing ones. */
 export type LineAccountFormMode = "create" | "edit";
 
+/** Entity type identifier used to discriminate between provider, channel, and LIFF app throughout the UI. */
 export type LineAccountFormType = "provider" | "channel" | "liff";
 
+/** All LINE account CRUD operations tracked for error reporting. */
 export type LineAccountOperation =
   | "listProviders"
   | "createProvider"
@@ -55,11 +59,13 @@ export type LineAccountOperation =
   | "deleteLiffApp"
   | "syncChannel";
 
+/** Custom event detail payload for select/edit/delete requests emitted by card components. */
 export interface LineAccountRequestDetail {
   readonly type: LineAccountFormType;
   readonly item: ProviderView | ChannelView | LiffAppView;
 }
 
+/** Custom event detail payload for form submission, discriminated by entity type. */
 export type LineAccountFormSubmitDetail =
   | {
       readonly type: "provider";
@@ -77,6 +83,7 @@ export type LineAccountFormSubmitDetail =
       readonly input: CreateLiffAppInput | UpdateLiffAppInput;
     };
 
+/** Custom event detail payload for error events with the operation name and error value. */
 export interface LineAccountErrorEventDetail {
   readonly operation: LineAccountOperation;
   readonly error: unknown;
