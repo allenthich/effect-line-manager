@@ -30,6 +30,7 @@ const eventOptions = <T>(detail: T): CustomEventInit<T> => ({
   detail,
 });
 
+/** LitElement top-level management component that orchestrates provider, channel, and LIFF app CRUD operations via an adapter. */
 export class LineAccountManagement extends LitElement {
   static properties = {
     adapter: { attribute: false },

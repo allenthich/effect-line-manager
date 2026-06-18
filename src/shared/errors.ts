@@ -1,5 +1,6 @@
 import { Schema } from "effect";
 
+/** Union type of all repository operation names. */
 export const LineRepositoryOperation = Schema.Literals([
   // Providers
   "createProvider",
@@ -23,8 +24,10 @@ export const LineRepositoryOperation = Schema.Literals([
   "deleteLiffApp",
 ]);
 
+/** {@link LineRepositoryOperation} type alias. */
 export type LineRepositoryOperation = typeof LineRepositoryOperation.Type;
 
+/** Error raised when a repository operation fails, carrying the original cause. */
 export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryError>()(
   "LineRepositoryError",
   {
@@ -33,6 +36,7 @@ export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryE
   },
 ) {}
 
+/** Error raised by the management layer when a persistence operation fails. */
 export class LineAccountPersistenceError extends Schema.TaggedErrorClass<LineAccountPersistenceError>()(
   "LineAccountPersistenceError",
   {

@@ -19,25 +19,30 @@
 
 import { Schema } from "effect";
 
+/** Schema for a webhook event originating from an individual user. */
 export const LineUserSource = Schema.Struct({
   type: Schema.Literal("user"),
   userId: Schema.String,
 });
 
+/** Schema for a webhook event originating from a group chat. */
 export const LineGroupSource = Schema.Struct({
   type: Schema.Literal("group"),
   groupId: Schema.String,
   userId: Schema.optional(Schema.String),
 });
 
+/** Schema for a webhook event originating from a multi-person chat room. */
 export const LineRoomSource = Schema.Struct({
   type: Schema.Literal("room"),
   roomId: Schema.String,
   userId: Schema.optional(Schema.String),
 });
 
+/** Union of webhook event source types (user, group, or room). */
 export const LineEventSource = Schema.Union([LineUserSource, LineGroupSource, LineRoomSource]);
 
+/** Schema for a LINE text message webhook event. */
 export const LineTextMessageEvent = Schema.Struct({
   type: Schema.Literal("message"),
   replyToken: Schema.String,
@@ -52,6 +57,7 @@ export const LineTextMessageEvent = Schema.Struct({
   }),
 });
 
+/** Schema for a LINE follow (add-friend) webhook event. */
 export const LineFollowEvent = Schema.Struct({
   type: Schema.Literal("follow"),
   replyToken: Schema.String,
@@ -61,6 +67,7 @@ export const LineFollowEvent = Schema.Struct({
   webhookEventId: Schema.String,
 });
 
+/** Schema for a LINE unfollow (block/remove) webhook event. */
 export const LineUnfollowEvent = Schema.Struct({
   type: Schema.Literal("unfollow"),
   source: LineEventSource,
@@ -69,6 +76,7 @@ export const LineUnfollowEvent = Schema.Struct({
   webhookEventId: Schema.String,
 });
 
+/** Schema for a LINE postback webhook event. */
 export const LinePostbackEvent = Schema.Struct({
   type: Schema.Literal("postback"),
   replyToken: Schema.String,
@@ -82,6 +90,7 @@ export const LinePostbackEvent = Schema.Struct({
   }),
 });
 
+/** Union of supported LINE webhook event types. */
 export const LineWebhookEvent = Schema.Union([
   LineTextMessageEvent,
   LineFollowEvent,
@@ -89,6 +98,7 @@ export const LineWebhookEvent = Schema.Union([
   LinePostbackEvent,
 ]);
 
+/** Schema for the LINE webhook request body containing destination and event array. */
 export const LineWebhookRequestBody = Schema.Struct({
   destination: Schema.String,
   events: Schema.Array(LineWebhookEvent),

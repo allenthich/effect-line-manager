@@ -1,6 +1,7 @@
 import { LitElement, css, html } from "lit";
 import type { ProviderView, ChannelView } from "./types.ts";
 
+/** LitElement toolbar component with search, variant switcher (grid/split), and contextual filters. */
 export class LineAccountToolbar extends LitElement {
   static properties = {
     searchQuery: { state: true },

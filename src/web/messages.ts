@@ -1,3 +1,4 @@
+/** Internationalisation messages for all LINE account management UI labels, headings, hints, and status text. */
 export interface LineAccountManagementMessages {
   readonly title: string;
   readonly description: string;
@@ -69,6 +70,7 @@ export interface LineAccountManagementMessages {
   readonly deleteConfirmation: (type: string, name: string) => string;
 }
 
+/** Default English i18n messages for LINE account management UI components. */
 export const defaultLineAccountManagementMessages: LineAccountManagementMessages = {
   title: "LINE Configuration",
   description:

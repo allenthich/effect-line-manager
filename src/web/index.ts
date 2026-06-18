@@ -26,4 +26,5 @@ export * from "./line-account-list.ts";
 export * from "./line-account-management.ts";
 export * from "./line-account-toolbar.ts";
 export * from "./messages.ts";
+/** Re-export all type symbols from the web types module. */
 export type * from "./types.ts";

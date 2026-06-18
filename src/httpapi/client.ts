@@ -7,12 +7,14 @@ import { LineLiffRecordId } from "../liff/domain.ts";
 import { type LineProviderManagementAdapter } from "../adapter/types.ts";
 import { LineApi } from "./api.ts";
 
-// ── New API Client ────────────────────────────────────────────────────
+//#region New API Client
 
 type LineApiGroups = typeof LineApi extends HttpApi.HttpApi<string, infer Groups> ? Groups : never;
 
+/** Client type for the LINE account management HTTP API. */
 export type LineClient = HttpApiClient.Client<LineApiGroups>;
 
+/** Options for configuring the LINE API HTTP client. */
 export interface LineClientOptions {
   readonly baseUrl?: URL | string | undefined;
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined;
@@ -23,14 +25,17 @@ export interface LineClientOptions {
     | undefined;
 }
 
+/** Creates an HTTP API client for LINE account management endpoints. */
 export const makeLineClient = (options?: LineClientOptions) => HttpApiClient.make(LineApi, options);
 
-// ── New Adapter ───────────────────────────────────────────────────────
+//#endregion
 
+//#region New Adapter
 const decodeRecordId = Schema.decodeEffect(LineChannelRecordId);
 const decodeProviderId = Schema.decodeEffect(LineProviderId);
 const decodeLiffRecordId = Schema.decodeEffect(LineLiffRecordId);
 
+/** Creates a provider management adapter backed by a LINE API client. */
 export const makeLineProviderManagementAdapter = (
   client: LineClient,
 ): LineProviderManagementAdapter => ({
@@ -150,6 +155,11 @@ export const makeLineProviderManagementAdapter = (
     ),
 });
 
-// ── OpenAPI spec ──────────────────────────────────────────────────────
+//#endregion
 
+//#region OpenAPI spec
+
+/** OpenAPI specification generated from the LINE API definition. */
 export const lineOpenApi = OpenApi.fromApi(LineApi);
+
+//#endregion

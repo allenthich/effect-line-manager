@@ -15,21 +15,25 @@ import { sanitizedCause, withoutTrailingSlash } from "../shared/http-client-util
 const defaultBaseUrl = "https://api.line.me";
 const defaultRequestTimeout = "30 seconds";
 
+/** Options for push message requests. */
 export interface LinePushOptions {
   readonly retryKey?: string | undefined;
   readonly notificationDisabled?: boolean | undefined;
   readonly customAggregationUnits?: readonly string[] | undefined;
 }
 
+/** Options for reply message requests. */
 export interface LineReplyOptions {
   readonly notificationDisabled?: boolean | undefined;
 }
 
+/** Configuration for the LINE messaging API client. */
 export interface LineApiClientConfig {
   readonly baseUrl?: string | undefined;
   readonly requestTimeout?: Duration.Input | undefined;
 }
 
+/** Union of all errors the LINE messaging API client can produce. */
 export type LineApiClientError =
   | LineApiTransportError
   | LineApiTimeoutError
@@ -85,12 +89,14 @@ const NarrowcastMessageBody = Schema.Struct({
   limit: Schema.optional(Schema.Unknown),
 });
 
+/** Options for multicast message requests. */
 export interface LineMulticastOptions {
   readonly retryKey?: string | undefined;
   readonly notificationDisabled?: boolean | undefined;
   readonly customAggregationUnits?: readonly string[] | undefined;
 }
 
+/** Options for narrowcast message requests. */
 export interface LineNarrowcastOptions {
   readonly retryKey?: string | undefined;
   readonly notificationDisabled?: boolean | undefined;
@@ -107,6 +113,7 @@ export interface LineNarrowcastOptions {
   readonly filter?: unknown;
 }
 
+/** Low-level client interface for the LINE Messaging API. */
 export interface LineApiClient {
   readonly getBotInfo: Effect.Effect<
     {
@@ -140,6 +147,7 @@ export interface LineApiClient {
   ) => Effect.Effect<void, LineApiClientError>;
 }
 
+/** Creates a LINE messaging API client backed by the given HTTP client and channel access token. */
 export const makeLineApiClient = (
   httpClient: HttpClient.HttpClient,
   channelAccessToken: Redacted.Redacted<string>,

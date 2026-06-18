@@ -1,6 +1,7 @@
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 
+/** LitElement modal dialog component with backdrop, focus trapping, and animation. */
 export class LineAccountDialog extends LitElement {
   static properties = {
     open: { type: Boolean, reflect: true },

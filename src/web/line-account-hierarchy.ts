@@ -19,6 +19,7 @@ interface TreeProvider {
   match: boolean;
 }
 
+/** LitElement collapsible tree component displaying a hierarchical view of providers, channels, and LIFF apps. */
 export class LineAccountHierarchy extends LitElement {
   static properties = {
     providers: { attribute: false },

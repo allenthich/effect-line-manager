@@ -17,6 +17,7 @@ import { LiffAppNotFoundError, LiffAppDuplicateError } from "./errors.ts";
 import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
 import { LineLiffRepository } from "./repository.ts";
 
+/** Management service interface for LIFF application operations. */
 export interface LineLiffManagementService {
   readonly listLiffApps: (
     channelId: LineChannelRecordId | undefined,
@@ -39,6 +40,7 @@ export interface LineLiffManagementService {
   ) => Effect.Effect<void, LiffAppNotFoundError | LineAccountPersistenceError>;
 }
 
+/** Effect context tag for the LIFF management service. */
 export class LineLiffManagement extends Context.Service<
   LineLiffManagement,
   LineLiffManagementService
@@ -48,6 +50,7 @@ export class LineLiffManagement extends Context.Service<
   }
 }
 
+/** Converts a repository LIFF app entity to its public view. */
 export const toLiffAppView = (app: LineLiffApp): LiffAppView => ({
   id: app.id,
   loginChannelId: app.loginChannelId,
@@ -58,6 +61,7 @@ export const toLiffAppView = (app: LineLiffApp): LiffAppView => ({
   updatedAt: app.updatedAt,
 });
 
+/** Converts a list of LIFF app entities to a paginated list page. */
 export const toLiffAppListPage = (apps: ReadonlyArray<LineLiffApp>): LiffAppListPage => ({
   data: apps.map(toLiffAppView),
   pagination: {
@@ -88,6 +92,7 @@ const persistenceFailure = (error: LineRepositoryError) =>
     Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
   );
 
+/** Creates the implementation for the LIFF management service. */
 export const makeLineLiffManagement = Effect.gen(function* () {
   const repository = yield* LineLiffRepository;
   const channelRepository = yield* LineChannelRepository;

@@ -4,6 +4,7 @@ import { LineSignatureError } from "./errors.ts";
 
 const base64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
+/** Verifies a LINE webhook signature against a raw binary request body. */
 export const verifyLineSignature = Effect.fn("LineSignature.verify")(function* (
   body: Uint8Array,
   signature: string | undefined,
@@ -33,6 +34,7 @@ export const verifyLineSignature = Effect.fn("LineSignature.verify")(function* (
   return yield* Effect.void;
 });
 
+/** Verifies a LINE webhook signature against a UTF-8 string request body. */
 export const verifyLineSignatureString = Effect.fn("LineSignature.verifyString")(function* (
   body: string,
   signature: string | undefined,

@@ -1,3 +1,12 @@
+/**
+ * Client Registry
+ *
+ * Central service for resolving LINE API clients (Messaging, Login, LIFF)
+ * from channel records. Provides caching, invalidation, and bot profile
+ * synchronization across all LINE platform services.
+ *
+ * @module
+ */
 import { Cache, Context, type Duration, Effect, Exit, Layer, Option, Redacted } from "effect";
 import { HttpClient } from "effect/unstable/http";
 import {
@@ -24,6 +33,7 @@ const defaultCapacity = 500;
 const defaultTimeToLive = "30 minutes";
 const defaultFailureTimeToLive = "30 seconds";
 
+/** Configuration options for the LineClientRegistry cache: capacity, TTL, and failure TTL. */
 export interface LineClientRegistryConfig {
   readonly capacity?: number | undefined;
   readonly timeToLive?: Duration.Input | undefined;
@@ -44,6 +54,7 @@ interface LiffEntry {
   readonly liff: LineLiffClient;
 }
 
+/** Central service for resolving LINE API clients (Messaging, Login, LIFF) with caching and bot profile sync. */
 export class LineClientRegistry extends Context.Service<
   LineClientRegistry,
   {
@@ -94,6 +105,7 @@ export class LineClientRegistry extends Context.Service<
   }
 }
 
+/** The Effect service type extracted from LineClientRegistry. */
 export type LineClientRegistryService = LineClientRegistry["Service"];
 
 const isMessagingChannel = (channel: LineChannel): channel is MessagingChannel =>
@@ -110,7 +122,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const successTimeToLive = config.timeToLive ?? defaultTimeToLive;
     const failureTimeToLive = config.failureTimeToLive ?? defaultFailureTimeToLive;
 
-    // ── Channel cache ──────────────────────────────────────────
+    //#region Channel cache
     const loadChannelEntry = Effect.fn("LineClientRegistry.loadChannelEntry")(function* (
       recordId: LineChannelRecordId,
     ) {
@@ -144,7 +156,9 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       timeToLive: (exit) => (Exit.isSuccess(exit) ? successTimeToLive : failureTimeToLive),
     });
 
-    // ── LIFF cache ─────────────────────────────────────────────
+    //#endregion
+
+    //#region LIFF cache
     const loadLiffEntry = Effect.fn("LineClientRegistry.loadLiffEntry")(function* (
       liffRecordId: LineLiffRecordId,
     ) {
@@ -175,7 +189,9 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       timeToLive: (exit) => (Exit.isSuccess(exit) ? successTimeToLive : failureTimeToLive),
     });
 
-    // ── Public methods ─────────────────────────────────────────
+    //#endregion
+
+    //#region Public methods
 
     const getMessagingClient = Effect.fn("LineClientRegistry.getMessagingClient")(
       (channelRecordId: LineChannelRecordId) =>
@@ -263,4 +279,6 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
         { concurrency: "unbounded" },
       ).pipe(Effect.as<void>(undefined), Effect.withSpan("LineClientRegistry.invalidateAll")),
     });
+
+    //#endregion
   });

@@ -35,6 +35,7 @@ const trimOptional = (value: string): string | undefined => {
   return trimmed === "" ? undefined : trimmed;
 };
 
+/** LitElement form component for creating and editing providers, channels, and LIFF apps. */
 export class LineAccountForm extends LitElement {
   static properties = {
     type: { type: String, reflect: true },
