@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Fetch base branch
-        run: git fetch origin main:main
+        run: git fetch origin ${{ github.base_ref }}
 
       - uses: voidzero-dev/setup-vp@v1
         with:
@@ -51,4 +51,4 @@ jobs:
       - run: vp install
 
       - name: Verify changeset presence
-        run: vp run changeset status
+        run: vp run changeset status --since=origin/${{ github.base_ref }}
