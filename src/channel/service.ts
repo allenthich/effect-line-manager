@@ -100,6 +100,10 @@ const toCreateChannelRecordInput = (input: CreateChannelInput) => {
       channelId: input.channelId,
       channelSecret: Redacted.make(input.channelSecret),
       channelAccessToken: Redacted.make(input.channelAccessToken),
+      ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
+      ...(input.botUserId === undefined ? {} : { botUserId: input.botUserId }),
+      ...(input.basicId === undefined ? {} : { basicId: input.basicId }),
+      ...(input.pictureUrl === undefined ? {} : { pictureUrl: input.pictureUrl }),
     };
   }
   return {
@@ -121,6 +125,10 @@ const toUpdateChannelRecordInput = (input: UpdateChannelInput) => ({
     ? {}
     : { channelAccessToken: Redacted.make(input.channelAccessToken) }),
   ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
+  ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
+  ...(input.botUserId === undefined ? {} : { botUserId: input.botUserId }),
+  ...(input.basicId === undefined ? {} : { basicId: input.basicId }),
+  ...(input.pictureUrl === undefined ? {} : { pictureUrl: input.pictureUrl }),
 });
 
 const persistenceFailure = (error: LineRepositoryError) =>
