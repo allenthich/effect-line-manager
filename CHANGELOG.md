@@ -1,5 +1,14 @@
 # effect-line-manager
 
+## 0.0.5
+
+### Patch Changes
+
+- 5c4da44: Added consistent messaging info for messaging channels
+- 73a34fc: Added changeset presence check to ci
+- 73a34fc: Fixed unfocused modal mouse release closing modal
+- 73a34fc: Added inline jsdocs
+
 ## 0.0.4
 
 ### Patch Changes
