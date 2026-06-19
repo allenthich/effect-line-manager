@@ -1,5 +1,13 @@
 # effect-line-manager
 
+## 0.0.5
+
+### Patch Changes
+
+- 995c3bf: Added changeset presence check to ci
+- 57ab9b3: Fixed unfocused modal mouse release closing modal
+- 950e977: Added inline jsdocs
+
 ## 0.0.4
 
 ### Patch Changes
