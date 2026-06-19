@@ -15,6 +15,7 @@ export class LineAccountDetailPanel extends LitElement {
     messages: { attribute: false },
     readonly: { type: Boolean },
     inline: { type: Boolean, reflect: true },
+    _visibleCredentials: { state: true },
   };
 
   static styles = css`
@@ -166,6 +167,8 @@ export class LineAccountDetailPanel extends LitElement {
       cursor: pointer;
       border-radius: 0.25rem;
       transition: all 0.15s;
+      margin-left: auto;
+      flex-shrink: 0;
     }
 
     .copy-btn:hover {
@@ -176,6 +179,44 @@ export class LineAccountDetailPanel extends LitElement {
     .copy-btn svg {
       width: 1rem;
       height: 1rem;
+    }
+
+    .reveal-btn {
+      background: none;
+      border: none;
+      min-height: auto;
+      padding: 0.25rem 0.5rem;
+      color: var(--line-account-primary-color, #06c755);
+      cursor: pointer;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+
+    .reveal-btn:hover {
+      background-color: var(--line-account-muted-background, #eef2f5);
+    }
+
+    .credential-obscured {
+      font-size: 0.875rem;
+      font-family: monospace;
+      background: var(--line-account-muted-background, #eef2f5);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      letter-spacing: 0.15em;
+      color: var(--line-account-muted-color, #8a9ba8);
+      flex: 1;
+    }
+
+    .credential-value {
+      font-size: 0.875rem;
+      font-family: monospace;
+      background: var(--line-account-muted-background, #eef2f5);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      word-break: break-all;
+      flex: 1;
     }
 
     .details-table tbody tr:hover {
@@ -331,6 +372,7 @@ export class LineAccountDetailPanel extends LitElement {
   declare messages: LineAccountManagementMessages;
   declare readonly: boolean;
   declare inline: boolean;
+  declare _visibleCredentials: Set<string>;
 
   constructor() {
     super();
@@ -343,6 +385,7 @@ export class LineAccountDetailPanel extends LitElement {
     this.messages = defaultLineAccountManagementMessages;
     this.readonly = false;
     this.inline = false;
+    this._visibleCredentials = new Set();
   }
 
   #emit(type: string, detail: unknown): void {
@@ -387,6 +430,66 @@ export class LineAccountDetailPanel extends LitElement {
 
   #emitCreateLiff = (channelId: string): void => {
     this.#emit("detail-create-liff", { channelId });
+  };
+
+  #copyToClipboard = async (text: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard API unavailable — silently ignore
+    }
+  };
+
+  #toggleCredential = (key: string): void => {
+    const next = new Set(this._visibleCredentials);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    this._visibleCredentials = next;
+  };
+
+  #renderCredentialField = (label: string, value: string | null, key: string) => {
+    if (!value) {
+      return html`<div class="details-row">
+        <span class="details-label">${label}</span>
+        <span class="credential-obscured" style="font-style: italic; letter-spacing: normal;"
+          >(not set)</span
+        >
+      </div>`;
+    }
+    const visible = this._visibleCredentials.has(key);
+    return html`<div class="details-row">
+      <span class="details-label">${label}</span>
+      <div class="details-value-wrapper">
+        ${visible
+          ? html`<span class="credential-value">${value}</span>`
+          : html`<span class="credential-obscured">${"\u2022".repeat(12)}</span>`}
+        <button class="reveal-btn" type="button" @click=${() => this.#toggleCredential(key)}>
+          ${visible ? "Hide" : "Show"}
+        </button>
+        <button
+          class="copy-btn"
+          type="button"
+          title="Copy to clipboard"
+          @click=${() => this.#copyToClipboard(value)}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+    </div>`;
   };
 
   protected render() {
@@ -624,39 +727,64 @@ export class LineAccountDetailPanel extends LitElement {
         <div class="details-section">
           <div class="details-section-title">Channel Details</div>
           <div class="details-row">
-            <span class="details-label">Type</span>
-            <span class="details-value"
-              >${channel.channelType === "messaging" ? "Messaging API" : "LINE Login"}</span
-            >
-          </div>
-          <div class="details-row">
             <span class="details-label">Channel ID</span>
-            <span class="details-value">${channel.channelId}</span>
+            <div class="details-value-wrapper">
+              <span class="details-value">${channel.channelId}</span>
+              <button
+                class="copy-btn"
+                type="button"
+                title="Copy to clipboard"
+                @click=${() => this.#copyToClipboard(channel.channelId)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="details-row">
-            <span class="details-label">Record ID</span>
-            <span class="details-value">${channel.id}</span>
-          </div>
-          <div class="details-row">
-            <span class="details-label">Provider ID</span>
-            <span class="details-value">${channel.providerId}</span>
-          </div>
+          ${this.#renderCredentialField(
+            this.messages.channelSecretLabel,
+            channel.channelSecret,
+            `secret-${channel.id}`,
+          )}
+          ${isMessaging
+            ? this.#renderCredentialField(
+                this.messages.channelAccessTokenLabel,
+                channel.channelAccessToken,
+                `token-${channel.id}`,
+              )
+            : ""}
         </div>
 
         ${isMessaging
           ? html`
               <div class="details-section">
                 <div class="details-section-title">Messaging Info</div>
-                ${channel.displayName
-                  ? html`<div class="details-row">
-                      <span class="details-label">Display Name</span>
-                      <span class="details-value">${channel.displayName}</span>
-                    </div>`
-                  : ""}
                 ${channel.botUserId
                   ? html`<div class="details-row">
-                      <span class="details-label">Bot User ID</span>
+                      <span class="details-label">Add Friend URL</span>
                       <span class="details-value">${channel.botUserId}</span>
+                    </div>`
+                  : ""}
+                ${channel.basicId
+                  ? html`<div class="details-row">
+                      <span class="details-label">Bot Basic ID</span>
+                      <span class="details-value">${channel.basicId}</span>
+                    </div>`
+                  : ""}
+                ${channel.pictureUrl
+                  ? html`<div class="details-row">
+                      <span class="details-label">Add Friend QR Code</span>
+                      <span class="details-value">${channel.pictureUrl}</span>
                     </div>`
                   : ""}
               </div>

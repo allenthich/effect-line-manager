@@ -21,6 +21,10 @@ interface FormValues {
   channelId: string;
   channelSecret: string;
   channelAccessToken: string;
+  channelBotUserId: string;
+  channelBasicId: string;
+  channelDisplayName: string;
+  channelPictureUrl: string;
 
   // LIFF App
   liffLoginChannelId: string;
@@ -425,6 +429,42 @@ export class LineAccountForm extends LitElement {
                 : this.messages.channelAccessTokenCreateHint,
             )
           : ""}
+        ${this.#values.channelType === "messaging"
+          ? html`
+              <fieldset style="margin-top: 0.5rem;">
+                <legend>Messaging Info</legend>
+                <div class="grid-2col">
+                  ${this.#renderInputField(
+                    "channelBotUserId",
+                    "Add Friend URL",
+                    "text",
+                    false,
+                    undefined,
+                    false,
+                    "https://lin.ee/your-line-id",
+                  )}
+                  ${this.#renderInputField(
+                    "channelPictureUrl",
+                    "Add Friend QR Code",
+                    "text",
+                    false,
+                    undefined,
+                    false,
+                    "https://qr-official.line.me/gs/your-qr-code.png",
+                  )}
+                </div>
+                ${this.#renderInputField(
+                  "channelBasicId",
+                  "Bot Basic ID",
+                  "text",
+                  false,
+                  undefined,
+                  false,
+                  "@your_basic_id",
+                )}
+              </fieldset>
+            `
+          : ""}
       </fieldset>
     `;
   }
@@ -518,6 +558,7 @@ export class LineAccountForm extends LitElement {
     required: boolean,
     hint?: string,
     readOnly = false,
+    placeholder?: string,
   ) {
     const isPassword = type === "password";
     let showPassword = false;
@@ -566,6 +607,7 @@ export class LineAccountForm extends LitElement {
             aria-describedby=${describedBy || undefined}
             aria-invalid=${isInvalid ? "true" : "false"}
             autocomplete="off"
+            placeholder=${placeholder || undefined}
             @input=${this.#handleInput}
           />
           ${isPassword && !readOnly
@@ -633,6 +675,10 @@ export class LineAccountForm extends LitElement {
     let channelId = "";
     let channelSecret = "";
     let channelAccessToken = "";
+    let channelBotUserId = "";
+    let channelBasicId = "";
+    let channelDisplayName = "";
+    let channelPictureUrl = "";
     let liffLoginChannelId = "";
     let liffId = "";
     let liffViewType: "compact" | "tall" | "full" = "tall";
@@ -652,6 +698,10 @@ export class LineAccountForm extends LitElement {
         channelSecret = channel.channelSecret ?? "";
         if (channel.channelType === "messaging") {
           channelAccessToken = channel.channelAccessToken ?? "";
+          channelBotUserId = channel.botUserId ?? "";
+          channelBasicId = channel.basicId ?? "";
+          channelDisplayName = channel.displayName ?? "";
+          channelPictureUrl = channel.pictureUrl ?? "";
         }
       } else if (type === "liff") {
         const liff = item as LiffAppView;
@@ -683,6 +733,10 @@ export class LineAccountForm extends LitElement {
       channelId,
       channelSecret,
       channelAccessToken,
+      channelBotUserId,
+      channelBasicId,
+      channelDisplayName,
+      channelPictureUrl,
       liffLoginChannelId,
       liffId,
       liffViewType,
@@ -742,6 +796,10 @@ export class LineAccountForm extends LitElement {
                   channelId: this.#values.channelId.trim(),
                   channelSecret: this.#values.channelSecret.trim(),
                   channelAccessToken: this.#values.channelAccessToken.trim(),
+                  displayName: trimOptional(this.#values.channelDisplayName) ?? null,
+                  botUserId: trimOptional(this.#values.channelBotUserId) ?? null,
+                  basicId: trimOptional(this.#values.channelBasicId) ?? null,
+                  pictureUrl: trimOptional(this.#values.channelPictureUrl) ?? null,
                 }
               : {
                   channelType: "login",
@@ -768,6 +826,22 @@ export class LineAccountForm extends LitElement {
           const token = this.#values.channelAccessToken.trim();
           if (token !== "" && token !== (channel.channelAccessToken ?? "")) {
             input.channelAccessToken = token;
+          }
+          const displayName = this.#values.channelDisplayName.trim();
+          if (displayName !== (channel.displayName ?? "")) {
+            input.displayName = displayName || null;
+          }
+          const botUserId = this.#values.channelBotUserId.trim();
+          if (botUserId !== (channel.botUserId ?? "")) {
+            input.botUserId = botUserId || null;
+          }
+          const basicId = this.#values.channelBasicId.trim();
+          if (basicId !== (channel.basicId ?? "")) {
+            input.basicId = basicId || null;
+          }
+          const pictureUrl = this.#values.channelPictureUrl.trim();
+          if (pictureUrl !== (channel.pictureUrl ?? "")) {
+            input.pictureUrl = pictureUrl || null;
           }
         }
         detail = {

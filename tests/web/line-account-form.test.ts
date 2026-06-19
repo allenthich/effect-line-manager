@@ -139,6 +139,10 @@ describe("Channel form", () => {
         channelId: "987654",
         channelSecret: "my-secret",
         channelAccessToken: "my-token",
+        displayName: null,
+        botUserId: null,
+        basicId: null,
+        pictureUrl: null,
       },
     });
   });

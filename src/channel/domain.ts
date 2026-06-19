@@ -68,6 +68,10 @@ export const CreateChannelRecordInput = Schema.Union([
     channelId: NonEmptyTrimmedString,
     channelSecret: LineCredential,
     channelAccessToken: LineCredential,
+    displayName: Schema.optional(Schema.NullOr(Schema.String)),
+    botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+    basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+    pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
   }),
   Schema.Struct({
     channelType: Schema.Literal("login"),
@@ -104,6 +108,10 @@ export const CreateChannelInput = Schema.Union([
     channelId: NonEmptyTrimmedString,
     channelSecret: NonEmptyTrimmedString,
     channelAccessToken: NonEmptyTrimmedString,
+    displayName: Schema.optional(Schema.NullOr(Schema.String)),
+    botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+    basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+    pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
   }),
   Schema.Struct({
     channelType: Schema.Literal("login"),
@@ -123,6 +131,10 @@ export const UpdateChannelInput = Schema.Struct({
   channelSecret: Schema.optional(NonEmptyTrimmedString),
   channelAccessToken: Schema.optional(NonEmptyTrimmedString),
   isActive: Schema.optional(Schema.Boolean),
+  displayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
 });
 /** {@link UpdateChannelInput} type alias. */
 export type UpdateChannelInput = typeof UpdateChannelInput.Type;
