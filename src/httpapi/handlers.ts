@@ -153,7 +153,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
         management.getLiffApp(params.id).pipe(
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
-              Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
+              Effect.fail(new LiffAppNotFoundHttpError({ liffId: error.liffId })),
             LinePersistenceError: mapPersistenceError,
           }),
         ),
@@ -173,7 +173,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
         management.updateLiffApp(params.id, payload).pipe(
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
-              Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
+              Effect.fail(new LiffAppNotFoundHttpError({ liffId: error.liffId })),
             LinePersistenceError: mapPersistenceError,
           }),
         ),
@@ -182,7 +182,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
         management.deleteLiffApp(params.id).pipe(
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
-              Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
+              Effect.fail(new LiffAppNotFoundHttpError({ liffId: error.liffId })),
             LinePersistenceError: mapPersistenceError,
           }),
         ),

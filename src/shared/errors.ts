@@ -18,7 +18,7 @@ export const LineRepositoryOperation = Schema.Literals([
   // LIFF Apps
   "createLiffApp",
   "updateLiffApp",
-  "findLiffAppByUid",
+  "findLiffAppByLiffId",
   "listLiffAppsByChannel",
   "deleteLiffApp",
 ]);

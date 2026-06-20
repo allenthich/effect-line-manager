@@ -32,7 +32,7 @@ import {
   type LoginChannel,
   type LineChannel,
 } from "../channel/domain.ts";
-import { LineLiffUid, type LineLiffApp } from "../liff/domain.ts";
+import { LineLiffId, type LineLiffApp } from "../liff/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
 import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
 import { LineRepositoryError } from "../shared/errors.ts";
@@ -77,11 +77,11 @@ export class LineClientRegistry extends Context.Service<
       channelId: LineChannelId,
     ) => Effect.Effect<LineLoginClient, LineRepositoryError | ChannelNotFoundError>;
 
-    /** Resolves a LIFF client by LIFF record ID.
+    /** Resolves a LIFF client by LIFF ID.
      *  Uses the parent Login Channel's OAuth token (Option A).
      *  If no OAuth access token is provided, returns {@link LiffLoginConfigMissingError}. */
     readonly getLiffClient: (
-      liffUid: LineLiffUid,
+      liffId: LineLiffId,
       oauthAccessToken?: string,
     ) => Effect.Effect<
       LineLiffClient,
@@ -104,7 +104,7 @@ export class LineClientRegistry extends Context.Service<
     readonly invalidateChannel: (channelId: LineChannelId) => Effect.Effect<void>;
 
     /** Evicts a single LIFF app from the cache. */
-    readonly invalidateLiff: (liffUid: LineLiffUid) => Effect.Effect<void>;
+    readonly invalidateLiff: (liffId: LineLiffId) => Effect.Effect<void>;
 
     /** Evicts all cached channels and LIFF apps. */
     readonly invalidateAll: Effect.Effect<void>;
@@ -170,11 +170,11 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
 
     //#region LIFF cache
     const loadLiffEntry = Effect.fn("LineClientRegistry.loadLiffEntry")(function* (
-      liffUid: LineLiffUid,
+      liffId: LineLiffId,
     ) {
-      const optionLiff = yield* liffRepository.findLiffAppByUid(liffUid);
+      const optionLiff = yield* liffRepository.findLiffAppByLiffId(liffId);
       if (Option.isNone(optionLiff)) {
-        return yield* new LiffAppNotFoundError({ uid: liffUid });
+        return yield* new LiffAppNotFoundError({ liffId });
       }
       const liffApp = optionLiff.value;
 
@@ -194,7 +194,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     });
 
     const liffCache = yield* Cache.makeWith<
-      LineLiffUid,
+      LineLiffId,
       Omit<LiffEntry, "liff">,
       LineRepositoryError | LiffAppNotFoundError | ChannelNotFoundError
     >(loadLiffEntry, {
@@ -228,15 +228,15 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     );
 
     const getLiffClient = Effect.fn("LineClientRegistry.getLiffClient")(
-      (liffUid: LineLiffUid, oauthAccessToken?: string) =>
+      (liffId: LineLiffId, oauthAccessToken?: string) =>
         Effect.gen(function* () {
           if (oauthAccessToken === undefined) {
             return yield* new LiffLoginConfigMissingError({
-              uid: liffUid,
+              liffId,
             });
           }
           // Validate LIFF app exists and parent LoginChannel is valid (side-effect in cache loading)
-          yield* Cache.get(liffCache, liffUid);
+          yield* Cache.get(liffCache, liffId);
           const liff = makeLineLiffClient(httpClient, Redacted.make(oauthAccessToken));
           return liff;
         }),
@@ -285,8 +285,8 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
         (channelId: LineChannelId) => Cache.invalidate(channelCache, channelId),
       ),
 
-      invalidateLiff: Effect.fn("LineClientRegistry.invalidateLiff")((liffUid: LineLiffUid) =>
-        Cache.invalidate(liffCache, liffUid),
+      invalidateLiff: Effect.fn("LineClientRegistry.invalidateLiff")((liffId: LineLiffId) =>
+        Cache.invalidate(liffCache, liffId),
       ),
       invalidateAll: Effect.all(
         [Cache.invalidateAll(channelCache), Cache.invalidateAll(liffCache)],

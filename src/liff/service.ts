@@ -8,7 +8,6 @@ import {
   type CreateLiffAppInput,
   type UpdateLiffAppInput,
   type LineLiffApp,
-  LineLiffUid,
   LineLiffId,
   type LiffAppView,
   LiffAppListPage,
@@ -23,7 +22,7 @@ export interface LineLiffManagementService {
     channelId: LineLoginChannelId | undefined,
   ) => Effect.Effect<LiffAppListPage, LinePersistenceError>;
   readonly getLiffApp: (
-    id: LineLiffUid,
+    id: LineLiffId,
   ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LinePersistenceError>;
   readonly createLiffApp: (
     input: CreateLiffAppInput,
@@ -32,11 +31,11 @@ export interface LineLiffManagementService {
     LiffAppDuplicateError | ChannelNotFoundError | LinePersistenceError
   >;
   readonly updateLiffApp: (
-    id: LineLiffUid,
+    id: LineLiffId,
     input: UpdateLiffAppInput,
   ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LinePersistenceError>;
   readonly deleteLiffApp: (
-    id: LineLiffUid,
+    id: LineLiffId,
   ) => Effect.Effect<void, LiffAppNotFoundError | LinePersistenceError>;
 }
 
@@ -132,11 +131,11 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         ),
     ),
 
-    getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffUid) =>
+    getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffId) =>
       Effect.gen(function* () {
-        const option = yield* repository.findLiffAppByUid(id);
+        const option = yield* repository.findLiffAppByLiffId(id);
         if (Option.isNone(option)) {
-          return yield* new LiffAppNotFoundError({ uid: id });
+          return yield* new LiffAppNotFoundError({ liffId: id });
         }
         return toLiffAppView(option.value);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -160,13 +159,13 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         const record = yield* repository.createLiffApp(
           toCreateLiffAppRecordInput(input, loginChannelId),
         );
-        yield* registry.invalidateLiff(record.id);
+        yield* registry.invalidateLiff(record.liffId);
         return toLiffAppView(record);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     updateLiffApp: Effect.fn("LineLiffManagement.updateLiffApp")(
-      (id: LineLiffUid, input: UpdateLiffAppInput) =>
+      (id: LineLiffId, input: UpdateLiffAppInput) =>
         Effect.gen(function* () {
           const record = yield* repository.updateLiffApp(id, toUpdateLiffAppRecordInput(input));
           yield* registry.invalidateLiff(id);
@@ -174,7 +173,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
-    deleteLiffApp: Effect.fn("LineLiffManagement.deleteLiffApp")((id: LineLiffUid) =>
+    deleteLiffApp: Effect.fn("LineLiffManagement.deleteLiffApp")((id: LineLiffId) =>
       Effect.gen(function* () {
         yield* repository.deleteLiffApp(id);
         yield* registry.invalidateLiff(id);

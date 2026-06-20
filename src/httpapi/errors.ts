@@ -79,7 +79,7 @@ export class ChannelDuplicateHttpError extends Schema.TaggedErrorClass<ChannelDu
 export class LiffAppNotFoundHttpError extends Schema.TaggedErrorClass<LiffAppNotFoundHttpError>()(
   "LiffAppNotFoundHttpError",
   {
-    uid: Schema.String,
+    liffId: Schema.String,
   },
   { httpApiStatus: 404 },
 ) {}

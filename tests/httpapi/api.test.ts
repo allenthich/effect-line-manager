@@ -5,7 +5,7 @@ import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
 import { ChannelView, LineChannelId } from "../../src/channel/domain.ts";
-import { LiffAppView, LineLiffUid } from "../../src/liff/domain.ts";
+import { LiffAppView, LineLiffId } from "../../src/liff/domain.ts";
 import {
   LineProviderNotFoundError,
   LineProviderDuplicateError,
@@ -33,7 +33,7 @@ import {
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 const channelRecordId = Schema.decodeUnknownSync(LineChannelId)("channel-record-1");
-const liffUid = Schema.decodeUnknownSync(LineLiffUid)("liff-record-1");
+const liffId = Schema.decodeUnknownSync(LineLiffId)("liff-record-1");
 
 const providerView = Schema.decodeUnknownSync(ProviderView)({
   id: providerId,
@@ -60,7 +60,7 @@ const channelView = Schema.decodeUnknownSync(ChannelView)({
 });
 
 const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
-  id: liffUid,
+  id: liffId,
   loginChannelId: channelRecordId,
   liffId: "1234567890-AbCdEf12",
   view: {
@@ -245,13 +245,13 @@ describe("LineApi", () => {
           },
         });
         const updatedLiff = yield* client.lineLiffApps.updateLiffApp({
-          params: { id: liffUid },
+          params: { id: liffId },
           payload: { view: { type: "tall", url: "https://example.com/liff" } },
         });
         const gottenLiff = yield* client.lineLiffApps.getLiffApp({
-          params: { id: liffUid },
+          params: { id: liffId },
         });
-        yield* client.lineLiffApps.deleteLiffApp({ params: { id: liffUid } });
+        yield* client.lineLiffApps.deleteLiffApp({ params: { id: liffId } });
 
         expect(listedProviders.data).toEqual([providerView]);
         expect(createdProvider).toEqual(providerView);
@@ -293,7 +293,7 @@ describe("LineApi", () => {
     });
     const channelNotFound = new ChannelNotFoundError({ channelId: channelRecordId });
     const liffDuplicate = new LiffAppDuplicateError({ liffId: "1234567890-AbCdEf12" });
-    const liffNotFound = new LiffAppNotFoundError({ uid: liffUid });
+    const liffNotFound = new LiffAppNotFoundError({ liffId });
 
     const providerMgmt: LineProviderManagementService = {
       ...defaultProviderMgmt,
@@ -351,7 +351,7 @@ describe("LineApi", () => {
           })
           .pipe(Effect.flip);
         const liffNotErr = yield* client.lineLiffApps
-          .getLiffApp({ params: { id: liffUid } })
+          .getLiffApp({ params: { id: liffId } })
           .pipe(Effect.flip);
 
         expect(providerDupErr).toMatchObject({
@@ -376,7 +376,7 @@ describe("LineApi", () => {
         });
         expect(liffNotErr).toMatchObject({
           _tag: "LiffAppNotFoundHttpError",
-          uid: "liff-record-1",
+          liffId: "liff-record-1",
         });
       }).pipe(Effect.orDie),
     );

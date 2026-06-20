@@ -16,7 +16,7 @@ import {
   UpdateChannelInput,
 } from "../channel/domain.ts";
 import {
-  LineLiffUid,
+  LineLiffId,
   LiffAppView,
   LiffAppListPage,
   CreateLiffAppInput,
@@ -146,7 +146,7 @@ const listLiffApps = HttpApiEndpoint.get("listLiffApps", "/line-liff-apps", {
 });
 
 const getLiffApp = HttpApiEndpoint.get("getLiffApp", "/line-liff-apps/:id", {
-  params: { id: LineLiffUid },
+  params: { id: LineLiffId },
   success: LiffAppView,
   error: [LiffAppNotFoundHttpError, LinePersistenceHttpError],
 });
@@ -158,14 +158,14 @@ const createLiffApp = HttpApiEndpoint.post("createLiffApp", "/line-liff-apps", {
 }).middleware(LineValidationMiddleware);
 
 const updateLiffApp = HttpApiEndpoint.patch("updateLiffApp", "/line-liff-apps/:id", {
-  params: { id: LineLiffUid },
+  params: { id: LineLiffId },
   payload: UpdateLiffAppInput,
   success: LiffAppView,
   error: [LiffAppNotFoundHttpError, LinePersistenceHttpError],
 }).middleware(LineValidationMiddleware);
 
 const deleteLiffApp = HttpApiEndpoint.delete("deleteLiffApp", "/line-liff-apps/:id", {
-  params: { id: LineLiffUid },
+  params: { id: LineLiffId },
   success: HttpApiSchema.NoContent,
   error: [LiffAppNotFoundHttpError, LinePersistenceHttpError],
 });

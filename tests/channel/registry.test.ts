@@ -55,7 +55,7 @@ const makeChannelRepository = (
 const makeLiffRepository = (): LineLiffRepositoryService => ({
   createLiffApp: () => Effect.die("unused"),
   updateLiffApp: () => Effect.die("unused"),
-  findLiffAppByUid: () => Effect.succeedNone,
+  findLiffAppByLiffId: () => Effect.succeedNone,
   listLiffAppsByChannel: () => Effect.die("unused"),
   deleteLiffApp: () => Effect.die("unused"),
 });
