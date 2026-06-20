@@ -12,7 +12,7 @@ import {
 } from "../../src/provider/errors.ts";
 import { ChannelNotFoundError, ChannelDuplicateError } from "../../src/channel/errors.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "../../src/liff/errors.ts";
-import { LineAccountPersistenceError } from "../../src/shared/errors.ts";
+import { LinePersistenceError } from "../../src/shared/errors.ts";
 import {
   LineProviderManagement,
   type LineProviderManagementService,
@@ -385,7 +385,7 @@ describe("LineApi", () => {
   test("sanitizes persistence failures", async () => {
     const providerMgmt: LineProviderManagementService = {
       ...defaultProviderMgmt,
-      listProviders: Effect.fail(new LineAccountPersistenceError({ operation: "listProviders" })),
+      listProviders: Effect.fail(new LinePersistenceError({ operation: "listProviders" })),
     };
 
     await Effect.runPromise(

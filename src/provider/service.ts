@@ -8,26 +8,26 @@ import {
   ProviderListPage,
 } from "./domain.ts";
 import { LineProviderNotFoundError, LineProviderDuplicateError } from "./errors.ts";
-import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "./repository.ts";
 
 /** Service interface for LINE provider management operations. */
 export interface LineProviderManagementService {
-  readonly listProviders: Effect.Effect<ProviderListPage, LineAccountPersistenceError>;
+  readonly listProviders: Effect.Effect<ProviderListPage, LinePersistenceError>;
   readonly getProvider: (
     id: LineProviderId,
-  ) => Effect.Effect<ProviderView, LineProviderNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<ProviderView, LineProviderNotFoundError | LinePersistenceError>;
   readonly createProvider: (
     input: CreateProviderInput,
-  ) => Effect.Effect<ProviderView, LineProviderDuplicateError | LineAccountPersistenceError>;
+  ) => Effect.Effect<ProviderView, LineProviderDuplicateError | LinePersistenceError>;
   readonly updateProvider: (
     id: LineProviderId,
     input: UpdateProviderInput,
-  ) => Effect.Effect<ProviderView, LineProviderNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<ProviderView, LineProviderNotFoundError | LinePersistenceError>;
   readonly deleteProvider: (
     id: LineProviderId,
-  ) => Effect.Effect<void, LineProviderNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<void, LineProviderNotFoundError | LinePersistenceError>;
 }
 
 /** Service implementation for LINE provider management. */
@@ -68,7 +68,7 @@ const toUpdateProviderRecordInput = (input: UpdateProviderInput) =>
 
 const persistenceFailure = (error: LineRepositoryError) =>
   Effect.logError("LINE provider repository operation failed", error).pipe(
-    Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
+    Effect.andThen(Effect.fail(new LinePersistenceError({ operation: error.operation }))),
   );
 
 /** Constructs the LINE provider management service with its dependencies. */

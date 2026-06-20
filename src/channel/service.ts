@@ -10,31 +10,31 @@ import {
   ChannelListPage,
 } from "./domain.ts";
 import { ChannelNotFoundError, ChannelDuplicateError } from "./errors.ts";
-import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
 import { LineClientRegistry } from "../registry/index.ts";
-import { LineChannelRepository } from "./repository.ts";
+import { InternalLineChannelStore } from "../internal/channel-store.ts";
 
 /** Service interface for LINE channel management operations. */
 export interface LineChannelManagementService {
   readonly listChannels: (
     providerId: LineProviderId | undefined,
-  ) => Effect.Effect<ChannelListPage, LineAccountPersistenceError>;
+  ) => Effect.Effect<ChannelListPage, LinePersistenceError>;
   readonly getChannel: (
     id: LineChannelUid,
-  ) => Effect.Effect<ChannelView, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<ChannelView, ChannelNotFoundError | LinePersistenceError>;
   readonly findChannelByBotUserId: (
     botUserId: string,
-  ) => Effect.Effect<Option.Option<ChannelView>, LineAccountPersistenceError>;
+  ) => Effect.Effect<Option.Option<ChannelView>, LinePersistenceError>;
   readonly createChannel: (
     input: CreateChannelInput,
-  ) => Effect.Effect<ChannelView, ChannelDuplicateError | LineAccountPersistenceError>;
+  ) => Effect.Effect<ChannelView, ChannelDuplicateError | LinePersistenceError>;
   readonly updateChannel: (
     id: LineChannelUid,
     input: UpdateChannelInput,
-  ) => Effect.Effect<ChannelView, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<ChannelView, ChannelNotFoundError | LinePersistenceError>;
   readonly deleteChannel: (
     id: LineChannelUid,
-  ) => Effect.Effect<void, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<void, ChannelNotFoundError | LinePersistenceError>;
 }
 
 /** Service implementation for LINE channel management. */
@@ -133,12 +133,12 @@ const toUpdateChannelRecordInput = (input: UpdateChannelInput) => ({
 
 const persistenceFailure = (error: LineRepositoryError) =>
   Effect.logError("LINE channel repository operation failed", error).pipe(
-    Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
+    Effect.andThen(Effect.fail(new LinePersistenceError({ operation: error.operation }))),
   );
 
 /** Constructs the LINE channel management service with its dependencies. */
 export const makeLineChannelManagement = Effect.gen(function* () {
-  const repository = yield* LineChannelRepository;
+  const repository = yield* InternalLineChannelStore;
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 
@@ -146,7 +146,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
     Effect.gen(function* () {
       const providers = yield* providerRepository.listProviders;
       const channelArrays = yield* Effect.all(
-        providers.map((p) => repository.listChannelsByProvider(p.id)),
+        providers.map((p) => repository.listByProvider(p.id)),
       );
       return channelArrays.flat();
     });
@@ -154,10 +154,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
   return LineChannelManagement.of({
     listChannels: Effect.fn("LineChannelManagement.listChannels")(
       (providerId: LineProviderId | undefined) =>
-        (providerId !== undefined
-          ? repository.listChannelsByProvider(providerId)
-          : listAllChannels()
-        ).pipe(
+        (providerId !== undefined ? repository.listByProvider(providerId) : listAllChannels()).pipe(
           Effect.catchTag("LineRepositoryError", persistenceFailure),
           Effect.map(toChannelListPage),
         ),
@@ -165,7 +162,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
 
     getChannel: Effect.fn("LineChannelManagement.getChannel")((id: LineChannelUid) =>
       Effect.gen(function* () {
-        const option = yield* repository.findChannelByUid(id);
+        const option = yield* repository.findByUid(id);
         if (Option.isNone(option)) {
           return yield* new ChannelNotFoundError({ uid: id });
         }
@@ -176,7 +173,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
     findChannelByBotUserId: Effect.fn("LineChannelManagement.findChannelByBotUserId")(
       (botUserId: string) =>
         repository
-          .findChannelByBotUserId(botUserId)
+          .findByBotUserId(botUserId)
           .pipe(
             Effect.catchTag("LineRepositoryError", persistenceFailure),
             Effect.map(Option.map(toChannelView)),
@@ -185,7 +182,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
 
     createChannel: Effect.fn("LineChannelManagement.createChannel")((input: CreateChannelInput) =>
       Effect.gen(function* () {
-        const record = yield* repository.createChannel(toCreateChannelRecordInput(input));
+        const record = yield* repository.create(toCreateChannelRecordInput(input));
         yield* registry.invalidateChannel(record.id);
         return toChannelView(record);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -194,7 +191,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
     updateChannel: Effect.fn("LineChannelManagement.updateChannel")(
       (id: LineChannelUid, input: UpdateChannelInput) =>
         Effect.gen(function* () {
-          const record = yield* repository.updateChannel(id, toUpdateChannelRecordInput(input));
+          const record = yield* repository.update(id, toUpdateChannelRecordInput(input));
           yield* registry.invalidateChannel(id);
           return toChannelView(record);
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -202,7 +199,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
 
     deleteChannel: Effect.fn("LineChannelManagement.deleteChannel")((id: LineChannelUid) =>
       Effect.gen(function* () {
-        yield* repository.deleteChannel(id);
+        yield* repository.delete(id);
         // Channel deletion can cascade to LIFF apps, so clear descendant caches too.
         yield* registry.invalidateAll;
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),

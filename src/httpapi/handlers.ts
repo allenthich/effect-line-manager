@@ -33,7 +33,7 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
       .handle("listProviders", () =>
         management.listProviders.pipe(
           Effect.catchTags({
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -42,7 +42,7 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
           Effect.catchTags({
             LineProviderNotFoundError: (error) =>
               Effect.fail(new ProviderNotFoundHttpError({ providerId: error.providerId })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -51,7 +51,7 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
           Effect.catchTags({
             LineProviderDuplicateError: (error) =>
               Effect.fail(new ProviderDuplicateHttpError({ name: error.name })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -60,7 +60,7 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
           Effect.catchTags({
             LineProviderNotFoundError: (error) =>
               Effect.fail(new ProviderNotFoundHttpError({ providerId: error.providerId })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -69,7 +69,7 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
           Effect.catchTags({
             LineProviderNotFoundError: (error) =>
               Effect.fail(new ProviderNotFoundHttpError({ providerId: error.providerId })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       );
@@ -89,7 +89,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
       .handle("listChannels", ({ query }) => {
         return management.listChannels(query.providerId).pipe(
           Effect.catchTags({
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         );
       })
@@ -98,7 +98,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
               Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -107,7 +107,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           Effect.catchTags({
             ChannelDuplicateError: (error) =>
               Effect.fail(new ChannelDuplicateHttpError({ channelId: error.channelId })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -116,7 +116,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
               Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -125,7 +125,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
               Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       );
@@ -145,7 +145,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
       .handle("listLiffApps", ({ query }) => {
         return management.listLiffApps(query.channelId).pipe(
           Effect.catchTags({
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         );
       })
@@ -154,7 +154,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
               Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -165,7 +165,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
               Effect.fail(new LiffAppDuplicateHttpError({ liffId: error.liffId })),
             ChannelNotFoundError: (error) =>
               Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -174,7 +174,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
               Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
@@ -183,7 +183,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
               Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
-            LineAccountPersistenceError: mapPersistenceError,
+            LinePersistenceError: mapPersistenceError,
           }),
         ),
       );

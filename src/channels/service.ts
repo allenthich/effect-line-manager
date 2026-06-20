@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option, Redacted } from "effect";
 import { LineClientRegistry } from "../registry/index.ts";
-import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
 import type { LineApiClient } from "../messaging/client.ts";
 import { LineLoginChannelId, LineMessagingChannelId, type LineLoginChannel } from "./domain.ts";
 import { LineLoginChannelRepository, LineMessagingChannelRepository } from "./repository.ts";
@@ -10,13 +10,13 @@ import type { LineChannelUid } from "../channel/domain.ts";
 export interface LineMessagingChannelServiceApi {
   readonly getClientByLineChannelId: (
     id: LineMessagingChannelId,
-  ) => Effect.Effect<LineApiClient, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<LineApiClient, ChannelNotFoundError | LinePersistenceError>;
   readonly getAccessTokenByLineChannelId: (
     id: LineMessagingChannelId,
-  ) => Effect.Effect<string, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<string, ChannelNotFoundError | LinePersistenceError>;
   readonly invalidateClientByLineChannelId: (
     id: LineMessagingChannelId,
-  ) => Effect.Effect<void, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<void, ChannelNotFoundError | LinePersistenceError>;
 }
 
 export class LineMessagingChannelService extends Context.Service<
@@ -31,7 +31,7 @@ export class LineMessagingChannelService extends Context.Service<
 export interface LineLoginChannelServiceApi {
   readonly getByLineChannelId: (
     id: LineLoginChannelId,
-  ) => Effect.Effect<LineLoginChannel, ChannelNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<LineLoginChannel, ChannelNotFoundError | LinePersistenceError>;
 }
 
 export class LineLoginChannelService extends Context.Service<
@@ -47,7 +47,7 @@ const persistenceFailure = (error: LineRepositoryError) =>
   Effect.logError("LINE channel repository operation failed", error).pipe(
     Effect.andThen(
       Effect.fail(
-        new LineAccountPersistenceError({
+        new LinePersistenceError({
           operation: error.operation,
         }),
       ),

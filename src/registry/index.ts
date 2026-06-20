@@ -26,7 +26,7 @@ import { LineLiffUid, type LineLiffApp } from "../liff/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
 import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
 import { LineRepositoryError } from "../shared/errors.ts";
-import { LineChannelRepository } from "../channel/repository.ts";
+import { InternalLineChannelStore } from "../internal/channel-store.ts";
 import { LineLiffRepository } from "../liff/repository.ts";
 
 const defaultCapacity = 500;
@@ -116,7 +116,7 @@ const isLoginChannel = (channel: LineChannel): channel is LoginChannel =>
 
 const makeRegistry = (config: LineClientRegistryConfig = {}) =>
   Effect.gen(function* () {
-    const channelRepository = yield* LineChannelRepository;
+    const channelRepository = yield* InternalLineChannelStore;
     const liffRepository = yield* LineLiffRepository;
     const httpClient = yield* HttpClient.HttpClient;
     const successTimeToLive = config.timeToLive ?? defaultTimeToLive;
@@ -126,7 +126,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const loadChannelEntry = Effect.fn("LineClientRegistry.loadChannelEntry")(function* (
       uid: LineChannelUid,
     ) {
-      const optionChannel = yield* channelRepository.findChannelByUid(uid);
+      const optionChannel = yield* channelRepository.findByUid(uid);
       if (Option.isNone(optionChannel)) {
         return yield* new ChannelNotFoundError({ uid });
       }
@@ -169,7 +169,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       const liffApp = optionLiff.value;
 
       // Resolve the parent LoginChannel for validation
-      const optionParent = yield* channelRepository.findChannelByUid(liffApp.loginChannelId);
+      const optionParent = yield* channelRepository.findByUid(liffApp.loginChannelId);
       if (Option.isNone(optionParent) || !isLoginChannel(optionParent.value)) {
         return yield* new ChannelNotFoundError({ uid: liffApp.loginChannelId });
       }
@@ -242,7 +242,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           const messagingClient = entry.messaging.value;
           const botInfo = yield* messagingClient.getBotInfo;
 
-          const updatedChannel = yield* channelRepository.updateChannel(channelUid, {
+          const updatedChannel = yield* channelRepository.update(channelUid, {
             botUserId: botInfo.userId,
             basicId: botInfo.basicId,
             displayName: botInfo.displayName,

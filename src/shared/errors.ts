@@ -36,9 +36,9 @@ export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryE
   },
 ) {}
 
-/** Error raised by the management layer when a persistence operation fails. */
-export class LineAccountPersistenceError extends Schema.TaggedErrorClass<LineAccountPersistenceError>()(
-  "LineAccountPersistenceError",
+/** Error raised by higher-level services when a persistence operation fails. */
+export class LinePersistenceError extends Schema.TaggedErrorClass<LinePersistenceError>()(
+  "LinePersistenceError",
   {
     operation: LineRepositoryOperation,
   },

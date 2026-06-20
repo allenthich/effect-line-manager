@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
 import { LineChannelUid } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
-import { LineChannelRepository } from "../channel/repository.ts";
+import { InternalLineChannelStore } from "../internal/channel-store.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "../provider/repository.ts";
 import {
@@ -14,30 +14,30 @@ import {
   LiffAppListPage,
 } from "./domain.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "./errors.ts";
-import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
 import { LineLiffRepository } from "./repository.ts";
 
 /** Management service interface for LIFF application operations. */
 export interface LineLiffManagementService {
   readonly listLiffApps: (
     channelId: LineChannelUid | undefined,
-  ) => Effect.Effect<LiffAppListPage, LineAccountPersistenceError>;
+  ) => Effect.Effect<LiffAppListPage, LinePersistenceError>;
   readonly getLiffApp: (
     id: LineLiffUid,
-  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LinePersistenceError>;
   readonly createLiffApp: (
     input: CreateLiffAppInput,
   ) => Effect.Effect<
     LiffAppView,
-    LiffAppDuplicateError | ChannelNotFoundError | LineAccountPersistenceError
+    LiffAppDuplicateError | ChannelNotFoundError | LinePersistenceError
   >;
   readonly updateLiffApp: (
     id: LineLiffUid,
     input: UpdateLiffAppInput,
-  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LinePersistenceError>;
   readonly deleteLiffApp: (
     id: LineLiffUid,
-  ) => Effect.Effect<void, LiffAppNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<void, LiffAppNotFoundError | LinePersistenceError>;
 }
 
 /** Effect context tag for the LIFF management service. */
@@ -89,13 +89,13 @@ const toUpdateLiffAppRecordInput = (input: UpdateLiffAppInput) => ({
 
 const persistenceFailure = (error: LineRepositoryError) =>
   Effect.logError("LINE LIFF repository operation failed", error).pipe(
-    Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
+    Effect.andThen(Effect.fail(new LinePersistenceError({ operation: error.operation }))),
   );
 
 /** Creates the implementation for the LIFF management service. */
 export const makeLineLiffManagement = Effect.gen(function* () {
   const repository = yield* LineLiffRepository;
-  const channelRepository = yield* LineChannelRepository;
+  const channelRepository = yield* InternalLineChannelStore;
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 
@@ -103,7 +103,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
     Effect.gen(function* () {
       const providers = yield* providerRepository.listProviders;
       const allChannels = yield* Effect.all(
-        providers.map((p) => channelRepository.listChannelsByProvider(p.id)),
+        providers.map((p) => channelRepository.listByProvider(p.id)),
       );
       const flatChannels = allChannels.flat();
       const liffArrays = yield* Effect.all(
@@ -137,7 +137,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
     createLiffApp: Effect.fn("LineLiffManagement.createLiffApp")((input: CreateLiffAppInput) =>
       Effect.gen(function* () {
         const loginChannelId = Schema.decodeUnknownSync(LineChannelUid)(input.loginChannelId);
-        const optionChannel = yield* channelRepository.findChannelByUid(loginChannelId);
+        const optionChannel = yield* channelRepository.findByUid(loginChannelId);
         if (Option.isNone(optionChannel)) {
           return yield* new ChannelNotFoundError({ uid: loginChannelId });
         }

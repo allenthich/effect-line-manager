@@ -10,6 +10,7 @@ import {
   LineChannelRepository,
   type LineChannelRepositoryService,
 } from "../../src/channel/repository.ts";
+import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import { LineLiffRepository, type LineLiffRepositoryService } from "../../src/liff/repository.ts";
 
 const decodeChannelId = Schema.decodeUnknownSync(LineChannelId);
@@ -79,6 +80,7 @@ const makeLayer = (
     Layer.provide(
       Layer.mergeAll(
         Layer.succeed(LineChannelRepository)(channelRepository),
+        provideInternalLineChannelStore(channelRepository),
         Layer.succeed(LineLiffRepository)(liffRepository),
         Layer.succeed(HttpClient.HttpClient)(httpClient),
       ),

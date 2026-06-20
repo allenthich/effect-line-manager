@@ -6,41 +6,42 @@ import type {
   LineChannelId,
   LineChannelUid,
   UpdateChannelRecordInput,
-} from "./domain.ts";
-import type { ChannelDuplicateError, ChannelNotFoundError } from "./errors.ts";
+} from "../channel/domain.ts";
+import type { ChannelDuplicateError, ChannelNotFoundError } from "../channel/errors.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
 
 /**
- * Legacy generic repository contract retained for internal tests and
- * compatibility shims. Published consumers should use the domain-specific
- * channel APIs instead.
+ * Internal persistence boundary for generic channel records.
+ *
+ * Public consumers should use the domain-specific channel services exported
+ * through `LineMessagingChannels` and `LineLoginChannels`.
  */
-export class LineChannelRepository extends Context.Service<
-  LineChannelRepository,
+export class InternalLineChannelStore extends Context.Service<
+  InternalLineChannelStore,
   {
-    readonly createChannel: (
+    readonly create: (
       input: CreateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelDuplicateError | LineRepositoryError>;
-    readonly updateChannel: (
-      id: LineChannelUid,
+    readonly update: (
+      uid: LineChannelUid,
       input: UpdateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelNotFoundError | LineRepositoryError>;
-    readonly findChannelByUid: (
-      id: LineChannelUid,
+    readonly findByUid: (
+      uid: LineChannelUid,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
-    readonly findChannelByLineChannelId: (
+    readonly findByLineChannelId: (
       channelId: LineChannelId,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
-    readonly findChannelByBotUserId: (
+    readonly findByBotUserId: (
       botUserId: string,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
-    readonly listChannelsByProvider: (
+    readonly listByProvider: (
       providerId: LineProviderId,
     ) => Effect.Effect<ReadonlyArray<LineChannel>, LineRepositoryError>;
-    readonly deleteChannel: (
-      id: LineChannelUid,
+    readonly delete: (
+      uid: LineChannelUid,
     ) => Effect.Effect<void, ChannelNotFoundError | LineRepositoryError>;
   }
->()("effect-line-manager/LineChannelRepository") {}
+>()("effect-line-manager/internal/InternalLineChannelStore") {}
 
-export type LineChannelRepositoryService = LineChannelRepository["Service"];
+export type InternalLineChannelStoreService = InternalLineChannelStore["Service"];

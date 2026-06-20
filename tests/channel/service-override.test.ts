@@ -12,6 +12,7 @@ import {
   LineChannelRepository,
   type LineChannelRepositoryService,
 } from "../../src/channel/repository.ts";
+import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 
 const uid1 = Schema.decodeUnknownSync(LineChannelUid)("record-1");
 const uid2 = Schema.decodeUnknownSync(LineChannelUid)("record-2");
@@ -76,6 +77,7 @@ const makeRegistry = (): LineClientRegistryService =>
 
 const baseLayer = Layer.mergeAll(
   Layer.succeed(LineChannelRepository)(makeChannelRepository()),
+  provideInternalLineChannelStore(makeChannelRepository()),
   Layer.succeed(LineProviderRepository)(makeProviderRepository()),
   Layer.succeed(LineClientRegistry)(makeRegistry()),
 );
@@ -170,6 +172,7 @@ describe("LineChannelManagement service override", () => {
 
     const testBaseLayer = Layer.mergeAll(
       Layer.succeed(LineChannelRepository)(channelRepo),
+      provideInternalLineChannelStore(channelRepo),
       Layer.succeed(LineProviderRepository)(makeProviderRepository()),
       Layer.succeed(LineClientRegistry)(makeRegistry()),
     );

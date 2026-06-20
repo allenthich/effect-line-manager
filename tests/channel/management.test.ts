@@ -11,13 +11,14 @@ import {
   LineChannelUid,
   LineChannelId,
 } from "../../src/channel/domain.ts";
-import { LineAccountPersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
+import { LinePersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
 import {
   LineChannelRepository,
   type LineChannelRepositoryService,
 } from "../../src/channel/repository.ts";
+import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 
 const uid = Schema.decodeUnknownSync(LineChannelUid)("record-1");
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
@@ -73,6 +74,7 @@ const run = <A, E>(
       Effect.provide(
         LineChannelManagement.layer.pipe(
           Layer.provide(Layer.succeed(LineChannelRepository)(channelRepository)),
+          Layer.provide(provideInternalLineChannelStore(channelRepository)),
           Layer.provide(Layer.succeed(LineProviderRepository)(providerRepository)),
           Layer.provide(Layer.succeed(LineClientRegistry)(registry)),
         ),
@@ -202,7 +204,7 @@ describe("LineChannelManagement", () => {
       makeRegistry(invalidated),
     );
 
-    expect(result).toEqual(new LineAccountPersistenceError({ operation: "updateChannel" }));
+    expect(result).toEqual(new LinePersistenceError({ operation: "updateChannel" }));
     expect(JSON.stringify(result)).not.toContain("database password");
     expect(invalidated).toEqual([]);
     expect(loggedMessages).toContain("LINE channel repository operation failed");
