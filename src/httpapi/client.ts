@@ -2,7 +2,7 @@ import { Effect, Schema } from "effect";
 import { HttpApi, HttpApiClient, OpenApi } from "effect/unstable/httpapi";
 import type { HttpClient } from "effect/unstable/http";
 import { LineProviderId } from "../provider/domain.ts";
-import { LineChannelUid, LineLoginChannelId } from "../channel/domain.ts";
+import { LineChannelId, LineLoginChannelId } from "../channel/domain.ts";
 import { LineLiffUid } from "../liff/domain.ts";
 import { type LineProviderManagementAdapter } from "../adapter/types.ts";
 import { LineApi } from "./api.ts";
@@ -31,7 +31,7 @@ export const makeLineClient = (options?: LineClientOptions) => HttpApiClient.mak
 //#endregion
 
 //#region New Adapter
-const decodeRecordId = Schema.decodeEffect(LineChannelUid);
+const decodeRecordId = Schema.decodeEffect(LineChannelId);
 const decodeProviderId = Schema.decodeEffect(LineProviderId);
 const decodeLiffRecordId = Schema.decodeEffect(LineLiffUid);
 const decodeLoginChannelId = Schema.decodeEffect(LineLoginChannelId);

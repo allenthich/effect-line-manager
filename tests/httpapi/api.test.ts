@@ -4,7 +4,7 @@ import { Effect, Layer, Schema } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
-import { ChannelView, LineChannelUid, LineChannelId } from "../../src/channel/domain.ts";
+import { ChannelView, LineChannelId } from "../../src/channel/domain.ts";
 import { LiffAppView, LineLiffUid } from "../../src/liff/domain.ts";
 import {
   LineProviderNotFoundError,
@@ -32,7 +32,7 @@ import {
 } from "../../src/httpapi/index.ts";
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
-const channelUid = Schema.decodeUnknownSync(LineChannelUid)("channel-record-1");
+const channelRecordId = Schema.decodeUnknownSync(LineChannelId)("channel-record-1");
 const liffUid = Schema.decodeUnknownSync(LineLiffUid)("liff-record-1");
 
 const providerView = Schema.decodeUnknownSync(ProviderView)({
@@ -43,7 +43,7 @@ const providerView = Schema.decodeUnknownSync(ProviderView)({
 });
 
 const channelView = Schema.decodeUnknownSync(ChannelView)({
-  id: channelUid,
+  id: channelRecordId,
   providerId,
   channelType: "messaging",
   name: "Support Channel",
@@ -61,7 +61,7 @@ const channelView = Schema.decodeUnknownSync(ChannelView)({
 
 const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
   id: liffUid,
-  loginChannelId: channelUid,
+  loginChannelId: channelRecordId,
   liffId: "1234567890-AbCdEf12",
   view: {
     type: "tall",
@@ -226,13 +226,13 @@ describe("LineApi", () => {
           },
         });
         const updatedChannel = yield* client.lineChannels.updateChannel({
-          params: { id: channelUid },
+          params: { id: channelRecordId },
           payload: { name: "New Support Bot" },
         });
         const gottenChannel = yield* client.lineChannels.getChannel({
-          params: { id: channelUid },
+          params: { id: channelRecordId },
         });
-        yield* client.lineChannels.deleteChannel({ params: { id: channelUid } });
+        yield* client.lineChannels.deleteChannel({ params: { id: channelRecordId } });
 
         // LIFF Apps
         const listedLiffs = yield* client.lineLiffApps.listLiffApps({ query: {} });
@@ -291,7 +291,7 @@ describe("LineApi", () => {
     const channelDuplicate = new ChannelDuplicateError({
       channelId: Schema.decodeUnknownSync(LineChannelId)("1234567890"),
     });
-    const channelNotFound = new ChannelNotFoundError({ uid: channelUid });
+    const channelNotFound = new ChannelNotFoundError({ channelId: channelRecordId });
     const liffDuplicate = new LiffAppDuplicateError({ liffId: "1234567890-AbCdEf12" });
     const liffNotFound = new LiffAppNotFoundError({ uid: liffUid });
 
@@ -337,7 +337,7 @@ describe("LineApi", () => {
           })
           .pipe(Effect.flip);
         const channelNotErr = yield* client.lineChannels
-          .getChannel({ params: { id: channelUid } })
+          .getChannel({ params: { id: channelRecordId } })
           .pipe(Effect.flip);
 
         const liffDupErr = yield* client.lineLiffApps
@@ -368,7 +368,7 @@ describe("LineApi", () => {
         });
         expect(channelNotErr).toMatchObject({
           _tag: "ChannelNotFoundHttpError",
-          uid: "channel-record-1",
+          channelId: "channel-record-1",
         });
         expect(liffDupErr).toMatchObject({
           _tag: "LiffAppDuplicateHttpError",

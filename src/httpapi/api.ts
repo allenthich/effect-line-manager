@@ -8,7 +8,7 @@ import {
   UpdateProviderInput,
 } from "../provider/domain.ts";
 import {
-  LineChannelUid,
+  LineChannelId,
   LineLoginChannelId,
   ChannelView,
   ChannelListPage,
@@ -103,7 +103,7 @@ const listChannels = HttpApiEndpoint.get("listChannels", "/line-channels", {
 });
 
 const getChannel = HttpApiEndpoint.get("getChannel", "/line-channels/:id", {
-  params: { id: LineChannelUid },
+  params: { id: LineChannelId },
   success: ChannelView,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 });
@@ -115,14 +115,14 @@ const createChannel = HttpApiEndpoint.post("createChannel", "/line-channels", {
 }).middleware(LineValidationMiddleware);
 
 const updateChannel = HttpApiEndpoint.patch("updateChannel", "/line-channels/:id", {
-  params: { id: LineChannelUid },
+  params: { id: LineChannelId },
   payload: UpdateChannelInput,
   success: ChannelView,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 }).middleware(LineValidationMiddleware);
 
 const deleteChannel = HttpApiEndpoint.delete("deleteChannel", "/line-channels/:id", {
-  params: { id: LineChannelUid },
+  params: { id: LineChannelId },
   success: HttpApiSchema.NoContent,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 });

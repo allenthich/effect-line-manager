@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { Deferred, Effect, Fiber, Layer, Option, Redacted, Schema, type Duration } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { LineChannelId, LineChannelUid, MessagingChannel } from "../../src/channel/domain.ts";
+import { LineChannelId, MessagingChannel } from "../../src/channel/domain.ts";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/registry/index.ts";
@@ -15,7 +15,7 @@ import { LineLiffRepository, type LineLiffRepositoryService } from "../../src/li
 
 const decodeChannelId = Schema.decodeUnknownSync(LineChannelId);
 const channelId = decodeChannelId("channel-1");
-const uid = Schema.decodeUnknownSync(LineChannelUid)("record-1");
+const uid = decodeChannelId("record-1");
 const missingChannelId = decodeChannelId("missing-channel");
 
 const makeMessagingChannel = (token: string) =>
@@ -181,7 +181,7 @@ describe("LineClientRegistry", () => {
       ),
     ).resolves.toMatchObject({
       _tag: "ChannelNotFoundError",
-      uid: "missing-channel",
+      channelId: "missing-channel",
     });
 
     await expect(

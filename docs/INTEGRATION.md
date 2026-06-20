@@ -17,9 +17,9 @@ Relationships:
 
 Identifier rules:
 
-- library-owned ids use `Uid`: `LineChannelUid`, `LineLiffUid`
-- external LINE ids use `LineChannelId`
-- public specialized channel ids stay domain-qualified:
+- internal record identifiers use `LineChannelId` (channels) and `LineLiffUid` (LIFF apps)
+- external LINE identifiers use `LineMessagingChannelId`, `LineLoginChannelId`, and `LineLiffId`
+- public specialized channel IDs stay domain-qualified:
   - `LineMessagingChannelId`
   - `LineLoginChannelId`
 
@@ -43,16 +43,16 @@ Repository implementations should:
 
 `LineClientRegistry` is responsible for:
 
-- resolving a messaging client from `LineChannelUid`
-- resolving a login client from `LineChannelUid`
-- resolving a LIFF client from `LineLiffUid`
+- resolving a messaging client from `LineMessagingChannelId` (via domain services)
+- resolving a login client from `LineLoginChannelId` (via domain services)
+- resolving a LIFF client from `LineLiffId`
 - caching successful and failed lookups
 - invalidating channel or LIFF cache entries after mutations
 
 Use:
 
-- `invalidateChannel(channelUid)`
-- `invalidateLiff(liffUid)`
+- `invalidateChannel(channelId: LineChannelId)` — accepts internal record ID
+- `invalidateLiff(liffId: LineLiffId)`
 - `invalidateAll`
 
 ## Public channel contract

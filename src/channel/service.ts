@@ -5,7 +5,6 @@ import {
   type CreateChannelInput,
   type UpdateChannelInput,
   type LineChannel,
-  LineChannelUid,
   LineChannelId,
   type ChannelView,
   ChannelListPage,
@@ -30,11 +29,11 @@ export interface LineChannelManagementService {
     input: CreateChannelInput,
   ) => Effect.Effect<ChannelView, ChannelDuplicateError | LinePersistenceError>;
   readonly updateChannel: (
-    id: LineChannelUid,
+    id: LineChannelId,
     input: UpdateChannelInput,
   ) => Effect.Effect<ChannelView, ChannelNotFoundError | LinePersistenceError>;
   readonly deleteChannel: (
-    id: LineChannelUid,
+    id: LineChannelId,
   ) => Effect.Effect<void, ChannelNotFoundError | LinePersistenceError>;
 }
 
@@ -165,7 +164,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
       Effect.gen(function* () {
         const option = yield* repository.findByLineChannelId(id);
         if (Option.isNone(option)) {
-          return yield* new ChannelNotFoundError({ uid: id as unknown as LineChannelUid });
+          return yield* new ChannelNotFoundError({ channelId: id });
         }
         return toChannelView(option.value);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -192,7 +191,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
     ),
 
     updateChannel: Effect.fn("LineChannelManagement.updateChannel")(
-      (id: LineChannelUid, input: UpdateChannelInput) =>
+      (id: LineChannelId, input: UpdateChannelInput) =>
         Effect.gen(function* () {
           const record = yield* repository.update(id, toUpdateChannelRecordInput(input));
           yield* registry.invalidateChannel(
@@ -202,7 +201,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
-    deleteChannel: Effect.fn("LineChannelManagement.deleteChannel")((id: LineChannelUid) =>
+    deleteChannel: Effect.fn("LineChannelManagement.deleteChannel")((id: LineChannelId) =>
       Effect.gen(function* () {
         yield* repository.delete(id);
         // Channel deletion can cascade to LIFF apps, so clear descendant caches too.

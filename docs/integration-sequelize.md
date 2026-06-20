@@ -38,10 +38,10 @@ Your Sequelize repository layer should map rows into the current library
 entities and errors:
 
 - provider operations use `LineProviderRepository`
-- channel lookups are keyed by `LineChannelUid` internally
+- channel lookups are keyed by `LineChannelId`
 - public external id lookups use `LineMessagingChannelId` or
   `LineLoginChannelId`
-- LIFF lookups are keyed by `LineLiffUid`
+- LIFF lookups are keyed by `LineLiffId`
 
 Infrastructure failures should become `LineRepositoryError`. Business conflicts
 should become the current duplicate or not-found domain errors.

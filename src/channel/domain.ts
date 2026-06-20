@@ -2,13 +2,6 @@ import { Schema } from "effect";
 import { LineProviderId } from "../provider/domain.ts";
 import { NonEmptyTrimmedString, LineCredential, Pagination } from "../shared/domain.ts";
 
-/** Branded type for the database record ID of a LINE channel. */
-export const LineChannelUid = NonEmptyTrimmedString.pipe(
-  Schema.brand("effect-line-manager/LineChannelUid"),
-);
-/** {@link LineChannelUid} type alias. */
-export type LineChannelUid = typeof LineChannelUid.Type;
-
 /** Branded type for the LINE Messaging API channel ID. */
 export const LineChannelId = NonEmptyTrimmedString.pipe(
   Schema.brand("effect-line-manager/LineChannelId"),
@@ -26,7 +19,7 @@ export type LineLoginChannelId = typeof LineLoginChannelId.Type;
 /** Messaging API Channel (used for bot messaging). */
 export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingChannel")({
   channelType: Schema.Literal("messaging"),
-  id: LineChannelUid,
+  id: LineChannelId,
   providerId: LineProviderId,
   name: NonEmptyTrimmedString,
   channelId: LineChannelId,
@@ -45,7 +38,7 @@ export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingC
 /** LINE Login Channel (used for social login / OAuth). */
 export class LoginChannel extends Schema.Class<LoginChannel>("LoginChannel")({
   channelType: Schema.Literal("login"),
-  id: LineChannelUid,
+  id: LineChannelId,
   providerId: LineProviderId,
   name: NonEmptyTrimmedString,
   channelId: LineLoginChannelId,

@@ -27,7 +27,6 @@ import {
 import { makeLineLoginClient, type LineLoginClient } from "../login/client.ts";
 import { makeLineLiffClient, type LineLiffClient } from "../liff/client.ts";
 import {
-  LineChannelUid,
   LineChannelId,
   MessagingChannel,
   type LoginChannel,
@@ -139,7 +138,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     ) {
       const optionChannel = yield* channelRepository.findByLineChannelId(channelId);
       if (Option.isNone(optionChannel)) {
-        return yield* new ChannelNotFoundError({ uid: channelId as unknown as LineChannelUid });
+        return yield* new ChannelNotFoundError({ channelId });
       }
       const channel = optionChannel.value;
 
@@ -184,7 +183,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       const optionParent = yield* channelRepository.findByLineChannelId(sharedId);
       if (Option.isNone(optionParent) || !isLoginChannel(optionParent.value)) {
         return yield* new ChannelNotFoundError({
-          uid: liffApp.loginChannelId as unknown as LineChannelUid,
+          channelId: sharedId,
         });
       }
       const parentLoginChannel = optionParent.value;
@@ -211,7 +210,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       (channelId: LineChannelId) =>
         Effect.flatMap(Cache.get(channelCache, channelId), (entry) => {
           if (!isMessagingChannel(entry.channel)) {
-            return new ChannelNotFoundError({ uid: channelId as unknown as LineChannelUid });
+            return new ChannelNotFoundError({ channelId });
           }
           return Option.isSome(entry.messaging)
             ? Effect.succeed(entry.messaging.value)
@@ -224,7 +223,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
         Effect.flatMap(Cache.get(channelCache, channelId), (entry) =>
           Option.isSome(entry.login)
             ? Effect.succeed(entry.login.value)
-            : new ChannelNotFoundError({ uid: channelId as unknown as LineChannelUid }),
+            : new ChannelNotFoundError({ channelId }),
         ),
     );
 
@@ -248,9 +247,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
         Effect.gen(function* () {
           const entry = yield* Cache.get(channelCache, channelId);
           if (!isMessagingChannel(entry.channel)) {
-            return yield* new ChannelNotFoundError({
-              uid: channelId as unknown as LineChannelUid,
-            });
+            return yield* new ChannelNotFoundError({ channelId });
           }
           if (Option.isNone(entry.messaging)) {
             return yield* Effect.die("MessagingChannel without messaging client");
@@ -258,8 +255,8 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           const messagingClient = entry.messaging.value;
           const botInfo = yield* messagingClient.getBotInfo;
 
-          const channelUid = entry.channel.id;
-          const updatedChannel = yield* channelRepository.update(channelUid, {
+          const channelRecordId = entry.channel.id;
+          const updatedChannel = yield* channelRepository.update(channelRecordId, {
             botUserId: botInfo.userId,
             basicId: botInfo.basicId,
             displayName: botInfo.displayName,

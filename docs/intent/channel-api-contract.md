@@ -27,13 +27,11 @@ The supported channel-facing root API is:
 
 Public APIs must encode both the domain and the identifier owner.
 
-- Use `Uid` for library-owned identifiers.
-- Use `LineChannelId` for LINE-owned channel identifiers.
 - Use domain-qualified types for public specializations:
   - `LineMessagingChannelId`
   - `LineLoginChannelId`
-  - `LineChannelUid`
-  - `LineLiffUid`
+  - `LineLiffId`
+- `LineChannelId` is the shared channel identifier type used internally
 
 Avoid introducing new public names that use a bare `Id` without domain context.
 
@@ -58,3 +56,4 @@ This migration is a public surface cleanup with internal refactoring:
 - `./channel` and `./channels` are not supported public subpaths.
 - The root build output has historically leaked generic channel internals in generated typings.
 - The fix is to preserve the documented domain-specific contract and remove the leaked generic persistence boundary from published entrypoints.
+- `LineChannelUid` has been removed; all channel identities now use domain-specific channel IDs.

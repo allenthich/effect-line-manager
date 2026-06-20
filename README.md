@@ -14,7 +14,7 @@ The library models LINE configuration as:
 
 Public identifiers follow these rules:
 
-- `LineChannelUid` and `LineLiffUid` are library-owned identifiers.
+- `LineLiffUid` is a library-owned identifier.
 - `LineChannelId`, `LineMessagingChannelId`, and `LineLoginChannelId` are
   external LINE identifiers.
 
@@ -35,13 +35,13 @@ LIFF uid.
 ```ts
 import { Effect, Layer, Schema } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
-import { LineChannelUid, LineClientRegistry } from "effect-line-manager";
+import { LineChannelId, LineClientRegistry } from "effect-line-manager";
 
-const channelUid = Schema.decodeUnknownSync(LineChannelUid)("channel-uid-1");
+const channelId = Schema.decodeUnknownSync(LineChannelId)("1234567890");
 
 const program = Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
-  const client = yield* registry.getMessagingClient(channelUid);
+  const client = yield* registry.getMessagingClient(channelId);
   yield* client.pushMessage("U-recipient-id", [{ type: "text", text: "Hello from Effect" }]);
 });
 
@@ -55,7 +55,7 @@ When credentials rotate, invalidate the relevant cache entry:
 ```ts
 const rotateCredentials = Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
-  yield* registry.invalidateChannel(channelUid);
+  yield* registry.invalidateChannel(channelId);
 });
 ```
 

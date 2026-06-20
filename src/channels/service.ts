@@ -1,11 +1,11 @@
-import { Context, Effect, Layer, Option, Redacted } from "effect";
+import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
 import type { LineApiClient } from "../messaging/client.ts";
 import { LineLoginChannelId, LineMessagingChannelId, type LineLoginChannel } from "./domain.ts";
 import { LineLoginChannelRepository, LineMessagingChannelRepository } from "./repository.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
-import type { LineChannelUid } from "../channel/domain.ts";
+import { LineChannelId } from "../channel/domain.ts";
 
 export interface LineMessagingChannelServiceApi {
   readonly getClientByLineChannelId: (
@@ -54,9 +54,11 @@ const persistenceFailure = (error: LineRepositoryError) =>
     ),
   );
 
+const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
+
 const toChannelNotFoundError = (id: string) =>
   new ChannelNotFoundError({
-    uid: id as LineChannelUid,
+    channelId: decodeSharedLineChannelId(id),
   });
 
 export const makeLineMessagingChannelService = Effect.gen(function* () {

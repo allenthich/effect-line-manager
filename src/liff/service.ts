@@ -1,10 +1,5 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import {
-  LineChannelId,
-  LineLoginChannelId,
-  type LineChannelUid,
-  type LoginChannel,
-} from "../channel/domain.ts";
+import { LineChannelId, LineLoginChannelId, type LoginChannel } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
 import { InternalLineChannelStore } from "../internal/channel-store.ts";
 import { LineClientRegistry } from "../registry/index.ts";
@@ -154,12 +149,12 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         const optionChannel = yield* channelRepository.findByLineChannelId(sharedId);
         if (Option.isNone(optionChannel)) {
           return yield* new ChannelNotFoundError({
-            uid: loginChannelId as unknown as LineChannelUid,
+            channelId: decodeSharedLineChannelId(loginChannelId),
           });
         }
         if (optionChannel.value.channelType !== "login") {
           return yield* new ChannelNotFoundError({
-            uid: loginChannelId as unknown as LineChannelUid,
+            channelId: decodeSharedLineChannelId(loginChannelId),
           });
         }
         const record = yield* repository.createLiffApp(

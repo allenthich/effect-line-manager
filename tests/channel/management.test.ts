@@ -1,16 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Effect, Layer, Logger, Option, Redacted, Schema } from "effect";
+import { Effect, Layer, Logger, Redacted, Schema } from "effect";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import {
   LineProviderRepository,
   type LineProviderRepositoryService,
 } from "../../src/provider/repository.ts";
-import {
-  MessagingChannel,
-  ChannelView,
-  LineChannelUid,
-  LineChannelId,
-} from "../../src/channel/domain.ts";
+import { MessagingChannel, ChannelView, LineChannelId } from "../../src/channel/domain.ts";
 import { LinePersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
@@ -20,12 +15,12 @@ import {
 } from "../../src/channel/repository.ts";
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 
-const uid = Schema.decodeUnknownSync(LineChannelUid)("record-1");
+const channelId = Schema.decodeUnknownSync(LineChannelId)("record-1");
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 
 const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
   new MessagingChannel({
-    id: uid,
+    id: channelId,
     providerId,
     channelType: "messaging",
     name: "Support Channel",
@@ -150,7 +145,7 @@ describe("LineChannelManagement", () => {
 
     await run(
       Effect.flatMap(LineChannelManagement, (management) =>
-        management.updateChannel(uid, { name: "Renamed" }),
+        management.updateChannel(channelId, { name: "Renamed" }),
       ),
       channelRepository,
       makeProviderRepository(),
@@ -167,7 +162,7 @@ describe("LineChannelManagement", () => {
     const invalidated: string[] = [];
 
     await run(
-      Effect.flatMap(LineChannelManagement, (management) => management.deleteChannel(uid)),
+      Effect.flatMap(LineChannelManagement, (management) => management.deleteChannel(channelId)),
       makeChannelRepository({
         deleteChannel: () => Effect.void,
       }),
@@ -196,7 +191,7 @@ describe("LineChannelManagement", () => {
 
     const result = await run(
       Effect.flatMap(LineChannelManagement, (management) =>
-        management.updateChannel(uid, { name: "test" }),
+        management.updateChannel(channelId, { name: "test" }),
       ).pipe(Effect.flip, Effect.provide(Logger.layer([testLogger]))),
       makeChannelRepository({ updateChannel: () => Effect.fail(repositoryFailure) }),
       makeProviderRepository(),

@@ -2,7 +2,6 @@ import { describe, expect, test } from "vite-plus/test";
 import { Effect, Layer, Option, Redacted, Schema } from "effect";
 import {
   LineChannelId,
-  LineChannelUid,
   LineLoginChannelId,
   LoginChannel,
   MessagingChannel,
@@ -26,8 +25,8 @@ import { LineLoginChannels, LineMessagingChannels } from "../../src/public-api.t
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
-const messagingUid = Schema.decodeUnknownSync(LineChannelUid)("channel-record-1");
-const loginUid = Schema.decodeUnknownSync(LineChannelUid)("channel-record-2");
+const messagingUid = Schema.decodeUnknownSync(LineChannelId)("channel-record-1");
+const loginUid = Schema.decodeUnknownSync(LineChannelId)("channel-record-2");
 const messagingLineChannelId = Schema.decodeUnknownSync(LineMessagingChannelId)("2000000001");
 const loginLineChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("3000000001");
 const botUserId = Schema.decodeUnknownSync(LineBotUserId)("U-bot-user-1");
@@ -267,6 +266,6 @@ describe("domain-specific channel public API", () => {
         repository,
         makeRegistry([]),
       ),
-    ).rejects.toEqual(new ChannelNotFoundError({ uid: messagingLineChannelId as never }));
+    ).rejects.toEqual(new ChannelNotFoundError({ channelId: messagingLineChannelId as never }));
   });
 });

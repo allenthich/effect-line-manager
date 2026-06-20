@@ -60,7 +60,7 @@ export class ProviderDuplicateHttpError extends Schema.TaggedErrorClass<Provider
 export class ChannelNotFoundHttpError extends Schema.TaggedErrorClass<ChannelNotFoundHttpError>()(
   "ChannelNotFoundHttpError",
   {
-    uid: Schema.String,
+    channelId: Schema.String,
   },
   { httpApiStatus: 404 },
 ) {}

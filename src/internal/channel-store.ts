@@ -4,7 +4,6 @@ import type {
   CreateChannelRecordInput,
   LineChannel,
   LineChannelId,
-  LineChannelUid,
   UpdateChannelRecordInput,
 } from "../channel/domain.ts";
 import type { ChannelDuplicateError, ChannelNotFoundError } from "../channel/errors.ts";
@@ -23,7 +22,7 @@ export class InternalLineChannelStore extends Context.Service<
       input: CreateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelDuplicateError | LineRepositoryError>;
     readonly update: (
-      uid: LineChannelUid,
+      id: LineChannelId,
       input: UpdateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelNotFoundError | LineRepositoryError>;
     readonly findByLineChannelId: (
@@ -36,7 +35,7 @@ export class InternalLineChannelStore extends Context.Service<
       providerId: LineProviderId,
     ) => Effect.Effect<ReadonlyArray<LineChannel>, LineRepositoryError>;
     readonly delete: (
-      uid: LineChannelUid,
+      id: LineChannelId,
     ) => Effect.Effect<void, ChannelNotFoundError | LineRepositoryError>;
   }
 >()("effect-line-manager/internal/InternalLineChannelStore") {}
