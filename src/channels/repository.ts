@@ -63,12 +63,12 @@ export const makeLineMessagingChannelRepository = Effect.gen(function* () {
   return LineMessagingChannelRepository.of({
     findByUid: Effect.fn("LineMessagingChannelRepository.findByUid")(
       (uid: LineMessagingChannelUid) =>
-        repository.findChannelById(uid).pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
+        repository.findChannelByUid(uid).pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
     ),
     findByLineChannelId: Effect.fn("LineMessagingChannelRepository.findByLineChannelId")(
       (id: LineMessagingChannelId) =>
         repository
-          .findChannelByMessagingId(id)
+          .findChannelByLineChannelId(id)
           .pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
     ),
     findByBotUserId: Effect.fn("LineMessagingChannelRepository.findByBotUserId")(
@@ -86,12 +86,12 @@ export const makeLineLoginChannelRepository = Effect.gen(function* () {
 
   return LineLoginChannelRepository.of({
     findByUid: Effect.fn("LineLoginChannelRepository.findByUid")((uid: LineLoginChannelUid) =>
-      repository.findChannelById(uid).pipe(Effect.map(Option.flatMap(narrowLoginChannel))),
+      repository.findChannelByUid(uid).pipe(Effect.map(Option.flatMap(narrowLoginChannel))),
     ),
     findByLineChannelId: Effect.fn("LineLoginChannelRepository.findByLineChannelId")(
       (id: LineLoginChannelId) =>
         repository
-          .findChannelByMessagingId(decodeSharedLineChannelId(id))
+          .findChannelByLineChannelId(decodeSharedLineChannelId(id))
           .pipe(Effect.map(Option.flatMap(narrowLoginChannel))),
     ),
   });

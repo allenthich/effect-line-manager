@@ -5,7 +5,7 @@ import {
   type CreateChannelInput,
   type UpdateChannelInput,
   type LineChannel,
-  LineChannelRecordId,
+  LineChannelUid,
   type ChannelView,
   ChannelListPage,
 } from "./domain.ts";
@@ -20,7 +20,7 @@ export interface LineChannelManagementService {
     providerId: LineProviderId | undefined,
   ) => Effect.Effect<ChannelListPage, LineAccountPersistenceError>;
   readonly getChannel: (
-    id: LineChannelRecordId,
+    id: LineChannelUid,
   ) => Effect.Effect<ChannelView, ChannelNotFoundError | LineAccountPersistenceError>;
   readonly findChannelByBotUserId: (
     botUserId: string,
@@ -29,11 +29,11 @@ export interface LineChannelManagementService {
     input: CreateChannelInput,
   ) => Effect.Effect<ChannelView, ChannelDuplicateError | LineAccountPersistenceError>;
   readonly updateChannel: (
-    id: LineChannelRecordId,
+    id: LineChannelUid,
     input: UpdateChannelInput,
   ) => Effect.Effect<ChannelView, ChannelNotFoundError | LineAccountPersistenceError>;
   readonly deleteChannel: (
-    id: LineChannelRecordId,
+    id: LineChannelUid,
   ) => Effect.Effect<void, ChannelNotFoundError | LineAccountPersistenceError>;
 }
 
@@ -163,11 +163,11 @@ export const makeLineChannelManagement = Effect.gen(function* () {
         ),
     ),
 
-    getChannel: Effect.fn("LineChannelManagement.getChannel")((id: LineChannelRecordId) =>
+    getChannel: Effect.fn("LineChannelManagement.getChannel")((id: LineChannelUid) =>
       Effect.gen(function* () {
-        const option = yield* repository.findChannelById(id);
+        const option = yield* repository.findChannelByUid(id);
         if (Option.isNone(option)) {
-          return yield* new ChannelNotFoundError({ recordId: id });
+          return yield* new ChannelNotFoundError({ uid: id });
         }
         return toChannelView(option.value);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -192,7 +192,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
     ),
 
     updateChannel: Effect.fn("LineChannelManagement.updateChannel")(
-      (id: LineChannelRecordId, input: UpdateChannelInput) =>
+      (id: LineChannelUid, input: UpdateChannelInput) =>
         Effect.gen(function* () {
           const record = yield* repository.updateChannel(id, toUpdateChannelRecordInput(input));
           yield* registry.invalidateChannel(id);
@@ -200,7 +200,7 @@ export const makeLineChannelManagement = Effect.gen(function* () {
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
-    deleteChannel: Effect.fn("LineChannelManagement.deleteChannel")((id: LineChannelRecordId) =>
+    deleteChannel: Effect.fn("LineChannelManagement.deleteChannel")((id: LineChannelUid) =>
       Effect.gen(function* () {
         yield* repository.deleteChannel(id);
         // Channel deletion can cascade to LIFF apps, so clear descendant caches too.

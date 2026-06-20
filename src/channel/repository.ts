@@ -4,7 +4,7 @@ import type {
   CreateChannelRecordInput,
   LineChannel,
   LineChannelId,
-  LineChannelRecordId,
+  LineChannelUid,
   UpdateChannelRecordInput,
 } from "./domain.ts";
 import type { ChannelDuplicateError, ChannelNotFoundError } from "./errors.ts";
@@ -19,7 +19,7 @@ export class LineChannelRepository extends Context.Service<
     ) => Effect.Effect<LineChannel, ChannelDuplicateError | LineRepositoryError>;
 
     readonly updateChannel: (
-      id: LineChannelRecordId,
+      id: LineChannelUid,
       input: UpdateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelNotFoundError | LineRepositoryError>;
 
@@ -27,15 +27,15 @@ export class LineChannelRepository extends Context.Service<
      * @deprecated Prefer `LineMessagingChannels.Repository.findByUid(...)` or
      * `LineLoginChannels.Repository.findByUid(...)` in public APIs.
      */
-    readonly findChannelById: (
-      id: LineChannelRecordId,
+    readonly findChannelByUid: (
+      id: LineChannelUid,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
 
     /**
      * @deprecated Prefer `findByLineChannelId(...)` on a domain-specific
      * repository in public APIs.
      */
-    readonly findChannelByMessagingId: (
+    readonly findChannelByLineChannelId: (
       channelId: LineChannelId,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
 
@@ -48,7 +48,7 @@ export class LineChannelRepository extends Context.Service<
     ) => Effect.Effect<ReadonlyArray<LineChannel>, LineRepositoryError>;
 
     readonly deleteChannel: (
-      id: LineChannelRecordId,
+      id: LineChannelUid,
     ) => Effect.Effect<void, ChannelNotFoundError | LineRepositoryError>;
   }
 >()("effect-line-manager/LineChannelRepository") {}

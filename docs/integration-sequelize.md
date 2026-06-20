@@ -442,19 +442,19 @@ export const SequelizeLineRepositoryLive = Layer.succeed(
         catch: (error) => repoError("updateChannel", error),
       }).pipe(Effect.map(toDomainChannel)),
 
-    findChannelById: (id) =>
+    findChannelByUid: (id) =>
       Effect.tryPromise({
         try: () => LineChannelModel.findByPk(id),
-        catch: (error) => repoError("findChannelById", error),
+        catch: (error) => repoError("findChannelByUid", error),
       }).pipe(Effect.map(Option.fromNullable)),
 
-    findChannelByMessagingId: (channelId) =>
+    findChannelByLineChannelId: (channelId) =>
       Effect.tryPromise({
         try: () =>
           LineChannelModel.findOne({
             where: { channelId, channelType: "messaging" },
           }),
-        catch: (error) => repoError("findChannelByMessagingId", error),
+        catch: (error) => repoError("findChannelByLineChannelId", error),
       }).pipe(Effect.map(Option.fromNullable)),
 
     findChannelByBotUserId: (botUserId) =>
@@ -512,10 +512,10 @@ export const SequelizeLineRepositoryLive = Layer.succeed(
         catch: (error) => repoError("updateLiffApp", error),
       }).pipe(Effect.map(toDomainLiffApp)),
 
-    findLiffAppById: (id) =>
+    findLiffAppByUid: (id) =>
       Effect.tryPromise({
         try: () => LineLiffAppModel.findByPk(id),
-        catch: (error) => repoError("findLiffAppById", error),
+        catch: (error) => repoError("findLiffAppByUid", error),
       }).pipe(Effect.map(Option.fromNullable)),
 
     listLiffAppsByChannel: (channelId) =>

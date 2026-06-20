@@ -97,7 +97,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
         management.getChannel(params.id).pipe(
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
-              Effect.fail(new ChannelNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),
@@ -115,7 +115,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
         management.updateChannel(params.id, payload).pipe(
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
-              Effect.fail(new ChannelNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),
@@ -124,7 +124,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
         management.deleteChannel(params.id).pipe(
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
-              Effect.fail(new ChannelNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),
@@ -153,7 +153,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
         management.getLiffApp(params.id).pipe(
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
-              Effect.fail(new LiffAppNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),
@@ -164,7 +164,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
             LiffAppDuplicateError: (error) =>
               Effect.fail(new LiffAppDuplicateHttpError({ liffId: error.liffId })),
             ChannelNotFoundError: (error) =>
-              Effect.fail(new ChannelNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new ChannelNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),
@@ -173,7 +173,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
         management.updateLiffApp(params.id, payload).pipe(
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
-              Effect.fail(new LiffAppNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),
@@ -182,7 +182,7 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
         management.deleteLiffApp(params.id).pipe(
           Effect.catchTags({
             LiffAppNotFoundError: (error) =>
-              Effect.fail(new LiffAppNotFoundHttpError({ recordId: error.recordId })),
+              Effect.fail(new LiffAppNotFoundHttpError({ uid: error.uid })),
             LineAccountPersistenceError: mapPersistenceError,
           }),
         ),

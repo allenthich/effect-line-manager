@@ -1,9 +1,9 @@
 import { Context, type Effect, type Option } from "effect";
-import type { LineChannelRecordId } from "../channel/domain.ts";
+import type { LineChannelUid } from "../channel/domain.ts";
 import type {
   CreateLiffAppRecordInput,
   LineLiffApp,
-  LineLiffRecordId,
+  LineLiffUid,
   UpdateLiffAppRecordInput,
 } from "./domain.ts";
 import type { LiffAppDuplicateError, LiffAppNotFoundError } from "./errors.ts";
@@ -18,20 +18,20 @@ export class LineLiffRepository extends Context.Service<
     ) => Effect.Effect<LineLiffApp, LiffAppDuplicateError | LineRepositoryError>;
 
     readonly updateLiffApp: (
-      id: LineLiffRecordId,
+      id: LineLiffUid,
       input: UpdateLiffAppRecordInput,
     ) => Effect.Effect<LineLiffApp, LiffAppNotFoundError | LineRepositoryError>;
 
-    readonly findLiffAppById: (
-      id: LineLiffRecordId,
+    readonly findLiffAppByUid: (
+      id: LineLiffUid,
     ) => Effect.Effect<Option.Option<LineLiffApp>, LineRepositoryError>;
 
     readonly listLiffAppsByChannel: (
-      channelId: LineChannelRecordId,
+      channelId: LineChannelUid,
     ) => Effect.Effect<ReadonlyArray<LineLiffApp>, LineRepositoryError>;
 
     readonly deleteLiffApp: (
-      id: LineLiffRecordId,
+      id: LineLiffUid,
     ) => Effect.Effect<void, LiffAppNotFoundError | LineRepositoryError>;
   }
 >()("effect-line-manager/LineLiffRepository") {}

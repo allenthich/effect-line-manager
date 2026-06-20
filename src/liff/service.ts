@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import { LineChannelRecordId } from "../channel/domain.ts";
+import { LineChannelUid } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
 import { LineChannelRepository } from "../channel/repository.ts";
 import { LineClientRegistry } from "../registry/index.ts";
@@ -8,7 +8,7 @@ import {
   type CreateLiffAppInput,
   type UpdateLiffAppInput,
   type LineLiffApp,
-  LineLiffRecordId,
+  LineLiffUid,
   LineLiffId,
   type LiffAppView,
   LiffAppListPage,
@@ -20,10 +20,10 @@ import { LineLiffRepository } from "./repository.ts";
 /** Management service interface for LIFF application operations. */
 export interface LineLiffManagementService {
   readonly listLiffApps: (
-    channelId: LineChannelRecordId | undefined,
+    channelId: LineChannelUid | undefined,
   ) => Effect.Effect<LiffAppListPage, LineAccountPersistenceError>;
   readonly getLiffApp: (
-    id: LineLiffRecordId,
+    id: LineLiffUid,
   ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LineAccountPersistenceError>;
   readonly createLiffApp: (
     input: CreateLiffAppInput,
@@ -32,11 +32,11 @@ export interface LineLiffManagementService {
     LiffAppDuplicateError | ChannelNotFoundError | LineAccountPersistenceError
   >;
   readonly updateLiffApp: (
-    id: LineLiffRecordId,
+    id: LineLiffUid,
     input: UpdateLiffAppInput,
   ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LineAccountPersistenceError>;
   readonly deleteLiffApp: (
-    id: LineLiffRecordId,
+    id: LineLiffUid,
   ) => Effect.Effect<void, LiffAppNotFoundError | LineAccountPersistenceError>;
 }
 
@@ -73,7 +73,7 @@ export const toLiffAppListPage = (apps: ReadonlyArray<LineLiffApp>): LiffAppList
 });
 
 const toCreateLiffAppRecordInput = (input: CreateLiffAppInput) => ({
-  loginChannelId: Schema.decodeUnknownSync(LineChannelRecordId)(input.loginChannelId),
+  loginChannelId: Schema.decodeUnknownSync(LineChannelUid)(input.loginChannelId),
   liffId: Schema.decodeUnknownSync(LineLiffId)(input.liffId),
   view: input.view,
   ...(input.description === undefined ? {} : { description: input.description }),
@@ -114,7 +114,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
 
   return LineLiffManagement.of({
     listLiffApps: Effect.fn("LineLiffManagement.listLiffApps")(
-      (channelId: LineChannelRecordId | undefined) =>
+      (channelId: LineChannelUid | undefined) =>
         (channelId !== undefined
           ? repository.listLiffAppsByChannel(channelId)
           : listAllLiffApps()
@@ -124,11 +124,11 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         ),
     ),
 
-    getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffRecordId) =>
+    getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffUid) =>
       Effect.gen(function* () {
-        const option = yield* repository.findLiffAppById(id);
+        const option = yield* repository.findLiffAppByUid(id);
         if (Option.isNone(option)) {
-          return yield* new LiffAppNotFoundError({ recordId: id });
+          return yield* new LiffAppNotFoundError({ uid: id });
         }
         return toLiffAppView(option.value);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -136,13 +136,13 @@ export const makeLineLiffManagement = Effect.gen(function* () {
 
     createLiffApp: Effect.fn("LineLiffManagement.createLiffApp")((input: CreateLiffAppInput) =>
       Effect.gen(function* () {
-        const loginChannelId = Schema.decodeUnknownSync(LineChannelRecordId)(input.loginChannelId);
-        const optionChannel = yield* channelRepository.findChannelById(loginChannelId);
+        const loginChannelId = Schema.decodeUnknownSync(LineChannelUid)(input.loginChannelId);
+        const optionChannel = yield* channelRepository.findChannelByUid(loginChannelId);
         if (Option.isNone(optionChannel)) {
-          return yield* new ChannelNotFoundError({ recordId: loginChannelId });
+          return yield* new ChannelNotFoundError({ uid: loginChannelId });
         }
         if (optionChannel.value.channelType !== "login") {
-          return yield* new ChannelNotFoundError({ recordId: loginChannelId });
+          return yield* new ChannelNotFoundError({ uid: loginChannelId });
         }
         const record = yield* repository.createLiffApp(toCreateLiffAppRecordInput(input));
         yield* registry.invalidateLiff(record.id);
@@ -151,7 +151,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
     ),
 
     updateLiffApp: Effect.fn("LineLiffManagement.updateLiffApp")(
-      (id: LineLiffRecordId, input: UpdateLiffAppInput) =>
+      (id: LineLiffUid, input: UpdateLiffAppInput) =>
         Effect.gen(function* () {
           const record = yield* repository.updateLiffApp(id, toUpdateLiffAppRecordInput(input));
           yield* registry.invalidateLiff(id);
@@ -159,7 +159,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
-    deleteLiffApp: Effect.fn("LineLiffManagement.deleteLiffApp")((id: LineLiffRecordId) =>
+    deleteLiffApp: Effect.fn("LineLiffManagement.deleteLiffApp")((id: LineLiffUid) =>
       Effect.gen(function* () {
         yield* repository.deleteLiffApp(id);
         yield* registry.invalidateLiff(id);

@@ -28,7 +28,7 @@ LineProvider (top-level grouping)
 | `LineLiffApp`      | LIFF app: `liffId`, `view` (type + URL), parent `loginChannelId`                   |
 | `LineChannel`      | Discriminated union of `MessagingChannel \| LoginChannel`                          |
 
-**Brand IDs**: `LineProviderId`, `LineChannelRecordId`, `LineChannelId`, `LineLoginChannelId`, `LineLiffId`, `LineLiffRecordId`
+**Brand IDs**: `LineProviderId`, `LineChannelUid`, `LineChannelId`, `LineLoginChannelId`, `LineLiffId`, `LineLiffUid`
 
 **View types** (safe for public APIs — no credentials):
 
@@ -156,11 +156,11 @@ The host application must implement the [LineRepository](../src/account/reposito
 
 The repository interface now has **16 entity-specific methods** organized by domain entity:
 
-| Entity    | Methods                                                                                                                                              |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Providers | `createProvider`, `updateProvider`, `findProviderById`, `listProviders`, `deleteProvider`                                                            |
-| Channels  | `createChannel`, `updateChannel`, `findChannelById`, `findChannelByMessagingId`, `findChannelByBotUserId`, `listChannelsByProvider`, `deleteChannel` |
-| LIFF Apps | `createLiffApp`, `updateLiffApp`, `findLiffAppById`, `listLiffAppsByChannel`, `deleteLiffApp`                                                        |
+| Entity    | Methods                                                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Providers | `createProvider`, `updateProvider`, `findProviderById`, `listProviders`, `deleteProvider`                                                               |
+| Channels  | `createChannel`, `updateChannel`, `findChannelByUid`, `findChannelByLineChannelId`, `findChannelByBotUserId`, `listChannelsByProvider`, `deleteChannel` |
+| LIFF Apps | `createLiffApp`, `updateLiffApp`, `findLiffAppByUid`, `listLiffAppsByChannel`, `deleteLiffApp`                                                          |
 
 Error types: `LineProviderDuplicateError`, `LineProviderNotFoundError`, `ChannelDuplicateError`, `ChannelNotFoundError`, `LiffAppDuplicateError`, `LiffAppNotFoundError`, `LineRepositoryError`.
 
@@ -342,17 +342,17 @@ export const PrismaLineRepositoryLive = Layer.succeed(
           }),
       }).pipe(/* map to LineChannel entity as above */),
 
-    findChannelById: (id) =>
+    findChannelByUid: (id) =>
       Effect.tryPromise({
         try: () => prisma.lineChannel.findUnique({ where: { id } }),
         catch: (error) =>
           new LineRepositoryError({
-            operation: "findChannelById",
+            operation: "findChannelByUid",
             cause: error,
           }),
       }).pipe(Effect.map(Option.fromNullable)),
 
-    findChannelByMessagingId: (channelId) =>
+    findChannelByLineChannelId: (channelId) =>
       Effect.tryPromise({
         try: () =>
           prisma.lineChannel.findFirst({
@@ -360,7 +360,7 @@ export const PrismaLineRepositoryLive = Layer.succeed(
           }),
         catch: (error) =>
           new LineRepositoryError({
-            operation: "findChannelByMessagingId",
+            operation: "findChannelByLineChannelId",
             cause: error,
           }),
       }).pipe(Effect.map(Option.fromNullable)),
@@ -451,12 +451,12 @@ export const PrismaLineRepositoryLive = Layer.succeed(
           }),
       }).pipe(/* map to LineLiffApp entity */),
 
-    findLiffAppById: (id) =>
+    findLiffAppByUid: (id) =>
       Effect.tryPromise({
         try: () => prisma.lineLiffApp.findUnique({ where: { id } }),
         catch: (error) =>
           new LineRepositoryError({
-            operation: "findLiffAppById",
+            operation: "findLiffAppByUid",
             cause: error,
           }),
       }).pipe(Effect.map(Option.fromNullable)),
@@ -513,15 +513,15 @@ import { LineClientRegistry } from "effect-line-manager";
 // Invalidate a single channel
 Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
-  yield* updateDbCredentials(channelRecordId, newAccessToken);
-  yield* registry.invalidateChannel(channelRecordId);
+  yield* updateDbCredentials(channelUid, newAccessToken);
+  yield* registry.invalidateChannel(channelUid);
 });
 
 // Invalidate a single LIFF app
 Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
-  yield* updateLiffApp(liffRecordId, newView);
-  yield* registry.invalidateLiff(liffRecordId);
+  yield* updateLiffApp(liffUid, newView);
+  yield* registry.invalidateLiff(liffUid);
 });
 
 // Invalidate all caches
@@ -531,19 +531,19 @@ Effect.gen(function* () {
 });
 ```
 
-> **Deprecated**: `registry.invalidate(recordId)` still works for backward compat but is equivalent to `invalidateChannel`. New code should use `invalidateChannel` / `invalidateLiff`.
+> **Deprecated**: `registry.invalidate(uid)` still works for backward compat but is equivalent to `invalidateChannel`. New code should use `invalidateChannel` / `invalidateLiff`.
 
 The registry methods:
 
-| Method                                       | Description                             |
-| -------------------------------------------- | --------------------------------------- |
-| `getMessagingClient(recordId)`               | Get cached Messaging API client         |
-| `getLoginClient(recordId)`                   | Get cached LINE Login client            |
-| `getLiffClient(recordId, oauthAccessToken?)` | Get LIFF client (needs OAuth token)     |
-| `syncBotProfile(recordId)`                   | Sync bot profile metadata from LINE API |
-| `invalidateChannel(recordId)`                | Evict a channel from cache              |
-| `invalidateLiff(recordId)`                   | Evict a LIFF app from cache             |
-| `invalidateAll`                              | Evict all cached entries                |
+| Method                                  | Description                             |
+| --------------------------------------- | --------------------------------------- |
+| `getMessagingClient(uid)`               | Get cached Messaging API client         |
+| `getLoginClient(uid)`                   | Get cached LINE Login client            |
+| `getLiffClient(uid, oauthAccessToken?)` | Get LIFF client (needs OAuth token)     |
+| `syncBotProfile(uid)`                   | Sync bot profile metadata from LINE API |
+| `invalidateChannel(uid)`                | Evict a channel from cache              |
+| `invalidateLiff(uid)`                   | Evict a LIFF app from cache             |
+| `invalidateAll`                         | Evict all cached entries                |
 
 ---
 

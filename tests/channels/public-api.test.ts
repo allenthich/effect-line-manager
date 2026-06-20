@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { Effect, Layer, Option, Redacted, Schema } from "effect";
 import {
   LineChannelId,
-  LineChannelRecordId,
+  LineChannelUid,
   LineLoginChannelId,
   LoginChannel,
   MessagingChannel,
@@ -35,8 +35,8 @@ import { LineProviderManagement } from "../../src/provider/service.ts";
 import { LineProviderRepository } from "../../src/provider/repository.ts";
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
-const messagingUid = Schema.decodeUnknownSync(LineChannelRecordId)("channel-record-1");
-const loginUid = Schema.decodeUnknownSync(LineChannelRecordId)("channel-record-2");
+const messagingUid = Schema.decodeUnknownSync(LineChannelUid)("channel-record-1");
+const loginUid = Schema.decodeUnknownSync(LineChannelUid)("channel-record-2");
 const messagingLineChannelId = Schema.decodeUnknownSync(LineMessagingChannelId)("2000000001");
 const loginLineChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("3000000001");
 const botUserId = Schema.decodeUnknownSync(LineBotUserId)("U-bot-user-1");
@@ -76,8 +76,8 @@ const makeChannelRepository = (
 ): LineChannelRepositoryService => ({
   createChannel: () => Effect.die("unused"),
   updateChannel: () => Effect.die("unused"),
-  findChannelById: () => Effect.succeedNone,
-  findChannelByMessagingId: () => Effect.succeedNone,
+  findChannelByUid: () => Effect.succeedNone,
+  findChannelByLineChannelId: () => Effect.succeedNone,
   findChannelByBotUserId: () => Effect.succeedNone,
   listChannelsByProvider: () => Effect.die("unused"),
   deleteChannel: () => Effect.die("unused"),
@@ -177,7 +177,7 @@ describe("domain-specific channel public API", () => {
 
   test("LineMessagingChannelRepository.findByUid narrows legacy channel lookups to messaging channels", async () => {
     const repository = makeChannelRepository({
-      findChannelById: () => Effect.succeed(Option.some(makeMessagingChannel())),
+      findChannelByUid: () => Effect.succeed(Option.some(makeMessagingChannel())),
     });
 
     const result = await runRepositoryEffect(
@@ -194,7 +194,7 @@ describe("domain-specific channel public API", () => {
 
   test("LineLoginChannelRepository.findByLineChannelId narrows shared channel-id lookups to login channels", async () => {
     const repository = makeChannelRepository({
-      findChannelByMessagingId: (id: LineChannelId) => {
+      findChannelByLineChannelId: (id: LineChannelId) => {
         expect(id).toBe(loginLineChannelId);
         return Effect.succeed(Option.some(makeLoginChannel()));
       },
@@ -217,7 +217,7 @@ describe("domain-specific channel public API", () => {
   test("LineMessagingChannelService.getClientByLineChannelId resolves the client via the internal uid", async () => {
     const invalidated: Array<string> = [];
     const repository = makeChannelRepository({
-      findChannelByMessagingId: (id: LineChannelId) => {
+      findChannelByLineChannelId: (id: LineChannelId) => {
         expect(id).toBe(messagingLineChannelId);
         return Effect.succeed(Option.some(makeMessagingChannel()));
       },
@@ -237,7 +237,7 @@ describe("domain-specific channel public API", () => {
 
   test("LineMessagingChannelService.getAccessTokenByLineChannelId exposes the messaging access token", async () => {
     const repository = makeChannelRepository({
-      findChannelByMessagingId: () => Effect.succeed(Option.some(makeMessagingChannel())),
+      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
     });
 
     const result = await runServiceEffect(
@@ -254,7 +254,7 @@ describe("domain-specific channel public API", () => {
   test("LineMessagingChannelService.invalidateClientByLineChannelId invalidates the resolved uid", async () => {
     const invalidated: Array<string> = [];
     const repository = makeChannelRepository({
-      findChannelByMessagingId: () => Effect.succeed(Option.some(makeMessagingChannel())),
+      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
     });
 
     await runServiceEffect(
@@ -270,7 +270,7 @@ describe("domain-specific channel public API", () => {
 
   test("LineLoginChannelService.getByLineChannelId returns the login channel", async () => {
     const repository = makeChannelRepository({
-      findChannelByMessagingId: () => Effect.succeed(Option.some(makeLoginChannel())),
+      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeLoginChannel())),
     });
 
     const result = await runServiceEffect(
@@ -287,7 +287,7 @@ describe("domain-specific channel public API", () => {
 
   test("LineMessagingChannelService.getClientByLineChannelId fails explicitly when the external id is missing", async () => {
     const repository = makeChannelRepository({
-      findChannelByMessagingId: () => Effect.succeed(Option.none()),
+      findChannelByLineChannelId: () => Effect.succeed(Option.none()),
     });
 
     const result = await runServiceEffect(
@@ -300,7 +300,7 @@ describe("domain-specific channel public API", () => {
 
     expect(result).toEqual(
       new ChannelNotFoundError({
-        recordId: messagingLineChannelId as unknown as LineChannelRecordId,
+        uid: messagingLineChannelId as unknown as LineChannelUid,
       }),
     );
   });

@@ -5,7 +5,7 @@ import type { LineApiClient } from "../messaging/client.ts";
 import { LineLoginChannelId, LineMessagingChannelId, type LineLoginChannel } from "./domain.ts";
 import { LineLoginChannelRepository, LineMessagingChannelRepository } from "./repository.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
-import type { LineChannelRecordId } from "../channel/domain.ts";
+import type { LineChannelUid } from "../channel/domain.ts";
 
 export interface LineMessagingChannelServiceApi {
   readonly getClientByLineChannelId: (
@@ -56,7 +56,7 @@ const persistenceFailure = (error: LineRepositoryError) =>
 
 const toChannelNotFoundError = (id: string) =>
   new ChannelNotFoundError({
-    recordId: id as LineChannelRecordId,
+    uid: id as LineChannelUid,
   });
 
 export const makeLineMessagingChannelService = Effect.gen(function* () {

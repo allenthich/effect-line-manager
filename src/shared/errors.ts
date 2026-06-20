@@ -11,15 +11,15 @@ export const LineRepositoryOperation = Schema.Literals([
   // Channels
   "createChannel",
   "updateChannel",
-  "findChannelById",
-  "findChannelByMessagingId",
+  "findChannelByUid",
+  "findChannelByLineChannelId",
   "findChannelByBotUserId",
   "listChannelsByProvider",
   "deleteChannel",
   // LIFF Apps
   "createLiffApp",
   "updateLiffApp",
-  "findLiffAppById",
+  "findLiffAppByUid",
   "listLiffAppsByChannel",
   "deleteLiffApp",
 ]);

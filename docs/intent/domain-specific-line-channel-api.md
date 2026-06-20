@@ -2,16 +2,14 @@
 
 ## Objective
 
-Split the public LINE channel API by domain so consumers can distinguish:
+Remove the legacy generic public channel API and publish a single clear surface built around:
 
-- messaging channels vs login channels
-- internal library-owned identifiers (`Uid`) vs external LINE identifiers (`LineChannelId`)
-
-The existing generic `LineChannelRepository` remains available for internal storage reuse and backwards compatibility, but new public entry points should be intention-revealing.
+- domain-specific modules: messaging channels, login channels, providers, LIFF apps
+- explicit identity naming: `Uid` for library-owned identifiers and `LineChannelId` for LINE-owned identifiers
 
 ## Public API Shape
 
-Expose grouped public modules:
+Expose these public modules:
 
 - `LineMessagingChannels.Repository`
 - `LineMessagingChannels.Service`
@@ -22,6 +20,15 @@ Expose grouped public modules:
 - `LineLiffApps.Repository`
 - `LineLiffApps.Service`
 - `LineClientRegistry`
+
+Do not re-export the generic `channel` module from the package root.
+
+## Naming Rules
+
+- Do not expose `RecordId` in public APIs.
+- Use `Uid` for internal identifiers that belong to this library.
+- Use `LineChannelId` for external LINE identifiers.
+- Do not expose lookup methods named `find*ById` when more than one identity domain exists.
 
 ## Repository Contracts
 
@@ -48,19 +55,25 @@ Expose grouped public modules:
 
 - `getByLineChannelId(id: LineLoginChannelId)`
 
-## Design Rules
+## Breaking Changes
 
-- Public method names must encode the domain at the service or repository boundary.
-- Public lookup methods must encode the identity type via `Uid` or `LineChannelId`.
-- Bare `Id` must not be used for channel lookups where multiple identity domains exist.
+- `LineChannelRecordId` is removed in favor of `LineChannelUid`.
+- `LineLiffRecordId` is removed in favor of `LineLiffUid`.
+- Error payload fields named `recordId` are removed in favor of `uid`.
+- The root export `./channel/index.ts` is no longer public.
+- Generic repository lookups now use `findChannelByUid(...)` and `findChannelByLineChannelId(...)`.
 
-## Migration Constraints
+## Migration Guide
 
-- Keep the current generic channel repository and channel management implementation intact.
-- Implement the new API as a compatibility layer on top of the existing repository and registry.
-- Add deprecation guidance to ambiguous generic channel lookup methods.
+1. Replace `LineChannelRecordId` with `LineChannelUid`.
+2. Replace `LineLiffRecordId` with `LineLiffUid`.
+3. Replace `recordId` fields with `uid`.
+4. Replace root imports from the generic `channel` module with `LineMessagingChannels` or `LineLoginChannels`.
+5. Replace `findChannelById(...)` with `findChannelByUid(...)`.
+6. Replace `findChannelByMessagingId(...)` with `findChannelByLineChannelId(...)`.
 
 ## Verification
 
-- Focused tests prove the new repositories narrow messaging vs login channels correctly.
-- Focused tests prove the new services look up by external LINE channel ID, return the expected client or token, and invalidate by internal UID.
+- Public exports only expose the new grouped channel API.
+- Focused tests cover messaging/login lookup behavior through the new repositories and services.
+- Existing channel and registry tests still pass after the breaking rename.

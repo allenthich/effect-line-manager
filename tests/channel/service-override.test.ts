@@ -5,7 +5,7 @@ import {
   LineProviderRepository,
   type LineProviderRepositoryService,
 } from "../../src/provider/repository.ts";
-import { MessagingChannel, LineChannelId, LineChannelRecordId } from "../../src/channel/domain.ts";
+import { MessagingChannel, LineChannelId, LineChannelUid } from "../../src/channel/domain.ts";
 import { LineChannelManagement, makeLineChannelManagement } from "../../src/channel/service.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
 import {
@@ -13,13 +13,13 @@ import {
   type LineChannelRepositoryService,
 } from "../../src/channel/repository.ts";
 
-const recordId1 = Schema.decodeUnknownSync(LineChannelRecordId)("record-1");
-const recordId2 = Schema.decodeUnknownSync(LineChannelRecordId)("record-2");
+const uid1 = Schema.decodeUnknownSync(LineChannelUid)("record-1");
+const uid2 = Schema.decodeUnknownSync(LineChannelUid)("record-2");
 const channelId1 = Schema.decodeUnknownSync(LineChannelId)("channel-1");
 const channelId2 = Schema.decodeUnknownSync(LineChannelId)("channel-2");
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 
-const makeChannel = (id: LineChannelRecordId, channelId: LineChannelId, name: string) =>
+const makeChannel = (id: LineChannelUid, channelId: LineChannelId, name: string) =>
   new MessagingChannel({
     id,
     providerId,
@@ -37,15 +37,15 @@ const makeChannel = (id: LineChannelRecordId, channelId: LineChannelId, name: st
     updatedAt: new Date("2026-06-11T00:00:00.000Z"),
   });
 
-const channel1 = makeChannel(recordId1, channelId1, "Alpha");
-const channel2 = makeChannel(recordId2, channelId2, "Beta");
+const channel1 = makeChannel(uid1, channelId1, "Alpha");
+const channel2 = makeChannel(uid2, channelId2, "Beta");
 
 const makeChannelRepository = (): LineChannelRepositoryService =>
   ({
     createChannel: () => Effect.die("unused"),
     updateChannel: () => Effect.die("unused"),
-    findChannelById: () => Effect.succeedNone,
-    findChannelByMessagingId: () => Effect.succeedNone,
+    findChannelByUid: () => Effect.succeedNone,
+    findChannelByLineChannelId: () => Effect.succeedNone,
     findChannelByBotUserId: () => Effect.succeedNone,
     listChannelsByProvider: () => Effect.succeed([channel1, channel2]),
     deleteChannel: () => Effect.void,
@@ -196,7 +196,7 @@ describe("LineChannelManagement service override", () => {
     ).pipe(Layer.provide(testBaseLayer));
 
     await Effect.runPromise(
-      Effect.flatMap(LineChannelManagement, (m) => m.deleteChannel(recordId1)).pipe(
+      Effect.flatMap(LineChannelManagement, (m) => m.deleteChannel(uid1)).pipe(
         Effect.provide(userScopedManagementLayer),
       ),
     );

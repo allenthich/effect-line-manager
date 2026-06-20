@@ -2,8 +2,8 @@ import { Effect, Schema } from "effect";
 import { HttpApi, HttpApiClient, OpenApi } from "effect/unstable/httpapi";
 import type { HttpClient } from "effect/unstable/http";
 import { LineProviderId } from "../provider/domain.ts";
-import { LineChannelRecordId } from "../channel/domain.ts";
-import { LineLiffRecordId } from "../liff/domain.ts";
+import { LineChannelUid } from "../channel/domain.ts";
+import { LineLiffUid } from "../liff/domain.ts";
 import { type LineProviderManagementAdapter } from "../adapter/types.ts";
 import { LineApi } from "./api.ts";
 
@@ -31,9 +31,9 @@ export const makeLineClient = (options?: LineClientOptions) => HttpApiClient.mak
 //#endregion
 
 //#region New Adapter
-const decodeRecordId = Schema.decodeEffect(LineChannelRecordId);
+const decodeRecordId = Schema.decodeEffect(LineChannelUid);
 const decodeProviderId = Schema.decodeEffect(LineProviderId);
-const decodeLiffRecordId = Schema.decodeEffect(LineLiffRecordId);
+const decodeLiffRecordId = Schema.decodeEffect(LineLiffUid);
 
 /** Creates a provider management adapter backed by a LINE API client. */
 export const makeLineProviderManagementAdapter = (
@@ -45,17 +45,15 @@ export const makeLineProviderManagementAdapter = (
   updateProvider: (id, input) =>
     Effect.runPromise(
       decodeProviderId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineProviders.updateProvider({ params: { id: recordId }, payload: input }),
+        Effect.flatMap((uid) =>
+          client.lineProviders.updateProvider({ params: { id: uid }, payload: input }),
         ),
       ),
     ),
   deleteProvider: (id) =>
     Effect.runPromise(
       decodeProviderId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineProviders.deleteProvider({ params: { id: recordId } }),
-        ),
+        Effect.flatMap((uid) => client.lineProviders.deleteProvider({ params: { id: uid } })),
       ),
     ),
 
@@ -74,7 +72,7 @@ export const makeLineProviderManagementAdapter = (
   getChannel: (id) =>
     Effect.runPromise(
       decodeRecordId(id).pipe(
-        Effect.flatMap((recordId) => client.lineChannels.getChannel({ params: { id: recordId } })),
+        Effect.flatMap((uid) => client.lineChannels.getChannel({ params: { id: uid } })),
       ),
     ),
   createChannel: (input) =>
@@ -103,17 +101,15 @@ export const makeLineProviderManagementAdapter = (
   updateChannel: (id, input) =>
     Effect.runPromise(
       decodeRecordId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineChannels.updateChannel({ params: { id: recordId }, payload: input }),
+        Effect.flatMap((uid) =>
+          client.lineChannels.updateChannel({ params: { id: uid }, payload: input }),
         ),
       ),
     ),
   deleteChannel: (id) =>
     Effect.runPromise(
       decodeRecordId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineChannels.deleteChannel({ params: { id: recordId } }),
-        ),
+        Effect.flatMap((uid) => client.lineChannels.deleteChannel({ params: { id: uid } })),
       ),
     ),
 
@@ -132,7 +128,7 @@ export const makeLineProviderManagementAdapter = (
   getLiffApp: (id) =>
     Effect.runPromise(
       decodeLiffRecordId(id).pipe(
-        Effect.flatMap((recordId) => client.lineLiffApps.getLiffApp({ params: { id: recordId } })),
+        Effect.flatMap((uid) => client.lineLiffApps.getLiffApp({ params: { id: uid } })),
       ),
     ),
   createLiffApp: (input) =>
@@ -140,17 +136,15 @@ export const makeLineProviderManagementAdapter = (
   updateLiffApp: (id, input) =>
     Effect.runPromise(
       decodeLiffRecordId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineLiffApps.updateLiffApp({ params: { id: recordId }, payload: input }),
+        Effect.flatMap((uid) =>
+          client.lineLiffApps.updateLiffApp({ params: { id: uid }, payload: input }),
         ),
       ),
     ),
   deleteLiffApp: (id) =>
     Effect.runPromise(
       decodeLiffRecordId(id).pipe(
-        Effect.flatMap((recordId) =>
-          client.lineLiffApps.deleteLiffApp({ params: { id: recordId } }),
-        ),
+        Effect.flatMap((uid) => client.lineLiffApps.deleteLiffApp({ params: { id: uid } })),
       ),
     ),
 });
