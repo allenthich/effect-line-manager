@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { createInMemoryLineAccountAdapter } from "./in-memory-line-account-adapter.ts";
 import {
   defineLineAccountManagementElements,
@@ -6,9 +7,11 @@ import {
   type ChannelView,
   type LiffAppView,
 } from "../src/web/index.ts";
+import { LineLoginChannelId } from "../src/channel/domain.ts";
 
 const createdAt = new Date("2026-06-01T00:00:00.000Z");
 const updatedAt = new Date("2026-06-10T00:00:00.000Z");
+const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("demo-channel-2");
 
 const seedProviders: ProviderView[] = [
   {
@@ -51,7 +54,7 @@ const seedChannels: ChannelView[] = [
 const seedLiffApps: LiffAppView[] = [
   {
     id: "demo-liff-1",
-    loginChannelId: "demo-channel-2",
+    loginChannelId,
     liffId: "2001043291-AbCdEf12",
     view: {
       type: "tall",

@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
 import {
   // LineAccountCard,
@@ -10,6 +11,9 @@ import {
   type LiffAppView,
   type LineProviderManagementAdapter,
 } from "../../src/web/index.ts";
+import { LineLoginChannelId } from "../../src/channel/domain.ts";
+
+const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("channel-2");
 
 const mockProvider: ProviderView = {
   id: "provider-1",
@@ -48,7 +52,7 @@ const mockChannelLogin: ChannelView = {
 
 const mockLiff: LiffAppView = {
   id: "liff-1",
-  loginChannelId: "channel-1",
+  loginChannelId,
   liffId: "1234567890-AbCdEf12",
   view: {
     type: "tall",
@@ -61,7 +65,7 @@ const mockLiff: LiffAppView = {
 
 const mockLiffForLogin: LiffAppView = {
   id: "liff-2",
-  loginChannelId: "channel-2",
+  loginChannelId,
   liffId: "0987654321-AbCdEf12",
   view: {
     type: "full",

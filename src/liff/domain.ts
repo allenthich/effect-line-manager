@@ -59,7 +59,7 @@ export class UpdateLiffAppRecordInput extends Schema.Class<UpdateLiffAppRecordIn
 
 /** Input schema for creating a LIFF app via the management API. */
 export const CreateLiffAppInput = Schema.Struct({
-  loginChannelId: NonEmptyTrimmedString,
+  loginChannelId: LineLoginChannelId,
   liffId: NonEmptyTrimmedString,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
@@ -87,7 +87,7 @@ export type UpdateLiffAppInput = typeof UpdateLiffAppInput.Type;
 /** Public view schema for a LIFF application. */
 export const LiffAppView = Schema.Struct({
   id: NonEmptyTrimmedString,
-  loginChannelId: NonEmptyTrimmedString,
+  loginChannelId: LineLoginChannelId,
   liffId: NonEmptyTrimmedString,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),

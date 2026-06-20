@@ -4,7 +4,7 @@ import { Effect, Layer, Schema } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
-import { ChannelView, LineChannelId } from "../../src/channel/domain.ts";
+import { ChannelView, LineChannelId, LineLoginChannelId } from "../../src/channel/domain.ts";
 import { LiffAppView, LineLiffId } from "../../src/liff/domain.ts";
 import {
   LineProviderNotFoundError,
@@ -33,6 +33,7 @@ import {
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 const channelRecordId = Schema.decodeUnknownSync(LineChannelId)("channel-record-1");
+const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("channel-record-1");
 const liffId = Schema.decodeUnknownSync(LineLiffId)("liff-record-1");
 
 const providerView = Schema.decodeUnknownSync(ProviderView)({
@@ -61,7 +62,7 @@ const channelView = Schema.decodeUnknownSync(ChannelView)({
 
 const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
   id: liffId,
-  loginChannelId: channelRecordId,
+  loginChannelId,
   liffId: "1234567890-AbCdEf12",
   view: {
     type: "tall",
@@ -238,7 +239,7 @@ describe("LineApi", () => {
         const listedLiffs = yield* client.lineLiffApps.listLiffApps({ query: {} });
         const createdLiff = yield* client.lineLiffApps.createLiffApp({
           payload: {
-            loginChannelId: "channel-record-1",
+            loginChannelId,
             liffId: "1234567890-AbCdEf12",
             view: { type: "tall", url: "https://example.com/liff" },
             description: "Loyalty Card Dashboard",
@@ -343,7 +344,7 @@ describe("LineApi", () => {
         const liffDupErr = yield* client.lineLiffApps
           .createLiffApp({
             payload: {
-              loginChannelId: "channel-record-1",
+              loginChannelId,
               liffId: "1234567890-AbCdEf12",
               view: { type: "tall", url: "https://example.com/liff" },
               description: "Loyalty Card Dashboard",

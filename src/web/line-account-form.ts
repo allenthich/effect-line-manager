@@ -1,6 +1,8 @@
+import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import type { LineAccountManagementMessages } from "./messages.ts";
+import { LineLoginChannelId } from "../channel/domain.ts";
 import type {
   ProviderView,
   ChannelView,
@@ -33,6 +35,8 @@ interface FormValues {
   liffViewUrl: string;
   liffDescription: string;
 }
+
+const decodeLoginChannelId = Schema.decodeUnknownSync(LineLoginChannelId);
 
 const trimOptional = (value: string): string | undefined => {
   const trimmed = value.trim();
@@ -857,7 +861,7 @@ export class LineAccountForm extends LitElement {
           type: "liff",
           mode: "create",
           input: {
-            loginChannelId: this.#values.liffLoginChannelId.trim(),
+            loginChannelId: decodeLoginChannelId(this.#values.liffLoginChannelId.trim()),
             liffId: this.#values.liffId.trim(),
             view: {
               type: this.#values.liffViewType,
