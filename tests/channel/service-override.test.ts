@@ -5,7 +5,11 @@ import {
   LineProviderRepository,
   type LineProviderRepositoryService,
 } from "../../src/provider/repository.ts";
-import { MessagingChannel, LineChannelId } from "../../src/channel/domain.ts";
+import {
+  MessagingChannel,
+  LineChannelId,
+  LineMessagingChannelId,
+} from "../../src/channel/domain.ts";
 import { LineChannelManagement, makeLineChannelManagement } from "../../src/channel/service.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
 import {
@@ -16,11 +20,11 @@ import { provideInternalLineChannelStore } from "../support/internal-channel-sto
 
 const uid1 = Schema.decodeUnknownSync(LineChannelId)("record-1");
 const uid2 = Schema.decodeUnknownSync(LineChannelId)("record-2");
-const channelId1 = Schema.decodeUnknownSync(LineChannelId)("channel-1");
-const channelId2 = Schema.decodeUnknownSync(LineChannelId)("channel-2");
+const channelId1 = Schema.decodeUnknownSync(LineMessagingChannelId)("channel-1");
+const channelId2 = Schema.decodeUnknownSync(LineMessagingChannelId)("channel-2");
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 
-const makeChannel = (id: LineChannelId, channelId: LineChannelId, name: string) =>
+const makeChannel = (id: LineChannelId, channelId: LineMessagingChannelId, name: string) =>
   new MessagingChannel({
     id,
     providerId,

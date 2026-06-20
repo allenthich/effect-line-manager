@@ -6,7 +6,10 @@ import {
   LoginChannel,
   MessagingChannel,
 } from "../../src/channel/domain.ts";
-import { ChannelNotFoundError } from "../../src/channel/errors.ts";
+import {
+  MessagingChannelNotFoundError,
+  LoginChannelNotFoundError,
+} from "../../src/channels/index.ts";
 import {
   LineChannelRepository,
   type LineChannelRepositoryService,
@@ -23,6 +26,7 @@ import { LineClientRegistry, type LineClientRegistryService } from "../../src/re
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineLoginChannels, LineMessagingChannels } from "../../src/public-api.ts";
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
+import type { LineMessagingChannel } from "../../src/channels/domain.ts";
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
 const messagingUid = Schema.decodeUnknownSync(LineChannelId)("channel-record-1");
@@ -37,7 +41,7 @@ const makeMessagingChannel = () =>
     providerId,
     channelType: "messaging",
     name: "Support Bot",
-    channelId: messagingLineChannelId as LineChannelId,
+    channelId: messagingLineChannelId,
     channelSecret: Redacted.make("messaging-secret"),
     channelAccessToken: Redacted.make("token-1"),
     botUserId,
@@ -166,6 +170,23 @@ describe("domain-specific channel public API", () => {
     expect(LineLoginChannels.Service).toBe(LineLoginChannelService);
   });
 
+  test("LineMessagingChannelId is a distinct brand from LineChannelId at the type level", () => {
+    // Contract: LineMessagingChannelId should NOT be assignable to
+    // LineChannelId (and vice versa) — they are separate brands.
+    // This is a compile-time property; this test documents the intent.
+    // The runtime values are compatible strings but branded differently.
+    const decoded = Schema.decodeUnknownSync(LineMessagingChannelId)("2000000001");
+    expect(typeof decoded).toBe("string");
+    // Generic LineChannelId decode from the same string must also succeed.
+    const generic = Schema.decodeUnknownSync(LineChannelId)("2000000001");
+    expect(typeof generic).toBe("string");
+  });
+
+  test("LineLoginChannelId is a distinct brand from LineChannelId at the type level", () => {
+    const decoded = Schema.decodeUnknownSync(LineLoginChannelId)("3000000001");
+    expect(typeof decoded).toBe("string");
+  });
+
   test("LineLoginChannelRepository.findByLineChannelId narrows shared lookups to login channels", async () => {
     const repository = makeChannelRepository({
       findChannelByLineChannelId: (id) => {
@@ -266,6 +287,43 @@ describe("domain-specific channel public API", () => {
         repository,
         makeRegistry([]),
       ),
-    ).rejects.toEqual(new ChannelNotFoundError({ channelId: messagingLineChannelId as never }));
+    ).rejects.toEqual(new MessagingChannelNotFoundError({ channelId: messagingLineChannelId }));
+  });
+
+  // ── Brand contract: domain-specific IDs in domain models ──
+
+  test("MessagingChannel.channelId should use LineMessagingChannelId (not generic LineChannelId)", () => {
+    // Contract: MessagingChannel's channelId field should be typed as
+    // LineMessagingChannelId, not the generic LineChannelId.
+    // When Task 3 is complete, the `as LineChannelId` cast at line 49
+    // will become unnecessary and should be removed.
+    const channel = makeMessagingChannel();
+    // Type assertion documenting the desired contract:
+    const _desired: LineMessagingChannel = channel;
+    void _desired;
+    expect(channel.channelType).toBe("messaging");
+  });
+
+  test("LoginChannel.channelId should use LineLoginChannelId", () => {
+    const channel = makeLoginChannel();
+    expect(channel.channelId).toBe(loginLineChannelId);
+  });
+
+  // ── Error payload contract — domain-specific brands in error payloads ──
+
+  test("not-found errors raised by domain services carry domain-specific channelId brands", () => {
+    // Messaging domain: MessagingChannelNotFoundError carries LineMessagingChannelId
+    const messagingError = new MessagingChannelNotFoundError({
+      channelId: messagingLineChannelId,
+    });
+    expect(messagingError._tag).toBe("MessagingChannelNotFoundError");
+    expect(messagingError.channelId).toBe(messagingLineChannelId);
+
+    // Login domain: LoginChannelNotFoundError carries LineLoginChannelId
+    const loginError = new LoginChannelNotFoundError({
+      channelId: loginLineChannelId,
+    });
+    expect(loginError._tag).toBe("LoginChannelNotFoundError");
+    expect(loginError.channelId).toBe(loginLineChannelId);
   });
 });

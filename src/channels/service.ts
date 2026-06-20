@@ -4,19 +4,19 @@ import { LinePersistenceError, type LineRepositoryError } from "../shared/errors
 import type { LineApiClient } from "../messaging/client.ts";
 import { LineLoginChannelId, LineMessagingChannelId, type LineLoginChannel } from "./domain.ts";
 import { LineLoginChannelRepository, LineMessagingChannelRepository } from "./repository.ts";
-import { ChannelNotFoundError } from "../channel/errors.ts";
+import { MessagingChannelNotFoundError, LoginChannelNotFoundError } from "./errors.ts";
 import { LineChannelId } from "../channel/domain.ts";
 
 export interface LineMessagingChannelServiceApi {
   readonly getClientByLineChannelId: (
     id: LineMessagingChannelId,
-  ) => Effect.Effect<LineApiClient, ChannelNotFoundError | LinePersistenceError>;
+  ) => Effect.Effect<LineApiClient, MessagingChannelNotFoundError | LinePersistenceError>;
   readonly getAccessTokenByLineChannelId: (
     id: LineMessagingChannelId,
-  ) => Effect.Effect<string, ChannelNotFoundError | LinePersistenceError>;
+  ) => Effect.Effect<string, MessagingChannelNotFoundError | LinePersistenceError>;
   readonly invalidateClientByLineChannelId: (
     id: LineMessagingChannelId,
-  ) => Effect.Effect<void, ChannelNotFoundError | LinePersistenceError>;
+  ) => Effect.Effect<void, MessagingChannelNotFoundError | LinePersistenceError>;
 }
 
 export class LineMessagingChannelService extends Context.Service<
@@ -31,7 +31,7 @@ export class LineMessagingChannelService extends Context.Service<
 export interface LineLoginChannelServiceApi {
   readonly getByLineChannelId: (
     id: LineLoginChannelId,
-  ) => Effect.Effect<LineLoginChannel, ChannelNotFoundError | LinePersistenceError>;
+  ) => Effect.Effect<LineLoginChannel, LoginChannelNotFoundError | LinePersistenceError>;
 }
 
 export class LineLoginChannelService extends Context.Service<
@@ -56,9 +56,14 @@ const persistenceFailure = (error: LineRepositoryError) =>
 
 const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 
-const toChannelNotFoundError = (id: string) =>
-  new ChannelNotFoundError({
-    channelId: decodeSharedLineChannelId(id),
+const toMessagingNotFoundError = (id: string) =>
+  new MessagingChannelNotFoundError({
+    channelId: Schema.decodeUnknownSync(LineMessagingChannelId)(id),
+  });
+
+const toLoginNotFoundError = (id: string) =>
+  new LoginChannelNotFoundError({
+    channelId: Schema.decodeUnknownSync(LineLoginChannelId)(id),
   });
 
 export const makeLineMessagingChannelService = Effect.gen(function* () {
@@ -70,7 +75,7 @@ export const makeLineMessagingChannelService = Effect.gen(function* () {
       Effect.catchTag("LineRepositoryError", persistenceFailure),
       Effect.flatMap((channel) =>
         Option.match(channel, {
-          onNone: () => Effect.fail(toChannelNotFoundError(id)),
+          onNone: () => Effect.fail(toMessagingNotFoundError(id)),
           onSome: Effect.succeed,
         }),
       ),
@@ -82,8 +87,13 @@ export const makeLineMessagingChannelService = Effect.gen(function* () {
         Effect.gen(function* () {
           const channel = yield* getChannelByLineChannelId(id);
           return yield* registry
-            .getMessagingClient(channel.channelId)
-            .pipe(Effect.catchTag("LineRepositoryError", persistenceFailure));
+            .getMessagingClient(decodeSharedLineChannelId(channel.channelId))
+            .pipe(
+              Effect.catchTag("ChannelNotFoundError", () =>
+                Effect.die("registry inconsistent: channel found by service but not by registry"),
+              ),
+              Effect.catchTag("LineRepositoryError", persistenceFailure),
+            );
         }),
     ),
     getAccessTokenByLineChannelId: Effect.fn(
@@ -98,7 +108,7 @@ export const makeLineMessagingChannelService = Effect.gen(function* () {
     )((id: LineMessagingChannelId) =>
       Effect.gen(function* () {
         const channel = yield* getChannelByLineChannelId(id);
-        yield* registry.invalidateChannel(channel.channelId);
+        yield* registry.invalidateChannel(decodeSharedLineChannelId(channel.channelId));
       }),
     ),
   });
@@ -114,7 +124,7 @@ export const makeLineLoginChannelService = Effect.gen(function* () {
           Effect.catchTag("LineRepositoryError", persistenceFailure),
           Effect.flatMap((channel) =>
             Option.match(channel, {
-              onNone: () => Effect.fail(toChannelNotFoundError(id)),
+              onNone: () => Effect.fail(toLoginNotFoundError(id)),
               onSome: Effect.succeed,
             }),
           ),

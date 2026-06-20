@@ -9,6 +9,13 @@ export const LineChannelId = NonEmptyTrimmedString.pipe(
 /** {@link LineChannelId} type alias. */
 export type LineChannelId = typeof LineChannelId.Type;
 
+/** Branded type for the LINE Messaging API channel ID. */
+export const LineMessagingChannelId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineMessagingChannelId"),
+);
+/** {@link LineMessagingChannelId} type alias. */
+export type LineMessagingChannelId = typeof LineMessagingChannelId.Type;
+
 /** Branded type for the LINE Login channel ID. */
 export const LineLoginChannelId = NonEmptyTrimmedString.pipe(
   Schema.brand("effect-line-manager/LineLoginChannelId"),
@@ -22,7 +29,7 @@ export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingC
   id: LineChannelId,
   providerId: LineProviderId,
   name: NonEmptyTrimmedString,
-  channelId: LineChannelId,
+  channelId: LineMessagingChannelId,
   channelSecret: LineCredential,
   channelAccessToken: LineCredential,
   // Auto-synced bot profile metadata

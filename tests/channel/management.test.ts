@@ -5,7 +5,12 @@ import {
   LineProviderRepository,
   type LineProviderRepositoryService,
 } from "../../src/provider/repository.ts";
-import { MessagingChannel, ChannelView, LineChannelId } from "../../src/channel/domain.ts";
+import {
+  MessagingChannel,
+  ChannelView,
+  LineChannelId,
+  LineMessagingChannelId,
+} from "../../src/channel/domain.ts";
 import { LinePersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
@@ -24,7 +29,7 @@ const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
     providerId,
     channelType: "messaging",
     name: "Support Channel",
-    channelId: Schema.decodeUnknownSync(LineChannelId)("1234567890"),
+    channelId: Schema.decodeUnknownSync(LineMessagingChannelId)("1234567890"),
     channelSecret: Redacted.make("channel-secret"),
     channelAccessToken: Redacted.make("channel-token"),
     isActive: true,

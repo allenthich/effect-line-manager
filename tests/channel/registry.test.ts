@@ -2,7 +2,11 @@ import { describe, expect, test } from "vite-plus/test";
 import { Deferred, Effect, Fiber, Layer, Option, Redacted, Schema, type Duration } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { LineChannelId, MessagingChannel } from "../../src/channel/domain.ts";
+import {
+  LineChannelId,
+  LineMessagingChannelId,
+  MessagingChannel,
+} from "../../src/channel/domain.ts";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/registry/index.ts";
@@ -13,10 +17,11 @@ import {
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import { LineLiffRepository, type LineLiffRepositoryService } from "../../src/liff/repository.ts";
 
-const decodeChannelId = Schema.decodeUnknownSync(LineChannelId);
-const channelId = decodeChannelId("channel-1");
-const uid = decodeChannelId("record-1");
-const missingChannelId = decodeChannelId("missing-channel");
+const decodeGeneric = Schema.decodeUnknownSync(LineChannelId);
+const channelId = decodeGeneric("channel-1");
+const messagingChannelId = Schema.decodeUnknownSync(LineMessagingChannelId)("channel-1");
+const uid = decodeGeneric("record-1");
+const missingChannelId = decodeGeneric("missing-channel");
 
 const makeMessagingChannel = (token: string) =>
   new MessagingChannel({
@@ -24,7 +29,7 @@ const makeMessagingChannel = (token: string) =>
     id: uid,
     providerId: Schema.decodeUnknownSync(LineProviderId)("provider-1"),
     name: "Primary",
-    channelId,
+    channelId: messagingChannelId,
     channelSecret: Redacted.make("channel-secret"),
     channelAccessToken: Redacted.make(token),
     isActive: true,

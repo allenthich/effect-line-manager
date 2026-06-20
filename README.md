@@ -14,9 +14,9 @@ The library models LINE configuration as:
 
 Public identifiers follow these rules:
 
-- `LineLiffUid` is a library-owned identifier.
-- `LineChannelId`, `LineMessagingChannelId`, and `LineLoginChannelId` are
-  external LINE identifiers.
+- `LineLiffId` is a library-owned identifier.
+- `LineMessagingChannelId` and `LineLoginChannelId` are
+  domain-specific LINE channel identifiers.
 
 Public channel APIs are domain-specific:
 
@@ -30,32 +30,27 @@ Generic channel persistence is internal and should not be consumed directly.
 ## Registry
 
 `LineClientRegistry` resolves and caches authenticated clients by channel or
-LIFF uid.
+LIFF ID. For most consumers, use the domain-specific channel services instead.
 
 ```ts
-import { Effect, Layer, Schema } from "effect";
-import { FetchHttpClient } from "effect/unstable/http";
-import { LineChannelId, LineClientRegistry } from "effect-line-manager";
+import { Effect, Schema } from "effect";
+import { LineMessagingChannelId, LineMessagingChannels } from "effect-line-manager";
 
-const channelId = Schema.decodeUnknownSync(LineChannelId)("1234567890");
+const channelId = Schema.decodeUnknownSync(LineMessagingChannelId)("1234567890");
 
 const program = Effect.gen(function* () {
-  const registry = yield* LineClientRegistry;
-  const client = yield* registry.getMessagingClient(channelId);
+  const service = yield* LineMessagingChannels.Service;
+  const client = yield* service.getClientByLineChannelId(channelId);
   yield* client.pushMessage("U-recipient-id", [{ type: "text", text: "Hello from Effect" }]);
 });
-
-await Effect.runPromise(
-  program.pipe(Effect.provide(LineClientRegistry.layer()), Effect.provide(FetchHttpClient.layer)),
-);
 ```
 
 When credentials rotate, invalidate the relevant cache entry:
 
 ```ts
 const rotateCredentials = Effect.gen(function* () {
-  const registry = yield* LineClientRegistry;
-  yield* registry.invalidateChannel(channelId);
+  const service = yield* LineMessagingChannels.Service;
+  yield* service.invalidateClientByLineChannelId(channelId);
 });
 ```
 

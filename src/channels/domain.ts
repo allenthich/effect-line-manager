@@ -1,13 +1,13 @@
 import { Schema } from "effect";
 import {
-  LineChannelId,
+  LineMessagingChannelId as BaseLineMessagingChannelId,
   LineLoginChannelId as BaseLineLoginChannelId,
   type LoginChannel,
   type MessagingChannel,
 } from "../channel/domain.ts";
 import { NonEmptyTrimmedString } from "../shared/domain.ts";
 
-export const LineMessagingChannelId = LineChannelId;
+export const LineMessagingChannelId = BaseLineMessagingChannelId;
 export type LineMessagingChannelId = typeof LineMessagingChannelId.Type;
 
 export const LineLoginChannelId = BaseLineLoginChannelId;
