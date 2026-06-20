@@ -1,8 +1,6 @@
 export {
   LineBotUserId,
-  LineLoginChannelUid,
   LineMessagingChannelId,
-  LineMessagingChannelUid,
   isLineLoginChannel,
   isLineMessagingChannel,
 } from "./domain.ts";

@@ -5,17 +5,12 @@ import type { LineRepositoryError } from "../shared/errors.ts";
 import {
   LineBotUserId,
   LineLoginChannelId,
-  LineLoginChannelUid,
   LineMessagingChannelId,
-  LineMessagingChannelUid,
   isLineLoginChannel,
   isLineMessagingChannel,
 } from "./domain.ts";
 
 export interface LineMessagingChannelRepositoryService {
-  readonly findByUid: (
-    uid: LineMessagingChannelUid,
-  ) => Effect.Effect<Option.Option<MessagingChannel>, LineRepositoryError>;
   readonly findByLineChannelId: (
     id: LineMessagingChannelId,
   ) => Effect.Effect<Option.Option<MessagingChannel>, LineRepositoryError>;
@@ -34,9 +29,6 @@ export class LineMessagingChannelRepository extends Context.Service<
 }
 
 export interface LineLoginChannelRepositoryService {
-  readonly findByUid: (
-    uid: LineLoginChannelUid,
-  ) => Effect.Effect<Option.Option<LoginChannel>, LineRepositoryError>;
   readonly findByLineChannelId: (
     id: LineLoginChannelId,
   ) => Effect.Effect<Option.Option<LoginChannel>, LineRepositoryError>;
@@ -51,24 +43,26 @@ export class LineLoginChannelRepository extends Context.Service<
   }
 }
 
-const narrowMessagingChannel = (channel: MessagingChannel | LoginChannel) =>
+const narrowMessagingChannel = (
+  channel: MessagingChannel | LoginChannel,
+): Option.Option<MessagingChannel> =>
   isLineMessagingChannel(channel) ? Option.some(channel) : Option.none();
 
-const narrowLoginChannel = (channel: MessagingChannel | LoginChannel) =>
+const narrowLoginChannel = (
+  channel: MessagingChannel | LoginChannel,
+): Option.Option<LoginChannel> =>
   isLineLoginChannel(channel) ? Option.some(channel) : Option.none();
+
+const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 
 export const makeLineMessagingChannelRepository = Effect.gen(function* () {
   const repository = yield* LineChannelRepository;
 
   return LineMessagingChannelRepository.of({
-    findByUid: Effect.fn("LineMessagingChannelRepository.findByUid")(
-      (uid: LineMessagingChannelUid) =>
-        repository.findChannelByUid(uid).pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
-    ),
     findByLineChannelId: Effect.fn("LineMessagingChannelRepository.findByLineChannelId")(
       (id: LineMessagingChannelId) =>
         repository
-          .findChannelByLineChannelId(id)
+          .findChannelByLineChannelId(decodeSharedLineChannelId(id))
           .pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
     ),
     findByBotUserId: Effect.fn("LineMessagingChannelRepository.findByBotUserId")(
@@ -82,12 +76,8 @@ export const makeLineMessagingChannelRepository = Effect.gen(function* () {
 
 export const makeLineLoginChannelRepository = Effect.gen(function* () {
   const repository = yield* LineChannelRepository;
-  const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 
   return LineLoginChannelRepository.of({
-    findByUid: Effect.fn("LineLoginChannelRepository.findByUid")((uid: LineLoginChannelUid) =>
-      repository.findChannelByUid(uid).pipe(Effect.map(Option.flatMap(narrowLoginChannel))),
-    ),
     findByLineChannelId: Effect.fn("LineLoginChannelRepository.findByLineChannelId")(
       (id: LineLoginChannelId) =>
         repository

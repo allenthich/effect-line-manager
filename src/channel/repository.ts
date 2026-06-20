@@ -24,8 +24,10 @@ export class LineChannelRepository extends Context.Service<
     ) => Effect.Effect<LineChannel, ChannelNotFoundError | LineRepositoryError>;
 
     /**
-     * @deprecated Prefer `LineMessagingChannels.Repository.findByUid(...)` or
-     * `LineLoginChannels.Repository.findByUid(...)` in public APIs.
+     * @deprecated Prefer domain-specific public lookups such as
+     * `LineMessagingChannels.Repository.findByLineChannelId(...)`,
+     * `LineMessagingChannels.Repository.findByBotUserId(...)`, or
+     * `LineLoginChannels.Repository.findByLineChannelId(...)`.
      */
     readonly findChannelByUid: (
       id: LineChannelUid,

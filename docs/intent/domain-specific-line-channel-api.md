@@ -26,7 +26,7 @@ Do not re-export the generic `channel` module from the package root.
 ## Naming Rules
 
 - Do not expose `RecordId` in public APIs.
-- Use `Uid` for internal identifiers that belong to this library.
+- Keep `Uid` only on internal or mutation-oriented surfaces that need a stable library-owned identifier.
 - Use `LineChannelId` for external LINE identifiers.
 - Do not expose lookup methods named `find*ById` when more than one identity domain exists.
 
@@ -34,13 +34,12 @@ Do not re-export the generic `channel` module from the package root.
 
 `LineMessagingChannels.Repository`
 
-- `findByUid(uid: LineMessagingChannelUid)`
 - `findByLineChannelId(id: LineMessagingChannelId)`
 - `findByBotUserId(id: LineBotUserId)`
 
 `LineLoginChannels.Repository`
 
-- `findByUid(uid: LineLoginChannelUid)`
+- `findByLineChannelId(id: LineLoginChannelId)`
 - `findByLineChannelId(id: LineLoginChannelId)`
 
 ## Service Contracts
@@ -61,7 +60,7 @@ Do not re-export the generic `channel` module from the package root.
 - `LineLiffRecordId` is removed in favor of `LineLiffUid`.
 - Error payload fields named `recordId` are removed in favor of `uid`.
 - The root export `./channel/index.ts` is no longer public.
-- Generic repository lookups now use `findChannelByUid(...)` and `findChannelByLineChannelId(...)`.
+- Generic repository lookups still use `findChannelByUid(...)` and `findChannelByLineChannelId(...)` internally.
 
 ## Migration Guide
 
@@ -69,7 +68,7 @@ Do not re-export the generic `channel` module from the package root.
 2. Replace `LineLiffRecordId` with `LineLiffUid`.
 3. Replace `recordId` fields with `uid`.
 4. Replace root imports from the generic `channel` module with `LineMessagingChannels` or `LineLoginChannels`.
-5. Replace `findChannelById(...)` with `findChannelByUid(...)`.
+5. Replace public channel lookups with `findByLineChannelId(...)` or `findByBotUserId(...)`, depending on the domain entry point.
 6. Replace `findChannelByMessagingId(...)` with `findChannelByLineChannelId(...)`.
 
 ## Verification

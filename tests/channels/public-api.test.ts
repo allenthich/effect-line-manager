@@ -175,21 +175,22 @@ describe("domain-specific channel public API", () => {
     expect(LineLiffApps.Service).toBe(LineLiffManagement);
   });
 
-  test("LineMessagingChannelRepository.findByUid narrows legacy channel lookups to messaging channels", async () => {
-    const repository = makeChannelRepository({
-      findChannelByUid: () => Effect.succeed(Option.some(makeMessagingChannel())),
-    });
-
-    const result = await runRepositoryEffect(
-      Effect.flatMap(LineMessagingChannelRepository, (service) => service.findByUid(messagingUid)),
-      repository,
+  test("LineMessagingChannelRepository does not expose uid-based getters", async () => {
+    const service = await runRepositoryEffect(
+      Effect.service(LineMessagingChannelRepository),
+      makeChannelRepository(),
     );
 
-    expect(Option.isSome(result)).toBe(true);
-    if (Option.isSome(result)) {
-      expect(result.value.channelType).toBe("messaging");
-      expect(result.value.id).toBe(messagingUid);
-    }
+    expect("findByUid" in service).toBe(false);
+  });
+
+  test("LineLoginChannelRepository does not expose uid-based getters", async () => {
+    const service = await runRepositoryEffect(
+      Effect.service(LineLoginChannelRepository),
+      makeChannelRepository(),
+    );
+
+    expect("findByUid" in service).toBe(false);
   });
 
   test("LineLoginChannelRepository.findByLineChannelId narrows shared channel-id lookups to login channels", async () => {
