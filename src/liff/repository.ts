@@ -1,5 +1,5 @@
 import { Context, type Effect, type Option } from "effect";
-import type { LineChannelUid } from "../channel/domain.ts";
+import type { LineLoginChannelId } from "../channel/domain.ts";
 import type {
   CreateLiffAppRecordInput,
   LineLiffApp,
@@ -27,7 +27,7 @@ export class LineLiffRepository extends Context.Service<
     ) => Effect.Effect<Option.Option<LineLiffApp>, LineRepositoryError>;
 
     readonly listLiffAppsByChannel: (
-      channelId: LineChannelUid,
+      channelId: LineLoginChannelId,
     ) => Effect.Effect<ReadonlyArray<LineLiffApp>, LineRepositoryError>;
 
     readonly deleteLiffApp: (

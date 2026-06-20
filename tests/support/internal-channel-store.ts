@@ -10,7 +10,6 @@ export const fromLegacyLineChannelRepository = (
 ): InternalLineChannelStoreService => ({
   create: repository.createChannel,
   update: repository.updateChannel,
-  findByUid: repository.findChannelByUid,
   findByLineChannelId: repository.findChannelByLineChannelId,
   findByBotUserId: repository.findChannelByBotUserId,
   listByProvider: repository.listChannelsByProvider,

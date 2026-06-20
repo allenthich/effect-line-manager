@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { LineChannelUid } from "../channel/domain.ts";
+import { LineLoginChannelId } from "../channel/domain.ts";
 import { NonEmptyTrimmedString, Pagination } from "../shared/domain.ts";
 
 /** Branded type for a LINE LIFF application ID. */
@@ -19,7 +19,7 @@ export type LineLiffUid = typeof LineLiffUid.Type;
 /** LIFF App — belongs to a Login Channel. */
 export class LineLiffApp extends Schema.Class<LineLiffApp>("LineLiffApp")({
   id: LineLiffUid,
-  loginChannelId: LineChannelUid,
+  loginChannelId: LineLoginChannelId,
   liffId: LineLiffId,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
@@ -34,7 +34,7 @@ export class LineLiffApp extends Schema.Class<LineLiffApp>("LineLiffApp")({
 export class CreateLiffAppRecordInput extends Schema.Class<CreateLiffAppRecordInput>(
   "CreateLiffAppRecordInput",
 )({
-  loginChannelId: LineChannelUid,
+  loginChannelId: LineLoginChannelId,
   liffId: LineLiffId,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),

@@ -2,7 +2,7 @@ import { Effect, Schema } from "effect";
 import { HttpApi, HttpApiClient, OpenApi } from "effect/unstable/httpapi";
 import type { HttpClient } from "effect/unstable/http";
 import { LineProviderId } from "../provider/domain.ts";
-import { LineChannelUid } from "../channel/domain.ts";
+import { LineChannelUid, LineLoginChannelId } from "../channel/domain.ts";
 import { LineLiffUid } from "../liff/domain.ts";
 import { type LineProviderManagementAdapter } from "../adapter/types.ts";
 import { LineApi } from "./api.ts";
@@ -34,6 +34,7 @@ export const makeLineClient = (options?: LineClientOptions) => HttpApiClient.mak
 const decodeRecordId = Schema.decodeEffect(LineChannelUid);
 const decodeProviderId = Schema.decodeEffect(LineProviderId);
 const decodeLiffRecordId = Schema.decodeEffect(LineLiffUid);
+const decodeLoginChannelId = Schema.decodeEffect(LineLoginChannelId);
 
 /** Creates a provider management adapter backed by a LINE API client. */
 export const makeLineProviderManagementAdapter = (
@@ -117,7 +118,7 @@ export const makeLineProviderManagementAdapter = (
     Effect.runPromise(
       channelId === undefined
         ? client.lineLiffApps.listLiffApps({ query: {} })
-        : decodeRecordId(channelId).pipe(
+        : decodeLoginChannelId(channelId).pipe(
             Effect.flatMap((decodedChannelId) =>
               client.lineLiffApps.listLiffApps({
                 query: { channelId: decodedChannelId },

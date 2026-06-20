@@ -16,7 +16,7 @@ import { LineLiffRepository, type LineLiffRepositoryService } from "../../src/li
 const decodeChannelId = Schema.decodeUnknownSync(LineChannelId);
 const channelId = decodeChannelId("channel-1");
 const uid = Schema.decodeUnknownSync(LineChannelUid)("record-1");
-const missingRecordId = Schema.decodeUnknownSync(LineChannelUid)("missing-record");
+const missingChannelId = decodeChannelId("missing-channel");
 
 const makeMessagingChannel = (token: string) =>
   new MessagingChannel({
@@ -33,7 +33,7 @@ const makeMessagingChannel = (token: string) =>
   });
 
 const makeChannelRepository = (
-  findChannelByUid: LineChannelRepositoryService["findChannelByUid"],
+  findChannelByLineChannelId: LineChannelRepositoryService["findChannelByLineChannelId"],
   updateChannel?: LineChannelRepositoryService["updateChannel"],
 ): LineChannelRepositoryService => ({
   createChannel: () => Effect.die("unused"),
@@ -46,8 +46,7 @@ const makeChannelRepository = (
           cause: new Error("unimplemented"),
         }),
       )),
-  findChannelByUid,
-  findChannelByLineChannelId: () => Effect.succeedNone,
+  findChannelByLineChannelId,
   findChannelByBotUserId: () => Effect.succeedNone,
   listChannelsByProvider: () => Effect.die("unused"),
   deleteChannel: () => Effect.die("unused"),
@@ -115,12 +114,12 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const msg1 = yield* registry.getMessagingClient(uid);
-        const msg2 = yield* registry.getMessagingClient(uid);
+        const msg1 = yield* registry.getMessagingClient(channelId);
+        const msg2 = yield* registry.getMessagingClient(channelId);
         expect(msg2).toBe(msg1);
 
         // MessagingChannel has no login config — getLoginClient should fail
-        const loginResult = yield* Effect.exit(registry.getLoginClient(uid));
+        const loginResult = yield* Effect.exit(registry.getLoginClient(channelId));
         expect(loginResult._tag).toBe("Failure");
       }),
       channelRepository,
@@ -148,7 +147,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
         const fiber = yield* Effect.all(
-          [registry.getMessagingClient(uid), registry.getMessagingClient(uid)],
+          [registry.getMessagingClient(channelId), registry.getMessagingClient(channelId)],
           { concurrency: "unbounded" },
         ).pipe(Effect.forkChild);
         yield* Effect.yieldNow;
@@ -168,7 +167,7 @@ describe("LineClientRegistry", () => {
     const missingRepository = makeChannelRepository(() => Effect.succeedNone);
     const liffRepository = makeLiffRepository();
     const repositoryFailure = new LineRepositoryError({
-      operation: "findChannelByUid",
+      operation: "findChannelByLineChannelId",
       cause: new Error("database unavailable"),
     });
     const failingRepository = makeChannelRepository(() => Effect.fail(repositoryFailure));
@@ -177,19 +176,19 @@ describe("LineClientRegistry", () => {
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
-          return yield* registry.getMessagingClient(missingRecordId);
+          return yield* registry.getMessagingClient(missingChannelId);
         }).pipe(Effect.provide(makeLayer(missingRepository, liffRepository, httpClient))),
       ),
     ).resolves.toMatchObject({
       _tag: "ChannelNotFoundError",
-      uid: "missing-record",
+      uid: "missing-channel",
     });
 
     await expect(
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
-          return yield* registry.getMessagingClient(uid);
+          return yield* registry.getMessagingClient(channelId);
         }).pipe(Effect.provide(makeLayer(failingRepository, liffRepository, httpClient))),
       ),
     ).resolves.toBe(repositoryFailure);
@@ -210,19 +209,19 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const initial = yield* registry.getMessagingClient(uid);
+        const initial = yield* registry.getMessagingClient(channelId);
         yield* initial.pushMessage("U123", [{ type: "text", text: "initial" }]);
 
         channel = makeMessagingChannel("token-2");
-        const cached = yield* registry.getMessagingClient(uid);
+        const cached = yield* registry.getMessagingClient(channelId);
         yield* cached.pushMessage("U123", [{ type: "text", text: "cached" }]);
 
-        yield* registry.invalidateChannel(uid);
-        const rotated = yield* registry.getMessagingClient(uid);
+        yield* registry.invalidateChannel(channelId);
+        const rotated = yield* registry.getMessagingClient(channelId);
         yield* rotated.pushMessage("U123", [{ type: "text", text: "rotated" }]);
 
         yield* registry.invalidateAll;
-        yield* registry.getMessagingClient(uid);
+        yield* registry.getMessagingClient(channelId);
       }),
       channelRepository,
       liffRepository,
@@ -256,17 +255,17 @@ describe("LineClientRegistry", () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        yield* registry.getMessagingClient(uid);
+        yield* registry.getMessagingClient(channelId);
         yield* TestClock.adjust("2 minutes");
-        yield* registry.getMessagingClient(uid);
+        yield* registry.getMessagingClient(channelId);
 
         channel = Option.none();
-        yield* registry.invalidateChannel(uid);
-        yield* Effect.exit(registry.getMessagingClient(uid));
+        yield* registry.invalidateChannel(channelId);
+        yield* Effect.exit(registry.getMessagingClient(channelId));
         channel = Option.some(makeMessagingChannel("token-2"));
-        yield* Effect.exit(registry.getMessagingClient(uid));
+        yield* Effect.exit(registry.getMessagingClient(channelId));
         yield* TestClock.adjust("6 seconds");
-        yield* registry.getMessagingClient(uid);
+        yield* registry.getMessagingClient(channelId);
       }).pipe(
         Effect.provide(
           Layer.mergeAll(
@@ -333,7 +332,7 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const synced = yield* registry.syncBotProfile(uid);
+        const synced = yield* registry.syncBotProfile(channelId);
         expect(synced.displayName).toBe("Synced Bot");
       }),
       channelRepository,
@@ -389,7 +388,7 @@ describe("LineClientRegistry", () => {
     await run(
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
-        const synced = yield* registry.syncBotProfile(uid);
+        const synced = yield* registry.syncBotProfile(channelId);
         expect(synced.pictureUrl).toBeNull();
       }),
       channelRepository,

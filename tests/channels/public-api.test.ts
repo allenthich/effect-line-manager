@@ -67,7 +67,6 @@ const makeChannelRepository = (
 ): LineChannelRepositoryService => ({
   createChannel: () => Effect.die("unused"),
   updateChannel: () => Effect.die("unused"),
-  findChannelByUid: () => Effect.succeed(Option.none()),
   findChannelByLineChannelId: () => Effect.succeed(Option.none()),
   findChannelByBotUserId: () => Effect.succeed(Option.none()),
   listChannelsByProvider: () => Effect.die("unused"),
@@ -168,24 +167,6 @@ describe("domain-specific channel public API", () => {
     expect(LineLoginChannels.Service).toBe(LineLoginChannelService);
   });
 
-  test("LineMessagingChannelRepository does not expose uid-based getters", async () => {
-    const service = await runRepositoryEffect(
-      Effect.service(LineMessagingChannelRepository),
-      makeChannelRepository(),
-    );
-
-    expect("findByUid" in service).toBe(false);
-  });
-
-  test("LineLoginChannelRepository does not expose uid-based getters", async () => {
-    const service = await runRepositoryEffect(
-      Effect.service(LineLoginChannelRepository),
-      makeChannelRepository(),
-    );
-
-    expect("findByUid" in service).toBe(false);
-  });
-
   test("LineLoginChannelRepository.findByLineChannelId narrows shared lookups to login channels", async () => {
     const repository = makeChannelRepository({
       findChannelByLineChannelId: (id) => {
@@ -253,7 +234,7 @@ describe("domain-specific channel public API", () => {
       makeRegistry(invalidated),
     );
 
-    expect(invalidated).toEqual([messagingUid]);
+    expect(invalidated).toEqual([messagingLineChannelId]);
   });
 
   test("LineLoginChannelService.getByLineChannelId returns the login channel", async () => {

@@ -9,6 +9,7 @@ import {
 } from "../provider/domain.ts";
 import {
   LineChannelUid,
+  LineLoginChannelId,
   ChannelView,
   ChannelListPage,
   CreateChannelInput,
@@ -46,7 +47,7 @@ const ProviderIdQuery = Schema.Struct({
   providerId: Schema.optional(LineProviderId),
 });
 const ChannelIdQuery = Schema.Struct({
-  channelId: Schema.optional(LineChannelUid),
+  channelId: Schema.optional(LineLoginChannelId),
 });
 
 //#endregion

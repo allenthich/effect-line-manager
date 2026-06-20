@@ -44,7 +44,6 @@ const makeChannelRepository = (
   ({
     createChannel: () => Effect.succeed(makeChannel()),
     updateChannel: () => Effect.succeed(makeChannel()),
-    findChannelByUid: () => Effect.succeed(Option.some(makeChannel())),
     findChannelByLineChannelId: () => Effect.die("unused"),
     findChannelByBotUserId: () => Effect.die("unused"),
     listChannelsByProvider: () => Effect.die("unused"),
@@ -135,7 +134,7 @@ describe("LineChannelManagement", () => {
 
     expect(Redacted.value(observedInput.channelSecret)).toBe("channel-secret");
     expect(Redacted.value(observedInput.channelAccessToken)).toBe("channel-token");
-    expect(invalidated).toEqual(["record-1"]);
+    expect(invalidated).toEqual(["1234567890"]);
     expect(result.id).toBe("record-1");
   });
 
@@ -161,7 +160,7 @@ describe("LineChannelManagement", () => {
     expect(observedInput).toEqual({ name: "Renamed" });
     expect(observedInput).not.toHaveProperty("channelSecret");
     expect(observedInput).not.toHaveProperty("channelAccessToken");
-    expect(invalidated).toEqual(["record-1"]);
+    expect(invalidated).toEqual(["1234567890"]);
   });
 
   test("clears all cached descendants after deleting a channel", async () => {

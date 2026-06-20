@@ -26,9 +26,6 @@ export class InternalLineChannelStore extends Context.Service<
       uid: LineChannelUid,
       input: UpdateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelNotFoundError | LineRepositoryError>;
-    readonly findByUid: (
-      uid: LineChannelUid,
-    ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
     readonly findByLineChannelId: (
       channelId: LineChannelId,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;

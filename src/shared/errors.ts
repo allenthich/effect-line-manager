@@ -11,7 +11,6 @@ export const LineRepositoryOperation = Schema.Literals([
   // Channels
   "createChannel",
   "updateChannel",
-  "findChannelByUid",
   "findChannelByLineChannelId",
   "findChannelByBotUserId",
   "listChannelsByProvider",

@@ -45,7 +45,6 @@ const makeChannelRepository = (): LineChannelRepositoryService =>
   ({
     createChannel: () => Effect.die("unused"),
     updateChannel: () => Effect.die("unused"),
-    findChannelByUid: () => Effect.succeedNone,
     findChannelByLineChannelId: () => Effect.succeedNone,
     findChannelByBotUserId: () => Effect.succeedNone,
     listChannelsByProvider: () => Effect.succeed([channel1, channel2]),

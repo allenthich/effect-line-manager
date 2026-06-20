@@ -25,9 +25,6 @@ export class LineChannelRepository extends Context.Service<
       id: LineChannelUid,
       input: UpdateChannelRecordInput,
     ) => Effect.Effect<LineChannel, ChannelNotFoundError | LineRepositoryError>;
-    readonly findChannelByUid: (
-      id: LineChannelUid,
-    ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
     readonly findChannelByLineChannelId: (
       channelId: LineChannelId,
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;

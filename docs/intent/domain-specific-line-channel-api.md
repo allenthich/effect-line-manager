@@ -60,7 +60,6 @@ Do not re-export the generic `channel` module from the package root.
 - `LineLiffRecordId` is removed in favor of `LineLiffUid`.
 - Error payload fields named `recordId` are removed in favor of `uid`.
 - The root export `./channel/index.ts` is no longer public.
-- Generic repository lookups still use `findChannelByUid(...)` and `findChannelByLineChannelId(...)` internally.
 
 ## Migration Guide
 

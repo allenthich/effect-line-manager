@@ -6,6 +6,7 @@ import {
   type UpdateChannelInput,
   type LineChannel,
   LineChannelUid,
+  LineChannelId,
   type ChannelView,
   ChannelListPage,
 } from "./domain.ts";
@@ -20,7 +21,7 @@ export interface LineChannelManagementService {
     providerId: LineProviderId | undefined,
   ) => Effect.Effect<ChannelListPage, LinePersistenceError>;
   readonly getChannel: (
-    id: LineChannelUid,
+    id: LineChannelId,
   ) => Effect.Effect<ChannelView, ChannelNotFoundError | LinePersistenceError>;
   readonly findChannelByBotUserId: (
     botUserId: string,
@@ -160,11 +161,11 @@ export const makeLineChannelManagement = Effect.gen(function* () {
         ),
     ),
 
-    getChannel: Effect.fn("LineChannelManagement.getChannel")((id: LineChannelUid) =>
+    getChannel: Effect.fn("LineChannelManagement.getChannel")((id: LineChannelId) =>
       Effect.gen(function* () {
-        const option = yield* repository.findByUid(id);
+        const option = yield* repository.findByLineChannelId(id);
         if (Option.isNone(option)) {
-          return yield* new ChannelNotFoundError({ uid: id });
+          return yield* new ChannelNotFoundError({ uid: id as unknown as LineChannelUid });
         }
         return toChannelView(option.value);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -183,7 +184,9 @@ export const makeLineChannelManagement = Effect.gen(function* () {
     createChannel: Effect.fn("LineChannelManagement.createChannel")((input: CreateChannelInput) =>
       Effect.gen(function* () {
         const record = yield* repository.create(toCreateChannelRecordInput(input));
-        yield* registry.invalidateChannel(record.id);
+        yield* registry.invalidateChannel(
+          Schema.decodeUnknownSync(LineChannelId)(record.channelId),
+        );
         return toChannelView(record);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
@@ -192,7 +195,9 @@ export const makeLineChannelManagement = Effect.gen(function* () {
       (id: LineChannelUid, input: UpdateChannelInput) =>
         Effect.gen(function* () {
           const record = yield* repository.update(id, toUpdateChannelRecordInput(input));
-          yield* registry.invalidateChannel(id);
+          yield* registry.invalidateChannel(
+            Schema.decodeUnknownSync(LineChannelId)(record.channelId),
+          );
           return toChannelView(record);
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),

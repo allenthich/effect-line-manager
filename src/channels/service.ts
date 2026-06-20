@@ -80,7 +80,7 @@ export const makeLineMessagingChannelService = Effect.gen(function* () {
         Effect.gen(function* () {
           const channel = yield* getChannelByLineChannelId(id);
           return yield* registry
-            .getMessagingClient(channel.id)
+            .getMessagingClient(channel.channelId)
             .pipe(Effect.catchTag("LineRepositoryError", persistenceFailure));
         }),
     ),
@@ -96,7 +96,7 @@ export const makeLineMessagingChannelService = Effect.gen(function* () {
     )((id: LineMessagingChannelId) =>
       Effect.gen(function* () {
         const channel = yield* getChannelByLineChannelId(id);
-        yield* registry.invalidateChannel(channel.id);
+        yield* registry.invalidateChannel(channel.channelId);
       }),
     ),
   });
