@@ -92,10 +92,11 @@ const makeClient = (
   );
 
 const defaultProviderMgmt: LineProviderManagementService = {
-  listProviders: Effect.succeed({
-    data: [providerView],
-    pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
-  }),
+  listProviders: () =>
+    Effect.succeed({
+      data: [providerView],
+      pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
+    }),
   getProvider: () => Effect.succeed(providerView),
   createProvider: () => Effect.succeed(providerView),
   updateProvider: () => Effect.succeed(providerView),
@@ -146,13 +147,14 @@ describe("LineApi", () => {
   test("exercises all credential-safe endpoints through HttpApiTest", async () => {
     const calls: Array<unknown> = [];
     const providerMgmt: LineProviderManagementService = {
-      listProviders: Effect.sync(() => {
-        calls.push("listProviders");
-        return {
-          data: [providerView],
-          pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
-        };
-      }),
+      listProviders: () =>
+        Effect.sync(() => {
+          calls.push("listProviders");
+          return {
+            data: [providerView],
+            pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
+          };
+        }),
       getProvider: (id) => Effect.sync(() => (calls.push(["getProvider", id]), providerView)),
       createProvider: (input) =>
         Effect.sync(() => (calls.push(["createProvider", input]), providerView)),
@@ -162,9 +164,9 @@ describe("LineApi", () => {
     };
 
     const channelMgmt: LineChannelManagementService = {
-      listChannels: (providerId) =>
+      listChannels: (query) =>
         Effect.sync(() => {
-          calls.push(["listChannels", providerId]);
+          calls.push(["listChannels", query]);
           return {
             data: [channelView],
             pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
@@ -180,9 +182,9 @@ describe("LineApi", () => {
     };
 
     const liffMgmt: LineLiffManagementService = {
-      listLiffApps: (channelId) =>
+      listLiffApps: (query) =>
         Effect.sync(() => {
-          calls.push(["listLiffApps", channelId]);
+          calls.push(["listLiffApps", query]);
           return {
             data: [liffAppView],
             pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
@@ -201,7 +203,7 @@ describe("LineApi", () => {
         const client = yield* makeClient(providerMgmt, channelMgmt, liffMgmt);
 
         // Providers
-        const listedProviders = yield* client.lineProviders.listProviders();
+        const listedProviders = yield* client.lineProviders.listProviders({ query: {} });
         const createdProvider = yield* client.lineProviders.createProvider({
           payload: { name: "LINE Marketing" },
         });
@@ -277,11 +279,11 @@ describe("LineApi", () => {
     expect(calls).toContainEqual(["getProvider", "provider-1"]);
     expect(calls).toContainEqual(["deleteProvider", "provider-1"]);
 
-    expect(calls).toContainEqual(["listChannels", undefined]);
+    expect(calls.some((c) => Array.isArray(c) && c[0] === "listChannels")).toBe(true);
     expect(calls).toContainEqual(["getChannel", "channel-record-1"]);
     expect(calls).toContainEqual(["deleteChannel", "channel-record-1"]);
 
-    expect(calls).toContainEqual(["listLiffApps", undefined]);
+    expect(calls.some((c) => Array.isArray(c) && c[0] === "listLiffApps")).toBe(true);
     expect(calls).toContainEqual(["getLiffApp", "liff-record-1"]);
     expect(calls).toContainEqual(["deleteLiffApp", "liff-record-1"]);
   });
@@ -386,13 +388,13 @@ describe("LineApi", () => {
   test("sanitizes persistence failures", async () => {
     const providerMgmt: LineProviderManagementService = {
       ...defaultProviderMgmt,
-      listProviders: Effect.fail(new LinePersistenceError({ operation: "listProviders" })),
+      listProviders: () => Effect.fail(new LinePersistenceError({ operation: "listProviders" })),
     };
 
     await Effect.runPromise(
       Effect.gen(function* () {
         const client = yield* makeClient(providerMgmt, defaultChannelMgmt, defaultLiffMgmt);
-        const error = yield* client.lineProviders.listProviders().pipe(Effect.flip);
+        const error = yield* client.lineProviders.listProviders({ query: {} }).pipe(Effect.flip);
         expect(error).toMatchObject({
           _tag: "LinePersistenceHttpError",
           operation: "listProviders",

@@ -1,5 +1,6 @@
 import { Context, type Effect, type Option } from "effect";
 import type { LineProviderId } from "../provider/domain.ts";
+import type { NormalizedPageQuery, PageResult } from "../shared/domain.ts";
 import type {
   CreateChannelRecordInput,
   LineChannel,
@@ -32,7 +33,8 @@ export class LineChannelRepository extends Context.Service<
     ) => Effect.Effect<Option.Option<LineChannel>, LineRepositoryError>;
     readonly listChannelsByProvider: (
       providerId: LineProviderId,
-    ) => Effect.Effect<ReadonlyArray<LineChannel>, LineRepositoryError>;
+      query: NormalizedPageQuery,
+    ) => Effect.Effect<PageResult<LineChannel>, LineRepositoryError>;
     readonly deleteChannel: (
       id: LineChannelId,
     ) => Effect.Effect<void, ChannelNotFoundError | LineRepositoryError>;

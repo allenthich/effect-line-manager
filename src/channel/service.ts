@@ -8,16 +8,23 @@ import {
   LineChannelId,
   type ChannelView,
   ChannelListPage,
+  type ListChannelsQuery,
 } from "./domain.ts";
 import { ChannelNotFoundError, ChannelDuplicateError } from "./errors.ts";
 import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import {
+  normalizePageQuery,
+  paginate,
+  type NormalizedPageQuery,
+  type PageResult,
+} from "../shared/domain.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { InternalLineChannelStore } from "../internal/channel-store.ts";
 
 /** Service interface for LINE channel management operations. */
 export interface LineChannelManagementService {
   readonly listChannels: (
-    providerId: LineProviderId | undefined,
+    query: ListChannelsQuery,
   ) => Effect.Effect<ChannelListPage, LinePersistenceError>;
   readonly getChannel: (
     id: LineChannelId,
@@ -79,15 +86,10 @@ export const toChannelView = (channel: LineChannel): ChannelView => {
   };
 };
 
-/** Converts an array of domain channel entities to a paginated list view. */
-export const toChannelListPage = (channels: ReadonlyArray<LineChannel>): ChannelListPage => ({
-  data: channels.map(toChannelView),
-  pagination: {
-    page: 1,
-    pageSize: channels.length,
-    totalItems: channels.length,
-    totalPages: channels.length === 0 ? 0 : 1,
-  },
+/** Converts a paginated page of domain channel entities to a list page of views. */
+export const toChannelListPage = (page: PageResult<LineChannel>): ChannelListPage => ({
+  data: page.data.map(toChannelView),
+  pagination: page.pagination,
 });
 
 const toCreateChannelRecordInput = (input: CreateChannelInput) => {
@@ -142,23 +144,36 @@ export const makeLineChannelManagement = Effect.gen(function* () {
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 
-  const listAllChannels = () =>
+  const listAllChannels = (query: NormalizedPageQuery) =>
     Effect.gen(function* () {
-      const providers = yield* providerRepository.listProviders;
-      const channelArrays = yield* Effect.all(
-        providers.map((p) => repository.listByProvider(p.id)),
+      // Page through every provider's channels without pagination, so we can
+      // re-paginate the combined list. Providers are typically few (single
+      // digits), but each may own many channels — a real backend should
+      // provide a single `listAllChannels(query)` repository method.
+      const unboundedQuery: NormalizedPageQuery = { page: 1, pageSize: 100 };
+      const providers = yield* providerRepository.listProviders(unboundedQuery);
+      const channelPages = yield* Effect.all(
+        providers.data.map((p) => repository.listByProvider(p.id, unboundedQuery)),
       );
-      return channelArrays.flat();
+      const allChannels = channelPages.flatMap((p) => p.data);
+      return paginate(allChannels, query);
     });
 
   return LineChannelManagement.of({
-    listChannels: Effect.fn("LineChannelManagement.listChannels")(
-      (providerId: LineProviderId | undefined) =>
-        (providerId !== undefined ? repository.listByProvider(providerId) : listAllChannels()).pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.map(toChannelListPage),
-        ),
-    ),
+    listChannels: Effect.fn("LineChannelManagement.listChannels")((query: ListChannelsQuery) => {
+      const normalized = normalizePageQuery(query);
+      const providerId = query.providerId
+        ? Schema.decodeUnknownSync(LineProviderId)(query.providerId)
+        : undefined;
+      return (
+        providerId !== undefined
+          ? repository.listByProvider(providerId, normalized)
+          : listAllChannels(normalized)
+      ).pipe(
+        Effect.catchTag("LineRepositoryError", persistenceFailure),
+        Effect.map(toChannelListPage),
+      );
+    }),
 
     getChannel: Effect.fn("LineChannelManagement.getChannel")((id: LineChannelId) =>
       Effect.gen(function* () {

@@ -4,6 +4,9 @@ import type {
   ChannelView,
   LiffAppView,
 } from "../src/web/index.ts";
+import { paginate, normalizePageQuery, type PageQuery } from "../src/shared/domain.ts";
+import type { ListChannelsQuery } from "../src/channel/domain.ts";
+import type { ListLiffAppsQuery } from "../src/liff/domain.ts";
 
 export const createInMemoryLineAccountAdapter = (
   initialProviders: ProviderView[] = [],
@@ -20,16 +23,11 @@ export const createInMemoryLineAccountAdapter = (
 
   const copy = <T>(obj: T): T => ({ ...obj });
 
+  const paginateViews = <A>(items: A[], query?: PageQuery) =>
+    paginate(items, normalizePageQuery(query ?? {}));
+
   return {
-    listProviders: async () => ({
-      data: providers.map(copy),
-      pagination: {
-        page: 1,
-        pageSize: providers.length,
-        totalItems: providers.length,
-        totalPages: providers.length === 0 ? 0 : 1,
-      },
-    }),
+    listProviders: async (query) => paginateViews(providers, query),
     createProvider: async (input) => {
       const now = new Date();
       const provider: ProviderView = {
@@ -63,20 +61,12 @@ export const createInMemoryLineAccountAdapter = (
       }
     },
 
-    listChannels: async (providerId) => {
+    listChannels: async (query?: ListChannelsQuery) => {
       let filtered = channels;
-      if (providerId) {
-        filtered = filtered.filter((c) => c.providerId === providerId);
+      if (query?.providerId) {
+        filtered = filtered.filter((c) => c.providerId === query.providerId);
       }
-      return {
-        data: filtered.map(copy),
-        pagination: {
-          page: 1,
-          pageSize: filtered.length,
-          totalItems: filtered.length,
-          totalPages: filtered.length === 0 ? 0 : 1,
-        },
-      };
+      return paginateViews(filtered.map(copy), query);
     },
     getChannel: async (id) => {
       const channel = channels.find((c) => c.id === id);
@@ -146,20 +136,12 @@ export const createInMemoryLineAccountAdapter = (
       liffApps = liffApps.filter((l) => l.loginChannelId !== id);
     },
 
-    listLiffApps: async (channelId) => {
+    listLiffApps: async (query?: ListLiffAppsQuery) => {
       let filtered = liffApps;
-      if (channelId) {
-        filtered = filtered.filter((l) => l.loginChannelId === channelId);
+      if (query?.channelId) {
+        filtered = filtered.filter((l) => l.loginChannelId === query.channelId);
       }
-      return {
-        data: filtered.map(copy),
-        pagination: {
-          page: 1,
-          pageSize: filtered.length,
-          totalItems: filtered.length,
-          totalPages: filtered.length === 0 ? 0 : 1,
-        },
-      };
+      return paginateViews(filtered.map(copy), query);
     },
     getLiffApp: async (id) => {
       const liff = liffApps.find((l) => l.id === id);

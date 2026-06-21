@@ -15,7 +15,7 @@ import {
 import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 
 const unusedProviderMgmt: LineProviderManagementService = {
-  listProviders: Effect.die("unused"),
+  listProviders: () => Effect.die("unused"),
   getProvider: () => Effect.die("unused"),
   createProvider: () => Effect.die("unused"),
   updateProvider: () => Effect.die("unused"),
@@ -55,15 +55,16 @@ const provider = {
 
 const providerMgmt: LineProviderManagementService = {
   ...unusedProviderMgmt,
-  listProviders: Effect.succeed({
-    data: [provider],
-    pagination: {
-      page: 1,
-      pageSize: 1,
-      totalItems: 1,
-      totalPages: 1,
-    },
-  }),
+  listProviders: () =>
+    Effect.succeed({
+      data: [provider],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        totalItems: 1,
+        totalPages: 1,
+      },
+    }),
   createProvider: (input) => Effect.succeed({ ...provider, name: input.name }),
 };
 

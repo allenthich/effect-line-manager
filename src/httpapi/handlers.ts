@@ -14,11 +14,12 @@ import {
   ProviderDuplicateHttpError,
   ProviderNotFoundHttpError,
 } from "./errors.ts";
+import { LineRepositoryOperation } from "../shared/errors.ts";
 
 //#region Error Mapping Helpers
 
-const mapPersistenceError = (error: { operation: string }) =>
-  Effect.fail(new LinePersistenceHttpError({ operation: error.operation as any }));
+const mapPersistenceError = (error: { operation: LineRepositoryOperation }) =>
+  Effect.fail(new LinePersistenceHttpError({ operation: error.operation }));
 
 //#endregion
 
@@ -30,8 +31,8 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
     const management = yield* LineProviderManagement;
 
     return handlers
-      .handle("listProviders", () =>
-        management.listProviders.pipe(
+      .handle("listProviders", ({ query }) =>
+        management.listProviders(query).pipe(
           Effect.catchTags({
             LinePersistenceError: mapPersistenceError,
           }),
@@ -86,13 +87,13 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
     const management = yield* LineChannelManagement;
 
     return handlers
-      .handle("listChannels", ({ query }) => {
-        return management.listChannels(query.providerId).pipe(
+      .handle("listChannels", ({ query }) =>
+        management.listChannels(query).pipe(
           Effect.catchTags({
             LinePersistenceError: mapPersistenceError,
           }),
-        );
-      })
+        ),
+      )
       .handle("getChannel", ({ params }) =>
         management.getChannel(params.id).pipe(
           Effect.catchTags({
@@ -142,13 +143,13 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
     const management = yield* LineLiffManagement;
 
     return handlers
-      .handle("listLiffApps", ({ query }) => {
-        return management.listLiffApps(query.channelId).pipe(
+      .handle("listLiffApps", ({ query }) =>
+        management.listLiffApps(query).pipe(
           Effect.catchTags({
             LinePersistenceError: mapPersistenceError,
           }),
-        );
-      })
+        ),
+      )
       .handle("getLiffApp", ({ params }) =>
         management.getLiffApp(params.id).pipe(
           Effect.catchTags({

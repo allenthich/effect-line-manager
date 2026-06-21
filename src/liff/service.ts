@@ -11,15 +11,22 @@ import {
   LineLiffId,
   type LiffAppView,
   LiffAppListPage,
+  type ListLiffAppsQuery,
 } from "./domain.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "./errors.ts";
 import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import {
+  normalizePageQuery,
+  paginate,
+  type NormalizedPageQuery,
+  type PageResult,
+} from "../shared/domain.ts";
 import { LineLiffRepository } from "./repository.ts";
 
 /** Management service interface for LIFF application operations. */
 export interface LineLiffManagementService {
   readonly listLiffApps: (
-    channelId: LineLoginChannelId | undefined,
+    query: ListLiffAppsQuery,
   ) => Effect.Effect<LiffAppListPage, LinePersistenceError>;
   readonly getLiffApp: (
     id: LineLiffId,
@@ -60,15 +67,10 @@ export const toLiffAppView = (app: LineLiffApp): LiffAppView => ({
   updatedAt: app.updatedAt,
 });
 
-/** Converts a list of LIFF app entities to a paginated list page. */
-export const toLiffAppListPage = (apps: ReadonlyArray<LineLiffApp>): LiffAppListPage => ({
-  data: apps.map(toLiffAppView),
-  pagination: {
-    page: 1,
-    pageSize: apps.length,
-    totalItems: apps.length,
-    totalPages: apps.length === 0 ? 0 : 1,
-  },
+/** Converts a paginated page of LIFF app entities to a list page of views. */
+export const toLiffAppListPage = (page: PageResult<LineLiffApp>): LiffAppListPage => ({
+  data: page.data.map(toLiffAppView),
+  pagination: page.pagination,
 });
 
 const toCreateLiffAppRecordInput = (
@@ -105,31 +107,37 @@ export const makeLineLiffManagement = Effect.gen(function* () {
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 
-  const listAllLiffApps = () =>
+  const listAllLiffApps = (query: NormalizedPageQuery) =>
     Effect.gen(function* () {
-      const providers = yield* providerRepository.listProviders;
+      // Page through every provider and its login channels without pagination,
+      // so we can re-paginate the combined LIFF list. A real backend should
+      // expose a single `listAllLiffApps(query)` repository method.
+      const unboundedQuery: NormalizedPageQuery = { page: 1, pageSize: 100 };
+      const providers = yield* providerRepository.listProviders(unboundedQuery);
       const allChannels = yield* Effect.all(
-        providers.map((p) => channelRepository.listByProvider(p.id)),
+        providers.data.map((p) => channelRepository.listByProvider(p.id, unboundedQuery)),
       );
-      const flatChannels = allChannels.flat();
+      const flatChannels = allChannels.flatMap((p) => p.data);
       const loginChannels = flatChannels.filter(isLoginChannel);
       const liffArrays = yield* Effect.all(
-        loginChannels.map((c) => repository.listLiffAppsByChannel(c.channelId)),
+        loginChannels.map((c) => repository.listLiffAppsByChannel(c.channelId, unboundedQuery)),
       );
-      return liffArrays.flat();
+      const allApps = liffArrays.flatMap((p) => p.data);
+      return paginate(allApps, query);
     });
 
   return LineLiffManagement.of({
-    listLiffApps: Effect.fn("LineLiffManagement.listLiffApps")(
-      (channelId: LineLoginChannelId | undefined) =>
-        (channelId !== undefined
-          ? repository.listLiffAppsByChannel(channelId)
-          : listAllLiffApps()
-        ).pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.map(toLiffAppListPage),
-        ),
-    ),
+    listLiffApps: Effect.fn("LineLiffManagement.listLiffApps")((query: ListLiffAppsQuery) => {
+      const normalized = normalizePageQuery(query);
+      return (
+        query.channelId !== undefined
+          ? repository.listLiffAppsByChannel(query.channelId, normalized)
+          : listAllLiffApps(normalized)
+      ).pipe(
+        Effect.catchTag("LineRepositoryError", persistenceFailure),
+        Effect.map(toLiffAppListPage),
+      );
+    }),
 
     getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffId) =>
       Effect.gen(function* () {

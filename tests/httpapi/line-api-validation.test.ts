@@ -47,7 +47,7 @@ const emptyLiffPage: LiffAppListPage = {
 };
 
 const defaultProviderMgmt: LineProviderManagementService = {
-  listProviders: Effect.succeed(emptyProviderPage),
+  listProviders: () => Effect.succeed(emptyProviderPage),
   getProvider: () => Effect.die("unused"),
   createProvider: () => Effect.die("unused"),
   updateProvider: () => Effect.die("unused"),
@@ -93,9 +93,9 @@ describe("LineApi query validation", () => {
       defaultProviderMgmt,
       {
         ...defaultChannelMgmt,
-        listChannels: (providerId) =>
+        listChannels: (query) =>
           Effect.sync(() => {
-            calls.push(providerId);
+            calls.push(query);
             return emptyChannelPage;
           }),
       },
@@ -112,9 +112,9 @@ describe("LineApi query validation", () => {
     const calls: Array<unknown> = [];
     const web = makeWebHandler(defaultProviderMgmt, defaultChannelMgmt, {
       ...defaultLiffMgmt,
-      listLiffApps: (channelId) =>
+      listLiffApps: (query) =>
         Effect.sync(() => {
-          calls.push(channelId);
+          calls.push(query);
           return emptyLiffPage;
         }),
     });

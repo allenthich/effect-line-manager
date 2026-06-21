@@ -1,4 +1,3 @@
-import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 import {
   LineProviderId,
@@ -6,14 +5,15 @@ import {
   ProviderListPage,
   CreateProviderInput,
   UpdateProviderInput,
+  ListProvidersQuery,
 } from "../provider/domain.ts";
 import {
   LineChannelId,
-  LineLoginChannelId,
   ChannelView,
   ChannelListPage,
   CreateChannelInput,
   UpdateChannelInput,
+  ListChannelsQuery,
 } from "../channel/domain.ts";
 import {
   LineLiffId,
@@ -21,6 +21,7 @@ import {
   LiffAppListPage,
   CreateLiffAppInput,
   UpdateLiffAppInput,
+  ListLiffAppsQuery,
 } from "../liff/domain.ts";
 import {
   ChannelDuplicateHttpError,
@@ -41,20 +42,10 @@ const CreatedLiffAppView = LiffAppView.pipe(HttpApiSchema.status(201));
 
 //#endregion
 
-//#region Query parameter schemas
-
-const ProviderIdQuery = Schema.Struct({
-  providerId: Schema.optional(LineProviderId),
-});
-const ChannelIdQuery = Schema.Struct({
-  channelId: Schema.optional(LineLoginChannelId),
-});
-
-//#endregion
-
 //#region Providers group
 
 const listProviders = HttpApiEndpoint.get("listProviders", "/line-providers", {
+  query: ListProvidersQuery,
   success: ProviderListPage,
   error: LinePersistenceHttpError,
 });
@@ -97,7 +88,7 @@ const providersGroup = HttpApiGroup.make("lineProviders").add(
 //#region Channels group
 
 const listChannels = HttpApiEndpoint.get("listChannels", "/line-channels", {
-  query: ProviderIdQuery,
+  query: ListChannelsQuery,
   success: ChannelListPage,
   error: LinePersistenceHttpError,
 });
@@ -140,7 +131,7 @@ const channelsGroup = HttpApiGroup.make("lineChannels").add(
 //#region LIFF Apps group
 
 const listLiffApps = HttpApiEndpoint.get("listLiffApps", "/line-liff-apps", {
-  query: ChannelIdQuery,
+  query: ListLiffAppsQuery,
   success: LiffAppListPage,
   error: LinePersistenceHttpError,
 });

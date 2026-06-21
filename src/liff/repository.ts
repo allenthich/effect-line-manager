@@ -1,5 +1,6 @@
 import { Context, type Effect, type Option } from "effect";
 import type { LineLoginChannelId } from "../channel/domain.ts";
+import type { NormalizedPageQuery, PageResult } from "../shared/domain.ts";
 import type {
   CreateLiffAppRecordInput,
   LineLiffApp,
@@ -28,7 +29,8 @@ export class LineLiffRepository extends Context.Service<
 
     readonly listLiffAppsByChannel: (
       channelId: LineLoginChannelId,
-    ) => Effect.Effect<ReadonlyArray<LineLiffApp>, LineRepositoryError>;
+      query: NormalizedPageQuery,
+    ) => Effect.Effect<PageResult<LineLiffApp>, LineRepositoryError>;
 
     readonly deleteLiffApp: (
       id: LineLiffId,

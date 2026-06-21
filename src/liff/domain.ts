@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { LineLoginChannelId } from "../channel/domain.ts";
-import { NonEmptyTrimmedString, Pagination } from "../shared/domain.ts";
+import { NonEmptyTrimmedString, Pagination, PageQuery } from "../shared/domain.ts";
 
 /** Branded type for a LINE LIFF application ID. */
 export const LineLiffId = NonEmptyTrimmedString.pipe(
@@ -83,6 +83,14 @@ export const UpdateLiffAppInput = Schema.Struct({
 });
 /** {@link UpdateLiffAppInput} type alias. */
 export type UpdateLiffAppInput = typeof UpdateLiffAppInput.Type;
+
+/** Query parameters for listing LIFF apps — pagination plus optional channel filter. */
+export const ListLiffAppsQuery = Schema.Struct({
+  ...PageQuery.fields,
+  channelId: Schema.optional(LineLoginChannelId),
+});
+/** {@link ListLiffAppsQuery} type alias. */
+export type ListLiffAppsQuery = typeof ListLiffAppsQuery.Type;
 
 /** Public view schema for a LIFF application. */
 export const LiffAppView = Schema.Struct({

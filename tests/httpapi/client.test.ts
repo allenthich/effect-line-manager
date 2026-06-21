@@ -49,7 +49,7 @@ describe("generated LINE HTTP client", () => {
         const client = yield* makeLineClient({
           baseUrl: "https://example.test/api/admin",
         });
-        yield* client.lineProviders.listProviders();
+        yield* client.lineProviders.listProviders({ query: {} });
         yield* client.lineProviders.createProvider({
           payload: {
             name: "Primary Provider",
@@ -75,9 +75,9 @@ describe("generated LINE HTTP client", () => {
     const calls: unknown[] = [];
     const fakeClient = {
       lineProviders: {
-        listProviders: () =>
+        listProviders: ({ query }: { readonly query: unknown }) =>
           Effect.sync(() => {
-            calls.push("listProviders");
+            calls.push(["listProviders", query]);
             return {
               data: [providerJson],
               pagination: {
@@ -111,7 +111,7 @@ describe("generated LINE HTTP client", () => {
     await adapter.deleteProvider("record-1");
 
     expect(calls).toEqual([
-      "listProviders",
+      ["listProviders", {}],
       [
         "createProvider",
         {

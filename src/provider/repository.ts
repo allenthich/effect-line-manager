@@ -1,4 +1,5 @@
 import { Context, type Effect, type Option } from "effect";
+import type { NormalizedPageQuery, PageResult } from "../shared/domain.ts";
 import type {
   CreateProviderRecordInput,
   LineProvider,
@@ -25,7 +26,9 @@ export class LineProviderRepository extends Context.Service<
       id: LineProviderId,
     ) => Effect.Effect<Option.Option<LineProvider>, LineRepositoryError>;
 
-    readonly listProviders: Effect.Effect<ReadonlyArray<LineProvider>, LineRepositoryError>;
+    readonly listProviders: (
+      query: NormalizedPageQuery,
+    ) => Effect.Effect<PageResult<LineProvider>, LineRepositoryError>;
 
     readonly deleteProvider: (
       id: LineProviderId,

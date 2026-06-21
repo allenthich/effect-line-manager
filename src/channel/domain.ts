@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { LineProviderId } from "../provider/domain.ts";
-import { NonEmptyTrimmedString, LineCredential, Pagination } from "../shared/domain.ts";
+import { NonEmptyTrimmedString, LineCredential, Pagination, PageQuery } from "../shared/domain.ts";
 
 /** Branded type for the LINE Messaging API channel ID. */
 export const LineChannelId = NonEmptyTrimmedString.pipe(
@@ -138,6 +138,14 @@ export const UpdateChannelInput = Schema.Struct({
 });
 /** {@link UpdateChannelInput} type alias. */
 export type UpdateChannelInput = typeof UpdateChannelInput.Type;
+
+/** Query parameters for listing channels — pagination plus optional provider filter. */
+export const ListChannelsQuery = Schema.Struct({
+  ...PageQuery.fields,
+  providerId: Schema.optional(NonEmptyTrimmedString),
+});
+/** {@link ListChannelsQuery} type alias. */
+export type ListChannelsQuery = typeof ListChannelsQuery.Type;
 
 /** Public-facing view of a Messaging API channel. */
 export const MessagingChannelView = Schema.Struct({

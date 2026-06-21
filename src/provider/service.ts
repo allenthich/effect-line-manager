@@ -6,15 +6,19 @@ import {
   LineProviderId,
   type ProviderView,
   ProviderListPage,
+  type ListProvidersQuery,
 } from "./domain.ts";
 import { LineProviderNotFoundError, LineProviderDuplicateError } from "./errors.ts";
 import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import { normalizePageQuery, type PageQuery, type PageResult } from "../shared/domain.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "./repository.ts";
 
 /** Service interface for LINE provider management operations. */
 export interface LineProviderManagementService {
-  readonly listProviders: Effect.Effect<ProviderListPage, LinePersistenceError>;
+  readonly listProviders: (
+    query: ListProvidersQuery,
+  ) => Effect.Effect<ProviderListPage, LinePersistenceError>;
   readonly getProvider: (
     id: LineProviderId,
   ) => Effect.Effect<ProviderView, LineProviderNotFoundError | LinePersistenceError>;
@@ -48,15 +52,10 @@ export const toProviderView = (provider: LineProvider): ProviderView => ({
   updatedAt: provider.updatedAt,
 });
 
-/** Converts an array of domain provider entities to a paginated list view. */
-export const toProviderListPage = (providers: ReadonlyArray<LineProvider>): ProviderListPage => ({
-  data: providers.map(toProviderView),
-  pagination: {
-    page: 1,
-    pageSize: providers.length,
-    totalItems: providers.length,
-    totalPages: providers.length === 0 ? 0 : 1,
-  },
+/** Converts a paginated page of domain provider entities to a list page of views. */
+export const toProviderListPage = (page: PageResult<LineProvider>): ProviderListPage => ({
+  data: page.data.map(toProviderView),
+  pagination: page.pagination,
 });
 
 const toCreateProviderRecordInput = (input: CreateProviderInput) => ({
@@ -77,10 +76,13 @@ export const makeLineProviderManagement = Effect.gen(function* () {
   const registry = yield* LineClientRegistry;
 
   return LineProviderManagement.of({
-    listProviders: repository.listProviders.pipe(
-      Effect.catchTag("LineRepositoryError", persistenceFailure),
-      Effect.map(toProviderListPage),
-      Effect.withSpan("LineProviderManagement.listProviders"),
+    listProviders: Effect.fn("LineProviderManagement.listProviders")((query: PageQuery) =>
+      repository
+        .listProviders(normalizePageQuery(query))
+        .pipe(
+          Effect.catchTag("LineRepositoryError", persistenceFailure),
+          Effect.map(toProviderListPage),
+        ),
     ),
 
     getProvider: Effect.fn("LineProviderManagement.getProvider")((id: LineProviderId) =>

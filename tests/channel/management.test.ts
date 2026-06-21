@@ -19,6 +19,7 @@ import {
   type LineChannelRepositoryService,
 } from "../../src/channel/repository.ts";
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
+import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
 const channelId = Schema.decodeUnknownSync(LineChannelId)("record-1");
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
@@ -46,14 +47,16 @@ const makeChannelRepository = (
     updateChannel: () => Effect.succeed(makeChannel()),
     findChannelByLineChannelId: () => Effect.die("unused"),
     findChannelByBotUserId: () => Effect.die("unused"),
-    listChannelsByProvider: () => Effect.die("unused"),
+    listChannelsByProvider: () =>
+      Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
     deleteChannel: () => Effect.void,
     ...overrides,
   }) as any;
 
 const makeProviderRepository = (): LineProviderRepositoryService =>
   ({
-    listProviders: Effect.succeed([]),
+    listProviders: () =>
+      Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
   }) as any;
 
 const makeRegistry = (invalidated: string[]): any =>
