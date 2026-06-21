@@ -804,12 +804,12 @@ export class LineAccountDetailPanel extends LitElement {
                           class="primary"
                           type="button"
                           style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
-                          @click=${() => this.#emitCreateLiff(channel.id)}
+                          @click=${() => this.#emitCreateLiff(channel.channelId)}
                         >
                           + Add LIFF App
                         </button>`}
                   </div>
-                  ${this.liffApps.filter((l) => l.loginChannelId === channel.id).length === 0
+                  ${this.liffApps.filter((l) => l.loginChannelId === channel.channelId).length === 0
                     ? html`<p
                         style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
                       >
@@ -838,7 +838,7 @@ export class LineAccountDetailPanel extends LitElement {
                           </thead>
                           <tbody>
                             ${this.liffApps
-                              .filter((l) => l.loginChannelId === channel.id)
+                              .filter((l) => l.loginChannelId === channel.channelId)
                               .map(
                                 (l) => html`
                                   <tr

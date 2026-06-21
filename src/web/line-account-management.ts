@@ -30,6 +30,15 @@ const eventOptions = <T>(detail: T): CustomEventInit<T> => ({
   detail,
 });
 
+const adapterEntityId = (
+  item: ProviderView | ChannelView | LiffAppView,
+  type: LineAccountFormType,
+): string => {
+  if (type === "channel") return (item as ChannelView).channelId;
+  if (type === "liff") return (item as LiffAppView).liffId;
+  return (item as ProviderView).id;
+};
+
 /** LitElement top-level management component that orchestrates provider, channel, and LIFF app CRUD operations via an adapter. */
 export class LineAccountManagement extends LitElement {
   static properties = {
@@ -419,7 +428,7 @@ export class LineAccountManagement extends LitElement {
       } else if (type === "channel") {
         const c = item as ChannelView;
         this.selectedProviderId = c.providerId;
-        this.selectedChannelId = c.id;
+        this.selectedChannelId = c.channelId;
         if (this.variant !== "split" && c.channelType === "login") {
           this.currentTab = "liff";
           this.selectedItemId = undefined;
@@ -428,7 +437,7 @@ export class LineAccountManagement extends LitElement {
         const l = item as LiffAppView;
         this.selectedLiffId = l.id;
         this.selectedChannelId = l.loginChannelId;
-        const parentChannel = this.channels.find((c) => c.id === l.loginChannelId);
+        const parentChannel = this.channels.find((c) => c.channelId === l.loginChannelId);
         if (parentChannel) {
           this.selectedProviderId = parentChannel.providerId;
         }
@@ -502,14 +511,14 @@ export class LineAccountManagement extends LitElement {
         if (liff) {
           this.selectedLiffId = liff.id;
           this.selectedChannelId = liff.loginChannelId;
-          const channel = this.channels.find((c) => c.id === liff.loginChannelId);
+          const channel = this.channels.find((c) => c.channelId === liff.loginChannelId);
           if (channel) {
             this.selectedProviderId = channel.providerId;
           }
         } else {
           const channel = this.channels.find((c) => c.id === id);
           if (channel) {
-            this.selectedChannelId = channel.id;
+            this.selectedChannelId = channel.channelId;
             this.selectedProviderId = channel.providerId;
             this.selectedLiffId = undefined;
           } else {
@@ -905,14 +914,14 @@ export class LineAccountManagement extends LitElement {
 
   #drillDownToChannel = (channel: ChannelView): void => {
     this.selectedProviderId = channel.providerId;
-    this.selectedChannelId = channel.id;
+    this.selectedChannelId = channel.channelId;
     this.selectedItemId = channel.id;
     this.currentTab = "channel";
   };
 
   #drillDownToLiff = (liff: LiffAppView): void => {
     this.selectedChannelId = liff.loginChannelId;
-    const parentChannel = this.channels.find((c) => c.id === liff.loginChannelId);
+    const parentChannel = this.channels.find((c) => c.channelId === liff.loginChannelId);
     if (parentChannel) {
       this.selectedProviderId = parentChannel.providerId;
     }
@@ -928,7 +937,7 @@ export class LineAccountManagement extends LitElement {
 
   #openCreateLiffForChannel = (channelId: string): void => {
     this.selectedChannelId = channelId;
-    const parentChannel = this.channels.find((c) => c.id === channelId);
+    const parentChannel = this.channels.find((c) => c.channelId === channelId);
     if (parentChannel) {
       this.selectedProviderId = parentChannel.providerId;
     }
@@ -1112,7 +1121,9 @@ export class LineAccountManagement extends LitElement {
     if (detail.mode === "create") {
       void this.#createItem(detail.type, detail.input);
     } else {
-      void this.#updateItem(detail.type, this.selectedItem!.id, detail.input);
+      const id =
+        this.selectedItem !== undefined ? adapterEntityId(this.selectedItem, detail.type) : "";
+      void this.#updateItem(detail.type, id, detail.input);
     }
   };
 
@@ -1122,7 +1133,7 @@ export class LineAccountManagement extends LitElement {
     this.createPending = true;
     this.mutationError = undefined;
     try {
-      let created;
+      let created: ProviderView | ChannelView | LiffAppView;
       if (type === "provider") {
         created = await adapter.createProvider(input);
       } else if (type === "channel") {
@@ -1156,7 +1167,7 @@ export class LineAccountManagement extends LitElement {
     this.editPending = true;
     this.mutationError = undefined;
     try {
-      let updated;
+      let updated: ProviderView | ChannelView | LiffAppView;
       if (type === "provider") {
         updated = await adapter.updateProvider(id, input);
       } else if (type === "channel") {
@@ -1190,7 +1201,7 @@ export class LineAccountManagement extends LitElement {
     this.itemErrors = itemErrors;
 
     try {
-      const updated = await adapter.syncChannel(channel.id);
+      const updated = await adapter.syncChannel(channel.channelId);
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
@@ -1218,7 +1229,7 @@ export class LineAccountManagement extends LitElement {
     this.itemErrors = itemErrors;
     try {
       const isActive = channel.channelType === "messaging" ? channel.isActive : false;
-      const updated = await adapter.updateChannel(channel.id, { isActive: !isActive });
+      const updated = await adapter.updateChannel(channel.channelId, { isActive: !isActive });
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
@@ -1249,9 +1260,9 @@ export class LineAccountManagement extends LitElement {
       if (type === "provider") {
         await adapter.deleteProvider(item.id);
       } else if (type === "channel") {
-        await adapter.deleteChannel(item.id);
+        await adapter.deleteChannel((item as ChannelView).channelId);
       } else {
-        await adapter.deleteLiffApp(item.id);
+        await adapter.deleteLiffApp((item as LiffAppView).liffId);
       }
 
       this.dialogKind = undefined;
@@ -1259,7 +1270,10 @@ export class LineAccountManagement extends LitElement {
       this.#showNotice(this.#resolvedMessages.deleteSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-deleted", eventOptions({ id: item.id, type })),
+        new CustomEvent(
+          "line-account-deleted",
+          eventOptions({ id: adapterEntityId(item, type), type }),
+        ),
       );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.deleteFailure;
@@ -1276,7 +1290,7 @@ export class LineAccountManagement extends LitElement {
       if (type === "provider") {
         const oldProviderId = this.selectedProviderId;
         this.selectedProviderId = "";
-        const channel = this.channels.find((c) => c.id === this.selectedChannelId);
+        const channel = this.channels.find((c) => c.channelId === this.selectedChannelId);
         if (channel && channel.providerId === oldProviderId) {
           this.selectedChannelId = "";
           this.selectedLiffId = undefined;
@@ -1303,12 +1317,12 @@ export class LineAccountManagement extends LitElement {
     } else if (type === "channel") {
       const c = item as ChannelView;
       this.selectedProviderId = c.providerId;
-      this.selectedChannelId = c.id;
+      this.selectedChannelId = c.channelId;
     } else if (type === "liff") {
       const l = item as LiffAppView;
       this.selectedLiffId = l.id;
       this.selectedChannelId = l.loginChannelId;
-      const parentChannel = this.channels.find((c) => c.id === l.loginChannelId);
+      const parentChannel = this.channels.find((c) => c.channelId === l.loginChannelId);
       if (parentChannel) {
         this.selectedProviderId = parentChannel.providerId;
       }
@@ -1345,7 +1359,7 @@ export class LineAccountManagement extends LitElement {
 
   #onHierarchyAddLiff = (event: CustomEvent<{ channelId: string }>): void => {
     this.selectedChannelId = event.detail.channelId;
-    const parentChannel = this.channels.find((c) => c.id === event.detail.channelId);
+    const parentChannel = this.channels.find((c) => c.channelId === event.detail.channelId);
     if (parentChannel) {
       this.selectedProviderId = parentChannel.providerId;
     }

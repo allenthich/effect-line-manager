@@ -340,7 +340,7 @@ export class LineAccountHierarchy extends LitElement {
       const liff = activeLiffId ? this.liffApps.find((l) => l.id === activeLiffId) : undefined;
       if (liff) {
         newExpandedChannels.add(liff.loginChannelId);
-        const channel = this.channels.find((c) => c.id === liff.loginChannelId);
+        const channel = this.channels.find((c) => c.channelId === liff.loginChannelId);
         if (channel) {
           newExpandedProviders.add(channel.providerId);
         }
@@ -349,7 +349,7 @@ export class LineAccountHierarchy extends LitElement {
       const activeChannelId =
         this.selectedChannelId || (activeLiffId ? undefined : this.selectedItemId);
       if (activeChannelId) {
-        const channel = this.channels.find((c) => c.id === activeChannelId);
+        const channel = this.channels.find((c) => c.channelId === activeChannelId);
         if (channel) {
           newExpandedProviders.add(channel.providerId);
         }
@@ -394,7 +394,7 @@ export class LineAccountHierarchy extends LitElement {
     if (type === "provider") {
       isAlreadySelected = this.selectedProviderId === item.id;
     } else if (type === "channel") {
-      isAlreadySelected = this.selectedChannelId === item.id;
+      isAlreadySelected = this.selectedChannelId === (item as ChannelView).channelId;
     } else if (type === "liff") {
       isAlreadySelected = this.selectedLiffId === item.id;
     }
@@ -419,7 +419,7 @@ export class LineAccountHierarchy extends LitElement {
       const treeChannels: TreeChannel[] = providerChannels.map((c) => ({
         item: c,
         liffApps: this.liffApps.filter(
-          (l) => c.channelType === "login" && l.loginChannelId === c.id,
+          (l) => c.channelType === "login" && l.loginChannelId === c.channelId,
         ),
         match: false,
       }));
@@ -591,7 +591,7 @@ export class LineAccountHierarchy extends LitElement {
     const initial = c.item.name.charAt(0).toUpperCase();
     const hasLiff = c.liffApps.length > 0;
     return html` <div
-      class="tree-node ${this.selectedChannelId === c.item.id ? "selected" : ""}"
+      class="tree-node ${this.selectedChannelId === c.item.channelId ? "selected" : ""}"
       part="node"
     >
       <div
@@ -635,7 +635,8 @@ export class LineAccountHierarchy extends LitElement {
                       class="node-btn primary"
                       type="button"
                       ?disabled=${isPending}
-                      @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.id })}
+                      @click=${() =>
+                        this.#emit("hierarchy-add-liff", { channelId: c.item.channelId })}
                       title="Add LIFF"
                     >
                       +
@@ -672,7 +673,7 @@ export class LineAccountHierarchy extends LitElement {
       ${error
         ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
         : ""}
-      ${this.variant !== "split" && this.selectedChannelId === c.item.id
+      ${this.variant !== "split" && this.selectedChannelId === c.item.channelId
         ? html`
             <div
               style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--line-account-border-color, #e4e7eb);"
@@ -699,7 +700,7 @@ export class LineAccountHierarchy extends LitElement {
               : html`<button
                   class="add-child-btn"
                   type="button"
-                  @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.id })}
+                  @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.channelId })}
                 >
                   <svg
                     viewBox="0 0 24 24"

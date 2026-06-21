@@ -13,7 +13,7 @@ import {
 } from "../../src/web/index.ts";
 import { LineLoginChannelId } from "../../src/channel/domain.ts";
 
-const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("channel-2");
+const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("0987654321");
 
 const mockProvider: ProviderView = {
   id: "provider-1",
@@ -131,7 +131,7 @@ const makeAdapter = (
       },
     }),
     getChannel: async (id) => {
-      const c = channels.find((x) => x.id === id);
+      const c = channels.find((x) => x.channelId === id);
       if (!c) throw new Error("not found");
       return c;
     },
@@ -147,7 +147,7 @@ const makeAdapter = (
       return c;
     },
     updateChannel: async (id, input) => {
-      const c = channels.find((x) => x.id === id);
+      const c = channels.find((x) => x.channelId === id);
       if (!c) throw new Error("not found");
       const updated =
         c.channelType === "messaging"
@@ -160,11 +160,11 @@ const makeAdapter = (
               ...c,
               name: input.name ?? c.name,
             };
-      channels = channels.map((x) => (x.id === id ? updated : x));
+      channels = channels.map((x) => (x.channelId === id ? updated : x));
       return updated as ChannelView;
     },
     deleteChannel: async (id) => {
-      channels = channels.filter((x) => x.id !== id);
+      channels = channels.filter((x) => x.channelId !== id);
     },
     listLiffApps: async () => ({
       data: liffApps,
@@ -176,7 +176,7 @@ const makeAdapter = (
       },
     }),
     getLiffApp: async (id) => {
-      const l = liffApps.find((x) => x.id === id);
+      const l = liffApps.find((x) => x.liffId === id);
       if (!l) throw new Error("not found");
       return l;
     },
@@ -191,14 +191,14 @@ const makeAdapter = (
       return l;
     },
     updateLiffApp: async (id, input) => {
-      const l = liffApps.find((x) => x.id === id);
+      const l = liffApps.find((x) => x.liffId === id);
       if (!l) throw new Error("not found");
       const updated = { ...l, liffId: input.liffId ?? l.liffId };
-      liffApps = liffApps.map((x) => (x.id === id ? updated : x));
+      liffApps = liffApps.map((x) => (x.liffId === id ? updated : x));
       return updated;
     },
     deleteLiffApp: async (id) => {
-      liffApps = liffApps.filter((x) => x.id !== id);
+      liffApps = liffApps.filter((x) => x.liffId !== id);
     },
   };
 };

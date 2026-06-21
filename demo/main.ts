@@ -11,7 +11,7 @@ import { LineLoginChannelId } from "../src/channel/domain.ts";
 
 const createdAt = new Date("2026-06-01T00:00:00.000Z");
 const updatedAt = new Date("2026-06-10T00:00:00.000Z");
-const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("demo-channel-2");
+const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("2001043310");
 
 const seedProviders: ProviderView[] = [
   {
