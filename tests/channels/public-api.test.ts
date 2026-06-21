@@ -11,10 +11,6 @@ import {
   LoginChannelNotFoundError,
 } from "../../src/channels/index.ts";
 import {
-  LineChannelRepository,
-  type LineChannelRepositoryService,
-} from "../../src/channel/repository.ts";
-import {
   LineBotUserId,
   LineLoginChannelRepository,
   LineLoginChannelService,
@@ -22,6 +18,7 @@ import {
   LineMessagingChannelRepository,
   LineMessagingChannelService,
 } from "../../src/channels/index.ts";
+import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineLoginChannels, LineMessagingChannels } from "../../src/public-api.ts";
@@ -65,24 +62,32 @@ const makeLoginChannel = () =>
     updatedAt: new Date("2026-06-11T00:00:00.000Z"),
   });
 
-const makeChannelRepository = (
-  overrides: Partial<LineChannelRepositoryService> = {},
-): LineChannelRepositoryService => ({
-  createChannel: () => Effect.die("unused"),
-  updateChannel: () => Effect.die("unused"),
-  findChannelByLineChannelId: () => Effect.succeed(Option.none()),
-  findChannelByBotUserId: () => Effect.succeed(Option.none()),
-  listChannelsByProvider: () => Effect.die("unused"),
-  deleteChannel: () => Effect.die("unused"),
+const makeChannelStore = (
+  overrides: Partial<InternalLineChannelStoreService> = {},
+): InternalLineChannelStoreService => ({
+  create: () => Effect.die("unused"),
+  update: () => Effect.die("unused"),
+  findByLineChannelId: () => Effect.succeed(Option.none()),
+  findByBotUserId: () => Effect.succeed(Option.none()),
+  listByProvider: () => Effect.die("unused"),
+  delete: () => Effect.die("unused"),
   ...overrides,
 });
 
 const makeRegistry = (
   invalidated: Array<string>,
-  client: { readonly kind: "messaging-client" } = { kind: "messaging-client" },
+  client: { readonly kind: "messaging-client" } | { readonly kind: "login-client" } = {
+    kind: "messaging-client",
+  },
 ): LineClientRegistryService => ({
-  getMessagingClient: () => Effect.succeed(client as never),
-  getLoginClient: () => Effect.die("unused"),
+  getMessagingClient: () =>
+    client.kind === "messaging-client"
+      ? Effect.succeed(client as never)
+      : Effect.die("not a messaging client"),
+  getLoginClient: () =>
+    client.kind === "login-client"
+      ? Effect.succeed(client as never)
+      : Effect.die("not a login client"),
   getLiffClient: () => Effect.die("unused"),
   syncBotProfile: () => Effect.die("unused"),
   invalidateChannel: (uid) =>
@@ -93,26 +98,19 @@ const makeRegistry = (
   invalidateAll: Effect.die("unused"),
 });
 
-const makeChannelRepositoryLayer = (repository: LineChannelRepositoryService) =>
-  Layer.mergeAll(
-    Layer.succeed(LineChannelRepository)(repository),
-    provideInternalLineChannelStore(repository),
-  );
+const makeChannelStoreLayer = (store: InternalLineChannelStoreService) =>
+  provideInternalLineChannelStore(store);
 
 const runRepositoryEffect = <A, E>(
   effect: Effect.Effect<A, E, LineMessagingChannelRepository | LineLoginChannelRepository>,
-  repository: LineChannelRepositoryService,
+  store: InternalLineChannelStoreService,
 ) =>
   Effect.runPromise(
     effect.pipe(
       Effect.provide(
         Layer.mergeAll(
-          LineMessagingChannelRepository.layer.pipe(
-            Layer.provide(makeChannelRepositoryLayer(repository)),
-          ),
-          LineLoginChannelRepository.layer.pipe(
-            Layer.provide(makeChannelRepositoryLayer(repository)),
-          ),
+          LineMessagingChannelRepository.layer.pipe(Layer.provide(makeChannelStoreLayer(store))),
+          LineLoginChannelRepository.layer.pipe(Layer.provide(makeChannelStoreLayer(store))),
         ),
       ),
     ),
@@ -127,24 +125,20 @@ const runServiceEffect = <A, E>(
     | LineMessagingChannelService
     | LineLoginChannelService
   >,
-  repository: LineChannelRepositoryService,
+  store: InternalLineChannelStoreService,
   registry: LineClientRegistryService,
 ) =>
   Effect.runPromise(
     effect.pipe(
       Effect.provide(
         Layer.mergeAll(
-          LineMessagingChannelRepository.layer.pipe(
-            Layer.provide(makeChannelRepositoryLayer(repository)),
-          ),
-          LineLoginChannelRepository.layer.pipe(
-            Layer.provide(makeChannelRepositoryLayer(repository)),
-          ),
+          LineMessagingChannelRepository.layer.pipe(Layer.provide(makeChannelStoreLayer(store))),
+          LineLoginChannelRepository.layer.pipe(Layer.provide(makeChannelStoreLayer(store))),
           LineMessagingChannelService.layer.pipe(
             Layer.provide(
               Layer.mergeAll(
                 LineMessagingChannelRepository.layer.pipe(
-                  Layer.provide(makeChannelRepositoryLayer(repository)),
+                  Layer.provide(makeChannelStoreLayer(store)),
                 ),
                 Layer.succeed(LineClientRegistry)(registry),
               ),
@@ -152,8 +146,9 @@ const runServiceEffect = <A, E>(
           ),
           LineLoginChannelService.layer.pipe(
             Layer.provide(
-              LineLoginChannelRepository.layer.pipe(
-                Layer.provide(makeChannelRepositoryLayer(repository)),
+              Layer.mergeAll(
+                LineLoginChannelRepository.layer.pipe(Layer.provide(makeChannelStoreLayer(store))),
+                Layer.succeed(LineClientRegistry)(registry),
               ),
             ),
           ),
@@ -188,8 +183,8 @@ describe("domain-specific channel public API", () => {
   });
 
   test("LineLoginChannelRepository.findByLineChannelId narrows shared lookups to login channels", async () => {
-    const repository = makeChannelRepository({
-      findChannelByLineChannelId: (id) => {
+    const store = makeChannelStore({
+      findByLineChannelId: (id) => {
         expect(id).toBe(loginLineChannelId);
         return Effect.succeed(Option.some(makeLoginChannel()));
       },
@@ -199,7 +194,7 @@ describe("domain-specific channel public API", () => {
       Effect.flatMap(LineLoginChannelRepository, (service) =>
         service.findByLineChannelId(loginLineChannelId),
       ),
-      repository,
+      store,
     );
 
     expect(Option.isSome(result)).toBe(true);
@@ -209,15 +204,15 @@ describe("domain-specific channel public API", () => {
   });
 
   test("LineMessagingChannelService.getClientByLineChannelId resolves the client via the internal uid", async () => {
-    const repository = makeChannelRepository({
-      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
     });
 
     const client = await runServiceEffect(
       Effect.flatMap(LineMessagingChannelService, (service) =>
         service.getClientByLineChannelId(messagingLineChannelId),
       ),
-      repository,
+      store,
       makeRegistry([]),
     );
 
@@ -225,15 +220,15 @@ describe("domain-specific channel public API", () => {
   });
 
   test("LineMessagingChannelService.getAccessTokenByLineChannelId exposes the messaging access token", async () => {
-    const repository = makeChannelRepository({
-      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
     });
 
     const token = await runServiceEffect(
       Effect.flatMap(LineMessagingChannelService, (service) =>
         service.getAccessTokenByLineChannelId(messagingLineChannelId),
       ),
-      repository,
+      store,
       makeRegistry([]),
     );
 
@@ -242,15 +237,15 @@ describe("domain-specific channel public API", () => {
 
   test("LineMessagingChannelService.invalidateClientByLineChannelId invalidates the resolved uid", async () => {
     const invalidated: Array<string> = [];
-    const repository = makeChannelRepository({
-      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeMessagingChannel())),
     });
 
     await runServiceEffect(
       Effect.flatMap(LineMessagingChannelService, (service) =>
         service.invalidateClientByLineChannelId(messagingLineChannelId),
       ),
-      repository,
+      store,
       makeRegistry(invalidated),
     );
 
@@ -258,15 +253,15 @@ describe("domain-specific channel public API", () => {
   });
 
   test("LineLoginChannelService.getByLineChannelId returns the login channel", async () => {
-    const repository = makeChannelRepository({
-      findChannelByLineChannelId: () => Effect.succeed(Option.some(makeLoginChannel())),
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeLoginChannel())),
     });
 
     const channel = await runServiceEffect(
       Effect.flatMap(LineLoginChannelService, (service) =>
         service.getByLineChannelId(loginLineChannelId),
       ),
-      repository,
+      store,
       makeRegistry([]),
     );
 
@@ -274,9 +269,25 @@ describe("domain-specific channel public API", () => {
     expect(channel.id).toBe(loginUid);
   });
 
+  test("LineLoginChannelService.getLoginClientByLineChannelId resolves the login client via the internal uid", async () => {
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeLoginChannel())),
+    });
+
+    const client = await runServiceEffect(
+      Effect.flatMap(LineLoginChannelService, (service) =>
+        service.getLoginClientByLineChannelId(loginLineChannelId),
+      ),
+      store,
+      makeRegistry([], { kind: "login-client" }),
+    );
+
+    expect(client).toEqual({ kind: "login-client" });
+  });
+
   test("LineMessagingChannelService.getClientByLineChannelId fails explicitly when the external id is missing", async () => {
-    const repository = makeChannelRepository({
-      findChannelByLineChannelId: () => Effect.succeed(Option.none()),
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.none()),
     });
 
     await expect(
@@ -284,10 +295,26 @@ describe("domain-specific channel public API", () => {
         Effect.flatMap(LineMessagingChannelService, (service) =>
           service.getClientByLineChannelId(messagingLineChannelId),
         ),
-        repository,
+        store,
         makeRegistry([]),
       ),
     ).rejects.toEqual(new MessagingChannelNotFoundError({ channelId: messagingLineChannelId }));
+  });
+
+  test("LineLoginChannelService.getLoginClientByLineChannelId fails explicitly when the external id is missing", async () => {
+    const store = makeChannelStore({
+      findByLineChannelId: () => Effect.succeed(Option.none()),
+    });
+
+    await expect(
+      runServiceEffect(
+        Effect.flatMap(LineLoginChannelService, (service) =>
+          service.getLoginClientByLineChannelId(loginLineChannelId),
+        ),
+        store,
+        makeRegistry([], { kind: "login-client" }),
+      ),
+    ).rejects.toEqual(new LoginChannelNotFoundError({ channelId: loginLineChannelId }));
   });
 
   // ── Brand contract: domain-specific IDs in domain models ──

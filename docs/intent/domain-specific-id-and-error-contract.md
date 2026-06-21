@@ -49,10 +49,10 @@ The generic `ChannelNotFoundError` (with `channelId: LineChannelId`) stays for i
 
 **Not public** (no `exports` entry in `package.json`, not re-exported from root):
 
-- `src/channel/*` — internal generic channel domain (domain models, errors, repository)
+- `src/channel/*` — internal generic channel domain (domain models, errors, service)
 - `InternalLineChannelStore` — internal persistence boundary
 - `LineChannelManagement` — internal generic management service (HTTP API uses it internally)
-- `LineChannelRepository` — legacy contract kept for test compatibility shims
+- `LineChannelRepository` — removed; implement `InternalLineChannelStore` directly
 
 ## Consequences
 

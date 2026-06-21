@@ -14,10 +14,7 @@ import {
 import { LinePersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
-import {
-  LineChannelRepository,
-  type LineChannelRepositoryService,
-} from "../../src/channel/repository.ts";
+import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
@@ -39,17 +36,17 @@ const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
     ...overrides,
   });
 
-const makeChannelRepository = (
-  overrides: Partial<LineChannelRepositoryService> = {},
-): LineChannelRepositoryService =>
+const makeChannelStore = (
+  overrides: Partial<InternalLineChannelStoreService> = {},
+): InternalLineChannelStoreService =>
   ({
-    createChannel: () => Effect.succeed(makeChannel()),
-    updateChannel: () => Effect.succeed(makeChannel()),
-    findChannelByLineChannelId: () => Effect.die("unused"),
-    findChannelByBotUserId: () => Effect.die("unused"),
-    listChannelsByProvider: () =>
+    create: () => Effect.succeed(makeChannel()),
+    update: () => Effect.succeed(makeChannel()),
+    findByLineChannelId: () => Effect.die("unused"),
+    findByBotUserId: () => Effect.die("unused"),
+    listByProvider: () =>
       Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
-    deleteChannel: () => Effect.void,
+    delete: () => Effect.void,
     ...overrides,
   }) as any;
 
@@ -67,7 +64,7 @@ const makeRegistry = (invalidated: string[]): any =>
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineChannelManagement>,
-  channelRepository: LineChannelRepositoryService,
+  store: InternalLineChannelStoreService,
   providerRepository: LineProviderRepositoryService,
   registry: any,
 ) =>
@@ -75,8 +72,7 @@ const run = <A, E>(
     effect.pipe(
       Effect.provide(
         LineChannelManagement.layer.pipe(
-          Layer.provide(Layer.succeed(LineChannelRepository)(channelRepository)),
-          Layer.provide(provideInternalLineChannelStore(channelRepository)),
+          Layer.provide(provideInternalLineChannelStore(store)),
           Layer.provide(Layer.succeed(LineProviderRepository)(providerRepository)),
           Layer.provide(Layer.succeed(LineClientRegistry)(registry)),
         ),
@@ -112,8 +108,8 @@ describe("LineChannelManagement", () => {
   test("converts create credentials to redacted values and invalidates the created id", async () => {
     const invalidated: string[] = [];
     let observedInput: any;
-    const channelRepository = makeChannelRepository({
-      createChannel: (input) => {
+    const store = makeChannelStore({
+      create: (input) => {
         observedInput = input;
         return Effect.succeed(makeChannel());
       },
@@ -130,7 +126,7 @@ describe("LineChannelManagement", () => {
           channelAccessToken: "channel-token",
         }),
       ),
-      channelRepository,
+      store,
       makeProviderRepository(),
       makeRegistry(invalidated),
     );
@@ -144,8 +140,8 @@ describe("LineChannelManagement", () => {
   test("preserves omitted credentials during update", async () => {
     const invalidated: string[] = [];
     let observedInput: any;
-    const channelRepository = makeChannelRepository({
-      updateChannel: (id, input) => {
+    const store = makeChannelStore({
+      update: (id, input) => {
         observedInput = input;
         return Effect.succeed(makeChannel());
       },
@@ -155,7 +151,7 @@ describe("LineChannelManagement", () => {
       Effect.flatMap(LineChannelManagement, (management) =>
         management.updateChannel(channelId, { name: "Renamed" }),
       ),
-      channelRepository,
+      store,
       makeProviderRepository(),
       makeRegistry(invalidated),
     );
@@ -171,8 +167,8 @@ describe("LineChannelManagement", () => {
 
     await run(
       Effect.flatMap(LineChannelManagement, (management) => management.deleteChannel(channelId)),
-      makeChannelRepository({
-        deleteChannel: () => Effect.void,
+      makeChannelStore({
+        delete: () => Effect.void,
       }),
       makeProviderRepository(),
       makeRegistry(invalidated),
@@ -201,7 +197,7 @@ describe("LineChannelManagement", () => {
       Effect.flatMap(LineChannelManagement, (management) =>
         management.updateChannel(channelId, { name: "test" }),
       ).pipe(Effect.flip, Effect.provide(Logger.layer([testLogger]))),
-      makeChannelRepository({ updateChannel: () => Effect.fail(repositoryFailure) }),
+      makeChannelStore({ update: () => Effect.fail(repositoryFailure) }),
       makeProviderRepository(),
       makeRegistry(invalidated),
     );

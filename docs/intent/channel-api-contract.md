@@ -47,7 +47,7 @@ Public channel lookup APIs are domain-specific:
 - `LineMessagingChannels.Service.invalidateClientByLineChannelId`
 - `LineLoginChannels.Service.getByLineChannelId`
 
-Generic channel persistence is an internal implementation detail. `LineChannelRepository` is not a supported consumer contract and should not appear in published root typings.
+Generic channel persistence is an internal implementation detail. `LineChannelRepository` has been removed; use `InternalLineChannelStore` as the persistence port for channels.
 
 ## Classification
 

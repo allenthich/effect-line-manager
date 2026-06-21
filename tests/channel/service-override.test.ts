@@ -12,10 +12,7 @@ import {
 } from "../../src/channel/domain.ts";
 import { LineChannelManagement, makeLineChannelManagement } from "../../src/channel/service.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
-import {
-  LineChannelRepository,
-  type LineChannelRepositoryService,
-} from "../../src/channel/repository.ts";
+import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
@@ -46,18 +43,18 @@ const makeChannel = (id: LineChannelId, channelId: LineMessagingChannelId, name:
 const channel1 = makeChannel(uid1, channelId1, "Alpha");
 const channel2 = makeChannel(uid2, channelId2, "Beta");
 
-const makeChannelRepository = (): LineChannelRepositoryService =>
+const makeChannelStore = (): InternalLineChannelStoreService =>
   ({
-    createChannel: () => Effect.die("unused"),
-    updateChannel: () => Effect.die("unused"),
-    findChannelByLineChannelId: () => Effect.succeedNone,
-    findChannelByBotUserId: () => Effect.succeedNone,
-    listChannelsByProvider: () =>
+    create: () => Effect.die("unused"),
+    update: () => Effect.die("unused"),
+    findByLineChannelId: () => Effect.succeedNone,
+    findByBotUserId: () => Effect.succeedNone,
+    listByProvider: () =>
       Effect.succeed(
         paginate([channel1, channel2], { page: defaultPage, pageSize: defaultPageSize }),
       ),
-    deleteChannel: () => Effect.void,
-  }) as LineChannelRepositoryService;
+    delete: () => Effect.void,
+  }) as InternalLineChannelStoreService;
 
 const makeProviderRepository = (): LineProviderRepositoryService =>
   ({
@@ -89,8 +86,7 @@ const makeRegistry = (): LineClientRegistryService =>
   }) as LineClientRegistryService;
 
 const baseLayer = Layer.mergeAll(
-  Layer.succeed(LineChannelRepository)(makeChannelRepository()),
-  provideInternalLineChannelStore(makeChannelRepository()),
+  provideInternalLineChannelStore(makeChannelStore()),
   Layer.succeed(LineProviderRepository)(makeProviderRepository()),
   Layer.succeed(LineClientRegistry)(makeRegistry()),
 );
@@ -173,17 +169,16 @@ describe("LineChannelManagement service override", () => {
 
   test("consumer retains original deleteChannel when overriding listChannels()", async () => {
     let deleteCalled = false;
-    const channelRepo: LineChannelRepositoryService = {
-      ...makeChannelRepository(),
-      deleteChannel: () =>
+    const channelStore: InternalLineChannelStoreService = {
+      ...makeChannelStore(),
+      delete: () =>
         Effect.sync(() => {
           deleteCalled = true;
         }),
     };
 
     const testBaseLayer = Layer.mergeAll(
-      Layer.succeed(LineChannelRepository)(channelRepo),
-      provideInternalLineChannelStore(channelRepo),
+      provideInternalLineChannelStore(channelStore),
       Layer.succeed(LineProviderRepository)(makeProviderRepository()),
       Layer.succeed(LineClientRegistry)(makeRegistry()),
     );

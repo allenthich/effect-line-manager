@@ -10,10 +10,7 @@ import {
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/registry/index.ts";
-import {
-  LineChannelRepository,
-  type LineChannelRepositoryService,
-} from "../../src/channel/repository.ts";
+import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
 import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import { LineLiffRepository, type LineLiffRepositoryService } from "../../src/liff/repository.ts";
 
@@ -37,13 +34,13 @@ const makeMessagingChannel = (token: string) =>
     updatedAt: new Date("2026-06-10T00:00:00.000Z"),
   });
 
-const makeChannelRepository = (
-  findChannelByLineChannelId: LineChannelRepositoryService["findChannelByLineChannelId"],
-  updateChannel?: LineChannelRepositoryService["updateChannel"],
-): LineChannelRepositoryService => ({
-  createChannel: () => Effect.die("unused"),
-  updateChannel:
-    updateChannel ??
+const makeChannelStore = (
+  findByLineChannelId: InternalLineChannelStoreService["findByLineChannelId"],
+  update?: InternalLineChannelStoreService["update"],
+): InternalLineChannelStoreService => ({
+  create: () => Effect.die("unused"),
+  update:
+    update ??
     (() =>
       Effect.fail(
         new LineRepositoryError({
@@ -51,10 +48,10 @@ const makeChannelRepository = (
           cause: new Error("unimplemented"),
         }),
       )),
-  findChannelByLineChannelId,
-  findChannelByBotUserId: () => Effect.succeedNone,
-  listChannelsByProvider: () => Effect.die("unused"),
-  deleteChannel: () => Effect.die("unused"),
+  findByLineChannelId,
+  findByBotUserId: () => Effect.succeedNone,
+  listByProvider: () => Effect.die("unused"),
+  delete: () => Effect.die("unused"),
 });
 
 const makeLiffRepository = (): LineLiffRepositoryService => ({
@@ -75,7 +72,7 @@ const makeCapturingHttpClient = (status = 200, body: string | null = null) => {
 };
 
 const makeLayer = (
-  channelRepository: LineChannelRepositoryService,
+  channelStore: InternalLineChannelStoreService,
   liffRepository: LineLiffRepositoryService,
   httpClient: HttpClient.HttpClient,
   config?: LineClientRegistryConfig,
@@ -83,8 +80,7 @@ const makeLayer = (
   LineClientRegistry.layer(config).pipe(
     Layer.provide(
       Layer.mergeAll(
-        Layer.succeed(LineChannelRepository)(channelRepository),
-        provideInternalLineChannelStore(channelRepository),
+        provideInternalLineChannelStore(channelStore),
         Layer.succeed(LineLiffRepository)(liffRepository),
         Layer.succeed(HttpClient.HttpClient)(httpClient),
       ),
@@ -93,13 +89,13 @@ const makeLayer = (
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineClientRegistry>,
-  channelRepository: LineChannelRepositoryService,
+  channelStore: InternalLineChannelStoreService,
   liffRepository: LineLiffRepositoryService,
   httpClient: HttpClient.HttpClient,
   config?: LineClientRegistryConfig,
 ) =>
   Effect.runPromise(
-    effect.pipe(Effect.provide(makeLayer(channelRepository, liffRepository, httpClient, config))),
+    effect.pipe(Effect.provide(makeLayer(channelStore, liffRepository, httpClient, config))),
   );
 
 const failure = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.flip(effect));
@@ -107,7 +103,7 @@ const failure = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(Effect.
 describe("LineClientRegistry", () => {
   test("reuses client group after one repository lookup", async () => {
     let lookups = 0;
-    const channelRepository = makeChannelRepository(() =>
+    const channelStore = makeChannelStore(() =>
       Effect.sync(() => {
         lookups += 1;
         return Option.some(makeMessagingChannel("token-1"));
@@ -127,7 +123,7 @@ describe("LineClientRegistry", () => {
         const loginResult = yield* Effect.exit(registry.getLoginClient(channelId));
         expect(loginResult._tag).toBe("Failure");
       }),
-      channelRepository,
+      channelStore,
       liffRepository,
       httpClient,
     );
@@ -138,7 +134,7 @@ describe("LineClientRegistry", () => {
   test("shares one pending repository lookup across concurrent callers", async () => {
     let lookups = 0;
     const gate = await Effect.runPromise(Deferred.make<void>());
-    const channelRepository = makeChannelRepository(() =>
+    const channelStore = makeChannelStore(() =>
       Effect.gen(function* () {
         lookups += 1;
         yield* Deferred.await(gate);
@@ -159,7 +155,7 @@ describe("LineClientRegistry", () => {
         yield* Deferred.succeed(gate, undefined);
         yield* Fiber.join(fiber);
       }),
-      channelRepository,
+      channelStore,
       liffRepository,
       httpClient,
     );
@@ -169,20 +165,20 @@ describe("LineClientRegistry", () => {
 
   test("preserves missing-channel and repository failures", async () => {
     const { client: httpClient } = makeCapturingHttpClient();
-    const missingRepository = makeChannelRepository(() => Effect.succeedNone);
+    const missingStore = makeChannelStore(() => Effect.succeedNone);
     const liffRepository = makeLiffRepository();
     const repositoryFailure = new LineRepositoryError({
       operation: "findChannelByLineChannelId",
       cause: new Error("database unavailable"),
     });
-    const failingRepository = makeChannelRepository(() => Effect.fail(repositoryFailure));
+    const failingStore = makeChannelStore(() => Effect.fail(repositoryFailure));
 
     await expect(
       failure(
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
           return yield* registry.getMessagingClient(missingChannelId);
-        }).pipe(Effect.provide(makeLayer(missingRepository, liffRepository, httpClient))),
+        }).pipe(Effect.provide(makeLayer(missingStore, liffRepository, httpClient))),
       ),
     ).resolves.toMatchObject({
       _tag: "ChannelNotFoundError",
@@ -194,7 +190,7 @@ describe("LineClientRegistry", () => {
         Effect.gen(function* () {
           const registry = yield* LineClientRegistry;
           return yield* registry.getMessagingClient(channelId);
-        }).pipe(Effect.provide(makeLayer(failingRepository, liffRepository, httpClient))),
+        }).pipe(Effect.provide(makeLayer(failingStore, liffRepository, httpClient))),
       ),
     ).resolves.toBe(repositoryFailure);
   });
@@ -202,7 +198,7 @@ describe("LineClientRegistry", () => {
   test("reloads rotated credentials after invalidation", async () => {
     let channel = makeMessagingChannel("token-1");
     let lookups = 0;
-    const channelRepository = makeChannelRepository(() =>
+    const channelStore = makeChannelStore(() =>
       Effect.sync(() => {
         lookups += 1;
         return Option.some(channel);
@@ -228,7 +224,7 @@ describe("LineClientRegistry", () => {
         yield* registry.invalidateAll;
         yield* registry.getMessagingClient(channelId);
       }),
-      channelRepository,
+      channelStore,
       liffRepository,
       httpClient,
     );
@@ -244,7 +240,7 @@ describe("LineClientRegistry", () => {
   test("reloads successful and failed lookups after their configured TTL", async () => {
     let channel: Option.Option<MessagingChannel> = Option.some(makeMessagingChannel("token-1"));
     let lookups = 0;
-    const channelRepository = makeChannelRepository(() =>
+    const channelStore = makeChannelStore(() =>
       Effect.sync(() => {
         lookups += 1;
         return channel;
@@ -274,7 +270,7 @@ describe("LineClientRegistry", () => {
       }).pipe(
         Effect.provide(
           Layer.mergeAll(
-            makeLayer(channelRepository, liffRepository, httpClient, config),
+            makeLayer(channelStore, liffRepository, httpClient, config),
             TestClock.layer(),
           ),
         ),
@@ -285,7 +281,7 @@ describe("LineClientRegistry", () => {
   });
 
   test("syncs bot profile from LINE API to database, stripping unknown official fields", async () => {
-    const channelRepository = makeChannelRepository(
+    const channelStore = makeChannelStore(
       () => Effect.succeed(Option.some(makeMessagingChannel("token-1"))),
       (id, input) => {
         expect(id).toBe(uid);
@@ -340,14 +336,14 @@ describe("LineClientRegistry", () => {
         const synced = yield* registry.syncBotProfile(channelId);
         expect(synced.displayName).toBe("Synced Bot");
       }),
-      channelRepository,
+      channelStore,
       liffRepository,
       httpClient,
     );
   });
 
   test("syncs bot profile with missing pictureUrl, passing null to repository", async () => {
-    const channelRepository = makeChannelRepository(
+    const channelStore = makeChannelStore(
       () => Effect.succeed(Option.some(makeMessagingChannel("token-1"))),
       (id, input) => {
         expect(id).toBe(uid);
@@ -396,7 +392,7 @@ describe("LineClientRegistry", () => {
         const synced = yield* registry.syncBotProfile(channelId);
         expect(synced.pictureUrl).toBeNull();
       }),
-      channelRepository,
+      channelStore,
       liffRepository,
       httpClient,
     );

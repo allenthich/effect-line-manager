@@ -56,7 +56,6 @@ test("exports the stable LINE manager API", () => {
 
 test("root exports do not leak generic internal channel symbols", () => {
   const leakedSymbols = [
-    "LineChannelRepository",
     "LineChannelId",
     "InternalLineChannelStore",
     "LineChannelManagement",

@@ -49,7 +49,6 @@ test("keeps web components out of the root package export", () => {
   expect(rootApi).not.toHaveProperty("defineLineAccountManagement");
   expect(rootApi).not.toHaveProperty("defaultLineAccountManagementMessages");
   expect(rootApi).not.toHaveProperty("LineChannelManagement");
-  expect(rootApi).not.toHaveProperty("LineChannelRepository");
 });
 
 test("exports the web components from the dedicated web package", () => {
