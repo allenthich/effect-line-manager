@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Effect, Layer, Logger, Redacted, Schema } from "effect";
+import { Effect, Layer, Logger, Option, Redacted, Schema } from "effect";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import {
   LineProviderRepository,
@@ -15,13 +15,19 @@ import { LinePersistenceError, LineRepositoryError } from "../../src/shared/erro
 import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
 import {
-  LineChannelRepository,
-  type LineChannelRepositoryService,
-} from "../../src/channel/repository.ts";
+  LineMessagingChannelRepository,
+  type LineMessagingChannelRepositoryService,
+} from "../../src/channels/repository.ts";
+import {
+  LineLoginChannelRepository,
+  type LineLoginChannelRepositoryService,
+} from "../../src/channels/repository.ts";
+import { LoginChannel, LineLoginChannelId } from "../../src/channel/domain.ts";
 import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
 const channelId = Schema.decodeUnknownSync(LineChannelId)("record-1");
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
+const messagingLineChannelId = Schema.decodeUnknownSync(LineMessagingChannelId)("1234567890");
 
 const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
   new MessagingChannel({
@@ -29,7 +35,7 @@ const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
     providerId,
     channelType: "messaging",
     name: "Support Channel",
-    channelId: Schema.decodeUnknownSync(LineMessagingChannelId)("1234567890"),
+    channelId: messagingLineChannelId,
     channelSecret: Redacted.make("channel-secret"),
     channelAccessToken: Redacted.make("channel-token"),
     isActive: true,
@@ -38,19 +44,42 @@ const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
     ...overrides,
   });
 
-const makeChannelStore = (
-  overrides: Partial<LineChannelRepositoryService> = {},
-): LineChannelRepositoryService =>
-  ({
-    create: () => Effect.succeed(makeChannel()),
-    update: () => Effect.succeed(makeChannel()),
-    findByLineChannelId: () => Effect.die("unused"),
-    findByBotUserId: () => Effect.die("unused"),
-    listByProvider: () =>
-      Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
-    delete: () => Effect.void,
-    ...overrides,
-  }) as any;
+const makeEmptyMessagingStore = (
+  overrides: Partial<LineMessagingChannelRepositoryService> = {},
+): LineMessagingChannelRepositoryService => ({
+  create: () => Effect.succeed(makeChannel()),
+  update: () => Effect.fail(new Error("unused") as never),
+  findByLineChannelId: () => Effect.succeedNone,
+  findByBotUserId: () => Effect.succeedNone,
+  listByProvider: () =>
+    Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
+  delete: () => Effect.void,
+  ...overrides,
+});
+
+const makeEmptyLoginStore = (
+  overrides: Partial<LineLoginChannelRepositoryService> = {},
+): LineLoginChannelRepositoryService => ({
+  create: () =>
+    Effect.succeed(
+      new LoginChannel({
+        id: channelId,
+        providerId,
+        channelType: "login",
+        name: "Login Channel",
+        channelId: Schema.decodeUnknownSync(LineLoginChannelId)("login-1"),
+        channelSecret: Redacted.make("login-secret"),
+        createdAt: new Date("2026-06-10T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-11T00:00:00.000Z"),
+      }),
+    ),
+  update: () => Effect.fail(new Error("unused") as never),
+  findByLineChannelId: () => Effect.succeedNone,
+  listByProvider: () =>
+    Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
+  delete: () => Effect.void,
+  ...overrides,
+});
 
 const makeProviderRepository = (): LineProviderRepositoryService =>
   ({
@@ -66,7 +95,8 @@ const makeRegistry = (invalidated: string[]): any =>
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineChannelManagement>,
-  store: LineChannelRepositoryService,
+  messagingStore: LineMessagingChannelRepositoryService,
+  loginStore: LineLoginChannelRepositoryService,
   providerRepository: LineProviderRepositoryService,
   registry: any,
 ) =>
@@ -74,7 +104,8 @@ const run = <A, E>(
     effect.pipe(
       Effect.provide(
         LineChannelManagement.layer.pipe(
-          Layer.provide(Layer.succeed(LineChannelRepository)(store)),
+          Layer.provide(Layer.succeed(LineMessagingChannelRepository)(messagingStore)),
+          Layer.provide(Layer.succeed(LineLoginChannelRepository)(loginStore)),
           Layer.provide(Layer.succeed(LineProviderRepository)(providerRepository)),
           Layer.provide(Layer.succeed(LineClientRegistry)(registry)),
         ),
@@ -110,7 +141,7 @@ describe("LineChannelManagement", () => {
   test("converts create credentials to redacted values and invalidates the created id", async () => {
     const invalidated: string[] = [];
     let observedInput: any;
-    const store = makeChannelStore({
+    const messagingStore = makeEmptyMessagingStore({
       create: (input) => {
         observedInput = input;
         return Effect.succeed(makeChannel());
@@ -128,7 +159,8 @@ describe("LineChannelManagement", () => {
           channelAccessToken: "channel-token",
         }),
       ),
-      store,
+      messagingStore,
+      makeEmptyLoginStore(),
       makeProviderRepository(),
       makeRegistry(invalidated),
     );
@@ -142,8 +174,9 @@ describe("LineChannelManagement", () => {
   test("preserves omitted credentials during update", async () => {
     const invalidated: string[] = [];
     let observedInput: any;
-    const store = makeChannelStore({
-      update: (id, input) => {
+    const messagingStore = makeEmptyMessagingStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeChannel())),
+      update: (_id, input) => {
         observedInput = input;
         return Effect.succeed(makeChannel());
       },
@@ -153,7 +186,8 @@ describe("LineChannelManagement", () => {
       Effect.flatMap(LineChannelManagement, (management) =>
         management.updateChannel(channelId, { name: "Renamed" }),
       ),
-      store,
+      messagingStore,
+      makeEmptyLoginStore(),
       makeProviderRepository(),
       makeRegistry(invalidated),
     );
@@ -166,11 +200,16 @@ describe("LineChannelManagement", () => {
 
   test("clears all cached descendants after deleting a channel", async () => {
     const invalidated: string[] = [];
+    const messagingStore = makeEmptyMessagingStore({
+      findByLineChannelId: () => Effect.succeed(Option.some(makeChannel())),
+      delete: () => Effect.void,
+    });
 
     await run(
       Effect.flatMap(LineChannelManagement, (management) => management.deleteChannel(channelId)),
-      makeChannelStore({
-        delete: () => Effect.void,
+      messagingStore,
+      makeEmptyLoginStore({
+        findByLineChannelId: () => Effect.succeedNone,
       }),
       makeProviderRepository(),
       makeRegistry(invalidated),
@@ -182,7 +221,7 @@ describe("LineChannelManagement", () => {
   test("logs foreign repository failures as sanitized persistence errors without invalidating", async () => {
     const invalidated: string[] = [];
     const repositoryFailure = new LineRepositoryError({
-      operation: "updateChannel",
+      operation: "updateMessagingChannel",
       cause: new Error("database password leaked here"),
     });
 
@@ -199,12 +238,16 @@ describe("LineChannelManagement", () => {
       Effect.flatMap(LineChannelManagement, (management) =>
         management.updateChannel(channelId, { name: "test" }),
       ).pipe(Effect.flip, Effect.provide(Logger.layer([testLogger]))),
-      makeChannelStore({ update: () => Effect.fail(repositoryFailure) }),
+      makeEmptyMessagingStore({
+        findByLineChannelId: () => Effect.succeed(Option.some(makeChannel())),
+        update: () => Effect.fail(repositoryFailure),
+      }),
+      makeEmptyLoginStore(),
       makeProviderRepository(),
       makeRegistry(invalidated),
     );
 
-    expect(result).toEqual(new LinePersistenceError({ operation: "updateChannel" }));
+    expect(result).toEqual(new LinePersistenceError({ operation: "updateMessagingChannel" }));
     expect(JSON.stringify(result)).not.toContain("database password");
     expect(invalidated).toEqual([]);
     expect(loggedMessages).toContain("LINE channel repository operation failed");

@@ -20,12 +20,13 @@ Public identifiers follow these rules:
 
 Public channel APIs are domain-specific:
 
-- `LineMessagingChannels.Repository`
+- `LineMessagingChannels.Repository` (full-CRUD persistence port for messaging channels)
 - `LineMessagingChannels.Service`
-- `LineLoginChannels.Repository`
+- `LineLoginChannels.Repository` (full-CRUD persistence port for login channels)
 - `LineLoginChannels.Service`
 
-Generic channel persistence is internal and should not be consumed directly.
+Hosts implement both repository ports directly — there is no shared generic
+channel persistence layer in the library.
 
 ## Registry
 

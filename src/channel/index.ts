@@ -9,12 +9,12 @@ export {
   MessagingChannel,
   LoginChannel,
   LineChannel,
-  CreateChannelRecordInput,
-  UpdateChannelRecordInput,
+  CreateMessagingChannelInput,
+  UpdateMessagingChannelInput,
+  CreateLoginChannelInput,
+  UpdateLoginChannelInput,
 } from "./domain.ts";
 
 export { ChannelNotFoundError, ChannelDuplicateError } from "./errors.ts";
-
-export { LineChannelRepository, type LineChannelRepositoryService } from "./repository.ts";
 
 export { LineChannelManagement, type LineChannelManagementService } from "./service.ts";

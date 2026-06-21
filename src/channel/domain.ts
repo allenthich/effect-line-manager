@@ -59,34 +59,25 @@ export const LineChannel = Schema.Union([MessagingChannel, LoginChannel]);
 /** {@link LineChannel} type alias. */
 export type LineChannel = typeof LineChannel.Type;
 
-/** Input type for creating a channel record in the repository layer. */
-export const CreateChannelRecordInput = Schema.Union([
-  Schema.Struct({
-    channelType: Schema.Literal("messaging"),
-    providerId: LineProviderId,
-    name: NonEmptyTrimmedString,
-    channelId: NonEmptyTrimmedString,
-    channelSecret: LineCredential,
-    channelAccessToken: LineCredential,
-    displayName: Schema.optional(Schema.NullOr(Schema.String)),
-    botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-    basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-    pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
-  }),
-  Schema.Struct({
-    channelType: Schema.Literal("login"),
-    providerId: LineProviderId,
-    name: NonEmptyTrimmedString,
-    channelId: NonEmptyTrimmedString,
-    channelSecret: LineCredential,
-  }),
-] as const);
-/** {@link CreateChannelRecordInput} type alias. */
-export type CreateChannelRecordInput = typeof CreateChannelRecordInput.Type;
+/** Input type for creating a messaging channel record in the repository layer. */
+export const CreateMessagingChannelInput = Schema.Struct({
+  channelType: Schema.Literal("messaging"),
+  providerId: LineProviderId,
+  name: NonEmptyTrimmedString,
+  channelId: NonEmptyTrimmedString,
+  channelSecret: LineCredential,
+  channelAccessToken: LineCredential,
+  displayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+});
+/** {@link CreateMessagingChannelInput} type alias. */
+export type CreateMessagingChannelInput = typeof CreateMessagingChannelInput.Type;
 
-/** Input type for updating a channel record in the repository layer. */
-export class UpdateChannelRecordInput extends Schema.Class<UpdateChannelRecordInput>(
-  "UpdateChannelRecordInput",
+/** Input type for updating a messaging channel record in the repository layer. */
+export class UpdateMessagingChannelInput extends Schema.Class<UpdateMessagingChannelInput>(
+  "UpdateMessagingChannelInput",
 )({
   name: Schema.optional(NonEmptyTrimmedString),
   channelId: Schema.optional(NonEmptyTrimmedString),
@@ -97,6 +88,26 @@ export class UpdateChannelRecordInput extends Schema.Class<UpdateChannelRecordIn
   basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
   displayName: Schema.optional(Schema.NullOr(Schema.String)),
   pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+}) {}
+
+/** Input type for creating a login channel record in the repository layer. */
+export const CreateLoginChannelInput = Schema.Struct({
+  channelType: Schema.Literal("login"),
+  providerId: LineProviderId,
+  name: NonEmptyTrimmedString,
+  channelId: NonEmptyTrimmedString,
+  channelSecret: LineCredential,
+});
+/** {@link CreateLoginChannelInput} type alias. */
+export type CreateLoginChannelInput = typeof CreateLoginChannelInput.Type;
+
+/** Input type for updating a login channel record in the repository layer. */
+export class UpdateLoginChannelInput extends Schema.Class<UpdateLoginChannelInput>(
+  "UpdateLoginChannelInput",
+)({
+  name: Schema.optional(NonEmptyTrimmedString),
+  channelId: Schema.optional(NonEmptyTrimmedString),
+  channelSecret: Schema.optional(LineCredential),
 }) {}
 
 /** Input type for creating a channel through the management service. */

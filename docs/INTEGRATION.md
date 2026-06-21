@@ -13,68 +13,63 @@ flowchart TD
 
     subgraph PublicSurface["Public root exports"]
       direction LR
-      Store["LineChannelRepository<br/>(persistence boundary)"]
+      MessagingRepo["LineMessagingChannelRepository<br/>(full-CRUD persistence boundary)"]
+      LoginRepo["LineLoginChannelRepository<br/>(full-CRUD persistence boundary)"]
       MgmtServices["LineProviderManagement<br/>LineChannelManagement<br/>LineLiffManagement"]
       Registry["LineClientRegistry<br/>(client cache + resolution)"]
-      DomainRepos["LineMessagingChannels.Repository<br/>LineLoginChannels.Repository<br/>(read-only, derived from repository)"]
       DomainServices["LineMessagingChannels.Service<br/>LineLoginChannels.Service"]
       Ports["LineProviderRepository<br/>LineLiffRepository"]
       HttpApi["LineApiLayer<br/>(HttpApiBuilder)"]
       Brands["LineChannelId, LineMessagingChannelId,<br/>LineLoginChannelId, LineLiffId, LineProviderId"]
-      Errors["ChannelNotFoundError, ChannelDuplicateError,<br/>LiffAppNotFoundError, LineRepositoryError"]
+      Errors["ChannelNotFoundError, ChannelDuplicateError,<br/>MessagingChannelNotFoundError, LoginChannelNotFoundError,<br/>LiffAppNotFoundError, LineRepositoryError"]
       HttpClients["makeLineApiClient, makeLineLoginClient,<br/>makeLineLiffClient"]
     end
 
     subgraph PrivateImpls["Private (not exported from root)"]
-      Direction["makeLineChannelManagement,<br/>makeLineMessagingChannelRepository,<br/>makeLineLoginChannelRepository"]
+      Direction["makeLineChannelManagement"]
       MgmtTypes["CreateChannelInput, UpdateChannelInput,<br/>ChannelView, ChannelListPage"]
     end
 
-    %% Derivation edges
-    DomainRepos -. "derived from" .-> Store
-    DomainServices -. "uses" .-> DomainRepos
-    DomainServices -. "uses" .-> Registry
-    Registry -. "uses" .-> Store
-    MgmtServices -. "uses" .-> Store
-    MgmtServices -. "uses" .-> Registry
+    %% Dependency edges
+    DomainServices -. "consumes" .-> MessagingRepo
+    DomainServices -. "consumes" .-> Registry
+    Registry -. "consumes" .-> MessagingRepo
+    Registry -. "consumes" .-> LoginRepo
+    MgmtServices -. "consumes" .-> MessagingRepo
+    MgmtServices -. "consumes" .-> LoginRepo
+    MgmtServices -. "consumes" .-> Registry
     HttpApi -. "handlers consume" .-> MgmtServices
   end
 
-  subgraph Consumer["Consumer application (file: link)"]
+  subgraph Consumer["Consumer application"]
     direction TB
 
-    subgraph Repositories["repositories/ (Sequelize-backed)"]
+    subgraph Repositories["repositories/ (host-backed)"]
       ProviderRepo["providerRepositoryImpl<br/>impl: LineProviderRepository"]
-      ChannelRepo["channelRepositoryImpl<br/>impl: LineChannelRepository"]
+      MessagingRepoImpl["messagingChannelRepositoryImpl<br/>impl: LineMessagingChannelRepository"]
+      LoginRepoImpl["loginChannelRepositoryImpl<br/>impl: LineLoginChannelRepository"]
       LiffRepo["liffRepositoryImpl<br/>impl: LineLiffRepository"]
       LiveLayer["LineRepositoryLive<br/>Layer.mergeAll(...)"]
       ProviderRepo --> LiveLayer
-      ChannelRepo --> LiveLayer
+      MessagingRepoImpl --> LiveLayer
+      LoginRepoImpl --> LiveLayer
       LiffRepo --> LiveLayer
     end
 
     subgraph Runtime["runtime/"]
-      CompositionRoot["lineManagerLayer<br/>= LineRepositoryLive<br/>+ LineClientRegistry.layer()<br/>+ LineMessagingChannelRepository.layer<br/>+ LineLoginChannelRepository.layer<br/>+ 3 × *.Management.layer<br/>+ FetchHttpClient.layer"]
+      CompositionRoot["lineManagerLayer<br/>= LineRepositoryLive<br/>+ LineClientRegistry.layer()<br/>+ LineMessagingChannels.Service.layer<br/>+ LineLoginChannels.Service.layer<br/>+ 3 × *.Management.layer<br/>+ FetchHttpClient.layer"]
       ManagedRuntime["ManagedRuntime.make(lineManagerLayer)"]
-      EdgeFns["decodeMessagingChannelId(raw) → LineMessagingChannelId<br/>findChannelByChannelId(raw) → MessagingChannel<br/>getMessagingClient / invalidateLineChannel<br/>verifyLineWebhookSignature<br/>getLineChannelAccessToken"]
       ApiMiddleware["api-middleware.ts<br/>LineApiLayer.pipe(Layer.provide(lineManagerLayer))"]
 
       CompositionRoot --> ManagedRuntime
-      ManagedRuntime --> EdgeFns
       CompositionRoot --> ApiMiddleware
-    end
-
-    subgraph Tests["tests/line-management/"]
-      TestRepos["channel.repository.test.ts<br/>liff.repository.test.ts<br/>provider.repository.test.ts"]
-      TestRuntime["effect-runtime.test.ts"]
     end
   end
 
   %% Consumer → Library implementation edges
-  Repositories -. "implements" .-> Store
+  Repositories -. "implements" .-> MessagingRepo
+  Repositories -. "implements" .-> LoginRepo
   Repositories -. "implements" .-> Ports
-  Runtime -. "resolves via" .-> DomainRepos
-  Runtime -. "resolves via" .-> Registry
 ```
 
 ## Current domain model
@@ -99,63 +94,153 @@ Identifier rules:
 ## Persistence ports the host must implement
 
 The host application provides concrete `Layer.effect` (or `Layer.succeed`)
-implementations for exactly three persistence services exported by the library:
+implementations for exactly four persistence services exported by the library:
 
-1. **`LineChannelRepository`** — generic channel records (messaging + login).
-   Importable from the package root. Carries the persistence contract that
-   both the registry and the management services consume. Method names are
-   `create`, `update`, `findByLineChannelId`, `findByBotUserId`,
+1. **`LineMessagingChannelRepository`** — full-CRUD messaging channel records.
+   Importable from the package root (also as `LineMessagingChannels.Repository`).
+   Each method works against a single messaging-channel DB table. Method names
+   are `create`, `update`, `findByLineChannelId`, `findByBotUserId`,
    `listByProvider`, and `delete` — note that `findByLineChannelId(id)` takes
-   the **external LINE channel ID**, not the DB record UUID.
-2. **`LineProviderRepository`** — provider records.
-3. **`LineLiffRepository`** — LIFF app records.
+   the **external LINE Messaging channel ID** (`LineMessagingChannelId` brand),
+   not the DB record UUID.
+2. **`LineLoginChannelRepository`** — full-CRUD login channel records. Each
+   method works against a single login-channel DB table. Login channels do not
+   have a `channelAccessToken`, `isActive`, `botUserId`, `basicId`,
+   `displayName`, or `pictureUrl` field — the typed input schemas
+   (`CreateLoginChannelInput`, `UpdateLoginChannelInput`) enforce this at
+   compile time.
+3. **`LineProviderRepository`** — provider records.
+4. **`LineLiffRepository`** — LIFF app records.
 
-### Skeleton for `LineChannelRepository`
+### Skeleton for `LineMessagingChannelRepository`
 
 ```ts
-import { Effect, Layer, Option, Redacted } from "effect";
+import { Effect, Layer, Option, Redacted, Schema } from "effect";
 import {
-  LineChannelRepository,
-  LineChannelId,
+  LineMessagingChannelRepository,
+  LineMessagingChannelId,
+  LineBotUserId,
   MessagingChannel,
-  LoginChannel,
-  Schema,
+  MessagingChannelNotFoundError,
+  ChannelDuplicateError,
+  LineRepositoryError,
 } from "effect-line-manager";
 
-const channelRepositoryLayer = Layer.effect(LineChannelRepository)(
+const messagingChannelRepositoryLayer = Layer.effect(LineMessagingChannelRepository)(
   Effect.gen(function* () {
     const db = yield* MyDb; // consumer-owned
-    return LineChannelRepository.of({
+    return LineMessagingChannelRepository.of({
       create: (input) =>
         Effect.tryPromise({
-          try: () => db.lineChannel.create(toRow(input)),
-          catch: (cause) => toLineRepositoryError("createChannel", cause),
-        }),
+          try: () => db.lineMessagingChannels.create(toRow(input)),
+          catch: (cause) => toLineRepositoryError("createMessagingChannel", cause),
+        }).pipe(
+          Effect.catchIf(isDuplicateKey, () =>
+            Effect.fail(
+              new ChannelDuplicateError({ channelId: decodeLineChannelId(input.channelId) }),
+            ),
+          ),
+        ),
       update: (id, input) =>
         Effect.tryPromise({
-          try: () => db.lineChannel.update(id, toRow(input)),
-          catch: (cause) => toLineRepositoryError("updateChannel", cause),
-        }),
+          try: () => db.lineMessagingChannels.updateById(id, toRow(input)),
+          catch: (cause) => toLineRepositoryError("updateMessagingChannel", cause),
+        }).pipe(
+          Effect.flatMap((row) =>
+            row === null
+              ? Effect.fail(new MessagingChannelNotFoundError({ channelId: id }))
+              : Effect.succeed(mapToMessagingChannel(row)),
+          ),
+        ),
       findByLineChannelId: (id) =>
         Effect.tryPromise({
-          try: () => db.lineChannel.findByChannelId(id),
-          catch: (cause) => toLineRepositoryError("findChannelByLineChannelId", cause),
+          try: () => db.lineMessagingChannels.findByChannelId(id),
+          catch: (cause) => toLineRepositoryError("findMessagingChannelByLineChannelId", cause),
         }).pipe(Effect.map(Option.fromNullable)),
       findByBotUserId: (botUserId) =>
         Effect.tryPromise({
-          try: () => db.lineChannel.findByBotUserId(botUserId),
-          catch: (cause) => toLineRepositoryError("findChannelByBotUserId", cause),
+          try: () => db.lineMessagingChannels.findByBotUserId(botUserId),
+          catch: (cause) => toLineRepositoryError("findMessagingChannelByBotUserId", cause),
         }).pipe(Effect.map(Option.fromNullable)),
       listByProvider: (providerId, query) =>
         Effect.tryPromise({
-          try: () => db.lineChannel.listByProvider(providerId, query),
-          catch: (cause) => toLineRepositoryError("listChannelsByProvider", cause),
+          try: () => db.lineMessagingChannels.listByProvider(providerId, query),
+          catch: (cause) => toLineRepositoryError("listMessagingChannelsByProvider", cause),
         }),
       delete: (id) =>
         Effect.tryPromise({
-          try: () => db.lineChannel.delete(id),
-          catch: (cause) => toLineRepositoryError("deleteChannel", cause),
+          try: () => db.lineMessagingChannels.deleteById(id),
+          catch: (cause) => toLineRepositoryError("deleteMessagingChannel", cause),
+        }).pipe(
+          Effect.flatMap((deleted) =>
+            deleted
+              ? Effect.void
+              : Effect.fail(new MessagingChannelNotFoundError({ channelId: id })),
+          ),
+        ),
+    });
+  }),
+);
+```
+
+### Skeleton for `LineLoginChannelRepository`
+
+```ts
+import { Effect, Layer, Option, Redacted, Schema } from "effect";
+import {
+  LineLoginChannelRepository,
+  LineLoginChannelId,
+  LoginChannel,
+  LoginChannelNotFoundError,
+  ChannelDuplicateError,
+  LineRepositoryError,
+} from "effect-line-manager";
+
+const loginChannelRepositoryLayer = Layer.effect(LineLoginChannelRepository)(
+  Effect.gen(function* () {
+    const db = yield* MyDb;
+    return LineLoginChannelRepository.of({
+      create: (input) =>
+        Effect.tryPromise({
+          try: () => db.lineLoginChannels.create(toRow(input)),
+          catch: (cause) => toLineRepositoryError("createLoginChannel", cause),
+        }).pipe(
+          Effect.catchIf(isDuplicateKey, () =>
+            Effect.fail(
+              new ChannelDuplicateError({ channelId: decodeLineChannelId(input.channelId) }),
+            ),
+          ),
+        ),
+      update: (id, input) =>
+        Effect.tryPromise({
+          try: () => db.lineLoginChannels.updateById(id, toRow(input)),
+          catch: (cause) => toLineRepositoryError("updateLoginChannel", cause),
+        }).pipe(
+          Effect.flatMap((row) =>
+            row === null
+              ? Effect.fail(new LoginChannelNotFoundError({ channelId: id }))
+              : Effect.succeed(mapToLoginChannel(row)),
+          ),
+        ),
+      findByLineChannelId: (id) =>
+        Effect.tryPromise({
+          try: () => db.lineLoginChannels.findByChannelId(id),
+          catch: (cause) => toLineRepositoryError("findLoginChannelByLineChannelId", cause),
+        }).pipe(Effect.map(Option.fromNullable)),
+      listByProvider: (providerId, query) =>
+        Effect.tryPromise({
+          try: () => db.lineLoginChannels.listByProvider(providerId, query),
+          catch: (cause) => toLineRepositoryError("listLoginChannelsByProvider", cause),
         }),
+      delete: (id) =>
+        Effect.tryPromise({
+          try: () => db.lineLoginChannels.deleteById(id),
+          catch: (cause) => toLineRepositoryError("deleteLoginChannel", cause),
+        }).pipe(
+          Effect.flatMap((deleted) =>
+            deleted ? Effect.void : Effect.fail(new LoginChannelNotFoundError({ channelId: id })),
+          ),
+        ),
     });
   }),
 );
@@ -171,15 +256,23 @@ Repository implementations should:
 
 - return `Option.none()` for missing records on lookup methods
 - raise the current duplicate/not-found domain errors for business conflicts:
-  - channel conflicts: `ChannelNotFoundError`, `ChannelDuplicateError` (from `effect-line-manager`)
+  - messaging channel conflicts: `ChannelDuplicateError` on `create`,
+    `MessagingChannelNotFoundError` on `update`/`delete`
+  - login channel conflicts: `ChannelDuplicateError` on `create`,
+    `LoginChannelNotFoundError` on `update`/`delete`
+  - the generic `ChannelNotFoundError` is reserved for `LineChannelManagement`
+    (the HTTP API service); consumers raise the domain-specific not-found
+    errors from their repository implementations.
   - provider conflicts: `LineProviderNotFoundError`, `LineProviderDuplicateError`
   - LIFF conflicts: `LiffAppNotFoundError`, `LiffAppDuplicateError`
 - wrap all infrastructure failures in `new LineRepositoryError({ operation, cause })`
-  using one of the literal operation names from `LineRepositoryOperation` (e.g.
-  `"createChannel"`, `"findChannelByLineChannelId"`, `"listChannelsByProvider"`,
-  `"deleteChannel"` — the operation enum still uses the channel-domain verb
-  names, not the store method names, so the same string works for both the
-  internal store and a host adapting to it)
+  using one of the per-aggregate literal operation names from
+  `LineRepositoryOperation` (e.g. `"createMessagingChannel"`,
+  `"findMessagingChannelByLineChannelId"`, `"listMessagingChannelsByProvider"`,
+  `"deleteMessagingChannel"` for the messaging aggregate, and
+  `"createLoginChannel"`, `"findLoginChannelByLineChannelId"`,
+  `"listLoginChannelsByProvider"`, `"deleteLoginChannel"` for the login
+  aggregate)
 - perform encryption at rest for secrets and access tokens before persistence;
   construct library entities with `Redacted.make(...)` after decrypting
 
@@ -203,17 +296,28 @@ Use:
 
 Consumers should use the domain-specific public channel APIs:
 
+- `LineMessagingChannels.Repository.create`
+- `LineMessagingChannels.Repository.update`
 - `LineMessagingChannels.Repository.findByLineChannelId`
 - `LineMessagingChannels.Repository.findByBotUserId`
+- `LineMessagingChannels.Repository.listByProvider`
+- `LineMessagingChannels.Repository.delete`
+- `LineLoginChannels.Repository.create`
+- `LineLoginChannels.Repository.update`
 - `LineLoginChannels.Repository.findByLineChannelId`
+- `LineLoginChannels.Repository.listByProvider`
+- `LineLoginChannels.Repository.delete`
 - `LineMessagingChannels.Service.getClientByLineChannelId`
 - `LineMessagingChannels.Service.getAccessTokenByLineChannelId`
 - `LineMessagingChannels.Service.invalidateClientByLineChannelId`
 - `LineLoginChannels.Service.getByLineChannelId`
 - `LineLoginChannels.Service.getLoginClientByLineChannelId`
 
-Generic channel persistence is internal-only and should not be treated as a
-supported consumer contract.
+Both `LineMessagingChannels.Repository` and `LineLoginChannels.Repository` are
+full-CRUD ports that host applications implement directly. The library no
+longer ships a generic `LineChannelRepository` — channel persistence is split
+per aggregate, one repository per LINE channel type, one repository per
+physical DB table.
 
 ## HTTP API
 

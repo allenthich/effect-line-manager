@@ -55,9 +55,10 @@ test("exports the stable LINE manager API", () => {
 });
 
 test("root exports do not leak generic channel management internals not required by consumers", () => {
-  // These symbols are intentionally private. Consumers implement LineChannelRepository
-  // (the persistence boundary) and consume LineChannelManagement (the service via LineApiLayer);
-  // those plus their input/error types are tested separately as exported.
+  // These symbols are intentionally private. Consumers provide domain
+  // repository implementations and consume LineChannelManagement (the service
+  // via LineApiLayer); those plus their input/error types are tested
+  // separately as exported.
   const leakedSymbols = ["LineChannelManagementService", "makeLineChannelManagement"].filter(
     (name) => name in RootModule,
   );
@@ -81,14 +82,29 @@ test("root exports do not leak generic channel domain module not required by con
 });
 
 test("root exports persistence boundary and channel management symbols for headless consumers", () => {
-  expect("LineChannelRepository" in RootModule).toBe(true);
   expect("LineChannelManagement" in RootModule).toBe(true);
   expect("LineChannelId" in RootModule).toBe(true);
   expect("LineChannel" in RootModule).toBe(true);
-  expect("CreateChannelRecordInput" in RootModule).toBe(true);
-  expect("UpdateChannelRecordInput" in RootModule).toBe(true);
+  expect("CreateMessagingChannelInput" in RootModule).toBe(true);
+  expect("UpdateMessagingChannelInput" in RootModule).toBe(true);
+  expect("CreateLoginChannelInput" in RootModule).toBe(true);
+  expect("UpdateLoginChannelInput" in RootModule).toBe(true);
   expect("ChannelNotFoundError" in RootModule).toBe(true);
   expect("ChannelDuplicateError" in RootModule).toBe(true);
+});
+
+test("root exports the two domain channel repositories (replaces the generic LineChannelRepository)", () => {
+  expect("LineMessagingChannelRepository" in RootModule).toBe(true);
+  expect("LineLoginChannelRepository" in RootModule).toBe(true);
+  expect("LineMessagingChannels" in RootModule).toBe(true);
+  expect("LineLoginChannels" in RootModule).toBe(true);
+});
+
+test("root does not leak the deleted generic LineChannelRepository", () => {
+  expect("LineChannelRepository" in RootModule).toBe(false);
+  expect("LineChannelRepositoryService" in RootModule).toBe(false);
+  expect("CreateChannelRecordInput" in RootModule).toBe(false);
+  expect("UpdateChannelRecordInput" in RootModule).toBe(false);
 });
 
 test("domain-specific channel IDs are exported from root", () => {

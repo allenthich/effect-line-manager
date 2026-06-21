@@ -26,17 +26,17 @@ import {
 } from "../messaging/client.ts";
 import { makeLineLoginClient, type LineLoginClient } from "../login/client.ts";
 import { makeLineLiffClient, type LineLiffClient } from "../liff/client.ts";
-import {
-  LineChannelId,
-  MessagingChannel,
-  type LoginChannel,
-  type LineChannel,
-} from "../channel/domain.ts";
+import { LineChannelId, type MessagingChannel, type LoginChannel } from "../channel/domain.ts";
+import { LineMessagingChannelId, LineLoginChannelId } from "../channels/domain.ts";
 import { LineLiffId, type LineLiffApp } from "../liff/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
+import { MessagingChannelNotFoundError } from "../channels/errors.ts";
 import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
 import { LineRepositoryError } from "../shared/errors.ts";
-import { LineChannelRepository } from "../channel/repository.ts";
+import {
+  LineMessagingChannelRepository,
+  LineLoginChannelRepository,
+} from "../channels/repository.ts";
 import { LineLiffRepository } from "../liff/repository.ts";
 
 const defaultCapacity = 500;
@@ -52,7 +52,7 @@ export interface LineClientRegistryConfig {
 
 /** Cached data for a single channel: the channel entity + its Messaging API client (if applicable). */
 interface ChannelEntry {
-  readonly channel: LineChannel;
+  readonly channel: MessagingChannel | LoginChannel;
   readonly messaging: Option.Option<LineApiClient>;
   readonly login: Option.Option<LineLoginClient>;
 }
@@ -97,7 +97,10 @@ export class LineClientRegistry extends Context.Service<
       channelId: LineChannelId,
     ) => Effect.Effect<
       MessagingChannel,
-      LineRepositoryError | ChannelNotFoundError | LineApiClientError
+      | LineRepositoryError
+      | ChannelNotFoundError
+      | LineApiClientError
+      | MessagingChannelNotFoundError
     >;
 
     /** Evicts a single channel from the cache. */
@@ -118,15 +121,10 @@ export class LineClientRegistry extends Context.Service<
 /** The Effect service type extracted from LineClientRegistry. */
 export type LineClientRegistryService = LineClientRegistry["Service"];
 
-const isMessagingChannel = (channel: LineChannel): channel is MessagingChannel =>
-  channel.channelType === "messaging";
-
-const isLoginChannel = (channel: LineChannel): channel is LoginChannel =>
-  channel.channelType === "login";
-
 const makeRegistry = (config: LineClientRegistryConfig = {}) =>
   Effect.gen(function* () {
-    const channelRepository = yield* LineChannelRepository;
+    const messagingRepository = yield* LineMessagingChannelRepository;
+    const loginRepository = yield* LineLoginChannelRepository;
     const liffRepository = yield* LineLiffRepository;
     const httpClient = yield* HttpClient.HttpClient;
     const successTimeToLive = config.timeToLive ?? defaultTimeToLive;
@@ -136,25 +134,33 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const loadChannelEntry = Effect.fn("LineClientRegistry.loadChannelEntry")(function* (
       channelId: LineChannelId,
     ) {
-      const optionChannel = yield* channelRepository.findByLineChannelId(channelId);
-      if (Option.isNone(optionChannel)) {
-        return yield* new ChannelNotFoundError({ channelId });
+      // Try messaging first — only MessagingChannel entries expose a Messaging API client.
+      const messagingId = Schema.decodeUnknownSync(LineMessagingChannelId)(channelId);
+      const messagingOption = yield* messagingRepository.findByLineChannelId(messagingId);
+      if (Option.isSome(messagingOption)) {
+        const channel = messagingOption.value;
+        return {
+          channel,
+          messaging: Option.some(makeLineApiClient(httpClient, channel.channelAccessToken)),
+          login: Option.none(),
+        } satisfies ChannelEntry;
       }
-      const channel = optionChannel.value;
 
-      // Only create a Messaging API client for MessagingChannel entries.
-      // LoginChannel entries cannot use the Messaging API.
-      const messaging: Option.Option<LineApiClient> = isMessagingChannel(channel)
-        ? Option.some(makeLineApiClient(httpClient, channel.channelAccessToken))
-        : Option.none();
+      // Fall back to login — LoginChannel entries expose a Login client.
+      const loginId = Schema.decodeUnknownSync(LineLoginChannelId)(channelId);
+      const loginOption = yield* loginRepository.findByLineChannelId(loginId);
+      if (Option.isSome(loginOption)) {
+        const channel = loginOption.value;
+        return {
+          channel,
+          messaging: Option.none(),
+          login: Option.some(
+            makeLineLoginClient(httpClient, channel.channelId, channel.channelSecret),
+          ),
+        } satisfies ChannelEntry;
+      }
 
-      const login: Option.Option<LineLoginClient> = isLoginChannel(channel)
-        ? Option.some(
-            makeLineLoginClient(httpClient, channel.channelId as string, channel.channelSecret),
-          )
-        : Option.none();
-
-      return { channel, messaging, login } satisfies ChannelEntry;
+      return yield* new ChannelNotFoundError({ channelId });
     });
 
     const channelCache = yield* Cache.makeWith<
@@ -178,10 +184,13 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
       }
       const liffApp = optionLiff.value;
 
-      // Resolve the parent LoginChannel for validation
+      // Resolve the parent LoginChannel for validation. Only login channels
+      // can own LIFF apps — the login repository returns LoginChannel entities
+      // directly, so no runtime narrowing is required here.
       const sharedId = Schema.decodeUnknownSync(LineChannelId)(liffApp.loginChannelId);
-      const optionParent = yield* channelRepository.findByLineChannelId(sharedId);
-      if (Option.isNone(optionParent) || !isLoginChannel(optionParent.value)) {
+      const loginId = Schema.decodeUnknownSync(LineLoginChannelId)(liffApp.loginChannelId);
+      const optionParent = yield* loginRepository.findByLineChannelId(loginId);
+      if (Option.isNone(optionParent)) {
         return yield* new ChannelNotFoundError({
           channelId: sharedId,
         });
@@ -209,7 +218,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const getMessagingClient = Effect.fn("LineClientRegistry.getMessagingClient")(
       (channelId: LineChannelId) =>
         Effect.flatMap(Cache.get(channelCache, channelId), (entry) => {
-          if (!isMessagingChannel(entry.channel)) {
+          if (entry.channel.channelType !== "messaging") {
             return new ChannelNotFoundError({ channelId });
           }
           return Option.isSome(entry.messaging)
@@ -220,11 +229,14 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
 
     const getLoginClient = Effect.fn("LineClientRegistry.getLoginClient")(
       (channelId: LineChannelId) =>
-        Effect.flatMap(Cache.get(channelCache, channelId), (entry) =>
-          Option.isSome(entry.login)
+        Effect.flatMap(Cache.get(channelCache, channelId), (entry) => {
+          if (entry.channel.channelType !== "login") {
+            return new ChannelNotFoundError({ channelId });
+          }
+          return Option.isSome(entry.login)
             ? Effect.succeed(entry.login.value)
-            : new ChannelNotFoundError({ channelId }),
-        ),
+            : Effect.die("LoginChannel without login client");
+        }),
     );
 
     const getLiffClient = Effect.fn("LineClientRegistry.getLiffClient")(
@@ -245,8 +257,10 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
     const syncBotProfile = Effect.fn("LineClientRegistry.syncBotProfile")(
       (channelId: LineChannelId) =>
         Effect.gen(function* () {
+          // Resolve the channel via the cache so a single lookup feeds both
+          // the bot-info call and the subsequent update.
           const entry = yield* Cache.get(channelCache, channelId);
-          if (!isMessagingChannel(entry.channel)) {
+          if (entry.channel.channelType !== "messaging") {
             return yield* new ChannelNotFoundError({ channelId });
           }
           if (Option.isNone(entry.messaging)) {
@@ -255,8 +269,11 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           const messagingClient = entry.messaging.value;
           const botInfo = yield* messagingClient.getBotInfo;
 
-          const channelRecordId = entry.channel.id;
-          const updatedChannel = yield* channelRepository.update(channelRecordId, {
+          // The messaging channel's external LINE channel ID is the key we
+          // update by — re-brand the LineChannelId cache key back to the
+          // messaging-specific brand the repository expects.
+          const messagingId = Schema.decodeUnknownSync(LineMessagingChannelId)(channelId);
+          const updatedChannel = yield* messagingRepository.update(messagingId, {
             botUserId: botInfo.userId,
             basicId: botInfo.basicId,
             displayName: botInfo.displayName,
@@ -266,13 +283,7 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           // Invalidate the cache so next lookup gets fresh data
           yield* Cache.invalidate(channelCache, channelId);
 
-          // Decode the updated channel to ensure type safety — it must
-          // remain a MessagingChannel since we validated the type above
-          // and the update preserves the channel type.
-          if (isMessagingChannel(updatedChannel)) {
-            return updatedChannel;
-          }
-          return yield* Effect.die("Expected updated channel to remain a messaging channel");
+          return updatedChannel;
         }),
     );
 

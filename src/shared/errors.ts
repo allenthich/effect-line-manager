@@ -8,13 +8,19 @@ export const LineRepositoryOperation = Schema.Literals([
   "findProviderById",
   "listProviders",
   "deleteProvider",
-  // Channels
-  "createChannel",
-  "updateChannel",
-  "findChannelByLineChannelId",
-  "findChannelByBotUserId",
-  "listChannelsByProvider",
-  "deleteChannel",
+  // Messaging channels
+  "createMessagingChannel",
+  "updateMessagingChannel",
+  "findMessagingChannelByLineChannelId",
+  "findMessagingChannelByBotUserId",
+  "listMessagingChannelsByProvider",
+  "deleteMessagingChannel",
+  // Login channels
+  "createLoginChannel",
+  "updateLoginChannel",
+  "findLoginChannelByLineChannelId",
+  "listLoginChannelsByProvider",
+  "deleteLoginChannel",
   // LIFF Apps
   "createLiffApp",
   "updateLiffApp",

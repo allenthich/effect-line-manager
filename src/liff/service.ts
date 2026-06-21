@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import { LineChannelId, LineLoginChannelId, type LoginChannel } from "../channel/domain.ts";
+import { LineChannelId, LineLoginChannelId } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
-import { LineChannelRepository } from "../channel/repository.ts";
+import { LineLoginChannelRepository } from "../channels/repository.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "../provider/repository.ts";
 import {
@@ -96,14 +96,12 @@ const persistenceFailure = (error: LineRepositoryError) =>
     Effect.andThen(Effect.fail(new LinePersistenceError({ operation: error.operation }))),
   );
 
-const isLoginChannel = (c: { channelType: string }): c is LoginChannel => c.channelType === "login";
-
 const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 
 /** Creates the implementation for the LIFF management service. */
 export const makeLineLiffManagement = Effect.gen(function* () {
   const repository = yield* LineLiffRepository;
-  const channelRepository = yield* LineChannelRepository;
+  const loginRepository = yield* LineLoginChannelRepository;
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 
@@ -114,13 +112,14 @@ export const makeLineLiffManagement = Effect.gen(function* () {
       // expose a single `listAllLiffApps(query)` repository method.
       const unboundedQuery: NormalizedPageQuery = { page: 1, pageSize: 100 };
       const providers = yield* providerRepository.listProviders(unboundedQuery);
-      const allChannels = yield* Effect.all(
-        providers.data.map((p) => channelRepository.listByProvider(p.id, unboundedQuery)),
+      const loginChannelPages = yield* Effect.all(
+        providers.data.map((p) => loginRepository.listByProvider(p.id, unboundedQuery)),
+        { concurrency: "unbounded" },
       );
-      const flatChannels = allChannels.flatMap((p) => p.data);
-      const loginChannels = flatChannels.filter(isLoginChannel);
+      const loginChannels = loginChannelPages.flatMap((p) => p.data);
       const liffArrays = yield* Effect.all(
         loginChannels.map((c) => repository.listLiffAppsByChannel(c.channelId, unboundedQuery)),
+        { concurrency: "unbounded" },
       );
       const allApps = liffArrays.flatMap((p) => p.data);
       return paginate(allApps, query);
@@ -152,18 +151,14 @@ export const makeLineLiffManagement = Effect.gen(function* () {
     createLiffApp: Effect.fn("LineLiffManagement.createLiffApp")((input: CreateLiffAppInput) =>
       Effect.gen(function* () {
         const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)(input.loginChannelId);
-        const sharedId = decodeSharedLineChannelId(loginChannelId);
-        const optionChannel = yield* channelRepository.findByLineChannelId(sharedId);
-        if (Option.isNone(optionChannel)) {
+        const parentChannel = yield* loginRepository.findByLineChannelId(loginChannelId);
+        if (Option.isNone(parentChannel)) {
           return yield* new ChannelNotFoundError({
             channelId: decodeSharedLineChannelId(loginChannelId),
           });
         }
-        if (optionChannel.value.channelType !== "login") {
-          return yield* new ChannelNotFoundError({
-            channelId: decodeSharedLineChannelId(loginChannelId),
-          });
-        }
+        // The login repository only returns LoginChannel records, so the
+        // previous `channelType !== "login"` runtime check is a no-op here.
         const record = yield* repository.createLiffApp(
           toCreateLiffAppRecordInput(input, loginChannelId),
         );

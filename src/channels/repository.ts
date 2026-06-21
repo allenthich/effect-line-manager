@@ -1,86 +1,82 @@
-import { Context, Effect, Layer, Option, Schema } from "effect";
-import { LineChannelId, type LoginChannel, type MessagingChannel } from "../channel/domain.ts";
-import { LineChannelRepository } from "../channel/repository.ts";
-import type { LineRepositoryError } from "../shared/errors.ts";
-import {
-  LineBotUserId,
-  LineLoginChannelId,
+import { Context, type Effect, type Option } from "effect";
+import type { LineProviderId } from "../provider/domain.ts";
+import type { NormalizedPageQuery, PageResult } from "../shared/domain.ts";
+import type {
+  CreateMessagingChannelInput,
+  CreateLoginChannelInput,
   LineMessagingChannelId,
-  isLineLoginChannel,
-  isLineMessagingChannel,
-} from "./domain.ts";
+  LineLoginChannelId,
+  LoginChannel,
+  MessagingChannel,
+  UpdateMessagingChannelInput,
+  UpdateLoginChannelInput,
+} from "../channel/domain.ts";
+import type { ChannelDuplicateError } from "../channel/errors.ts";
+import type { LoginChannelNotFoundError, MessagingChannelNotFoundError } from "./errors.ts";
+import type { LineRepositoryError } from "../shared/errors.ts";
+import type { LineBotUserId } from "./domain.ts";
 
 export interface LineMessagingChannelRepositoryService {
+  readonly create: (
+    input: CreateMessagingChannelInput,
+  ) => Effect.Effect<MessagingChannel, ChannelDuplicateError | LineRepositoryError>;
+  readonly update: (
+    id: LineMessagingChannelId,
+    input: UpdateMessagingChannelInput,
+  ) => Effect.Effect<MessagingChannel, MessagingChannelNotFoundError | LineRepositoryError>;
   readonly findByLineChannelId: (
     id: LineMessagingChannelId,
   ) => Effect.Effect<Option.Option<MessagingChannel>, LineRepositoryError>;
   readonly findByBotUserId: (
     id: LineBotUserId,
   ) => Effect.Effect<Option.Option<MessagingChannel>, LineRepositoryError>;
+  readonly listByProvider: (
+    providerId: LineProviderId,
+    query: NormalizedPageQuery,
+  ) => Effect.Effect<PageResult<MessagingChannel>, LineRepositoryError>;
+  readonly delete: (
+    id: LineMessagingChannelId,
+  ) => Effect.Effect<void, MessagingChannelNotFoundError | LineRepositoryError>;
 }
 
+/**
+ * Persistence boundary for LINE Messaging API channels (full CRUD).
+ *
+ * Consumers implement this repository to back the messaging channel service
+ * and the registry/management services in the library.
+ */
 export class LineMessagingChannelRepository extends Context.Service<
   LineMessagingChannelRepository,
   LineMessagingChannelRepositoryService
->()("effect-line-manager/LineMessagingChannelRepository") {
-  static get layer() {
-    return Layer.effect(LineMessagingChannelRepository)(makeLineMessagingChannelRepository);
-  }
-}
+>()("effect-line-manager/LineMessagingChannelRepository") {}
 
 export interface LineLoginChannelRepositoryService {
+  readonly create: (
+    input: CreateLoginChannelInput,
+  ) => Effect.Effect<LoginChannel, ChannelDuplicateError | LineRepositoryError>;
+  readonly update: (
+    id: LineLoginChannelId,
+    input: UpdateLoginChannelInput,
+  ) => Effect.Effect<LoginChannel, LoginChannelNotFoundError | LineRepositoryError>;
   readonly findByLineChannelId: (
     id: LineLoginChannelId,
   ) => Effect.Effect<Option.Option<LoginChannel>, LineRepositoryError>;
+  readonly listByProvider: (
+    providerId: LineProviderId,
+    query: NormalizedPageQuery,
+  ) => Effect.Effect<PageResult<LoginChannel>, LineRepositoryError>;
+  readonly delete: (
+    id: LineLoginChannelId,
+  ) => Effect.Effect<void, LoginChannelNotFoundError | LineRepositoryError>;
 }
 
+/**
+ * Persistence boundary for LINE Login channels (full CRUD).
+ *
+ * Consumers implement this repository to back the login channel service
+ * (LIFF management resolves parent login channels through this port).
+ */
 export class LineLoginChannelRepository extends Context.Service<
   LineLoginChannelRepository,
   LineLoginChannelRepositoryService
->()("effect-line-manager/LineLoginChannelRepository") {
-  static get layer() {
-    return Layer.effect(LineLoginChannelRepository)(makeLineLoginChannelRepository);
-  }
-}
-
-const narrowMessagingChannel = (
-  channel: MessagingChannel | LoginChannel,
-): Option.Option<MessagingChannel> =>
-  isLineMessagingChannel(channel) ? Option.some(channel) : Option.none();
-
-const narrowLoginChannel = (
-  channel: MessagingChannel | LoginChannel,
-): Option.Option<LoginChannel> =>
-  isLineLoginChannel(channel) ? Option.some(channel) : Option.none();
-
-const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
-
-export const makeLineMessagingChannelRepository = Effect.gen(function* () {
-  const repository = yield* LineChannelRepository;
-
-  return LineMessagingChannelRepository.of({
-    findByLineChannelId: Effect.fn("LineMessagingChannelRepository.findByLineChannelId")(
-      (id: LineMessagingChannelId) =>
-        repository
-          .findByLineChannelId(decodeSharedLineChannelId(id))
-          .pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
-    ),
-    findByBotUserId: Effect.fn("LineMessagingChannelRepository.findByBotUserId")(
-      (id: LineBotUserId) =>
-        repository.findByBotUserId(id).pipe(Effect.map(Option.flatMap(narrowMessagingChannel))),
-    ),
-  });
-});
-
-export const makeLineLoginChannelRepository = Effect.gen(function* () {
-  const repository = yield* LineChannelRepository;
-
-  return LineLoginChannelRepository.of({
-    findByLineChannelId: Effect.fn("LineLoginChannelRepository.findByLineChannelId")(
-      (id: LineLoginChannelId) =>
-        repository
-          .findByLineChannelId(decodeSharedLineChannelId(id))
-          .pipe(Effect.map(Option.flatMap(narrowLoginChannel))),
-    ),
-  });
-});
+>()("effect-line-manager/LineLoginChannelRepository") {}

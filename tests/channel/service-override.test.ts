@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Context, Effect, Layer, Redacted, Schema } from "effect";
+import { Context, Effect, Layer, Option, Redacted, Schema } from "effect";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import {
   LineProviderRepository,
@@ -12,9 +12,13 @@ import {
 } from "../../src/channel/domain.ts";
 import { LineChannelManagement, makeLineChannelManagement } from "../../src/channel/service.ts";
 import {
-  LineChannelRepository,
-  type LineChannelRepositoryService,
-} from "../../src/channel/repository.ts";
+  LineMessagingChannelRepository,
+  type LineMessagingChannelRepositoryService,
+} from "../../src/channels/repository.ts";
+import {
+  LineLoginChannelRepository,
+  type LineLoginChannelRepositoryService,
+} from "../../src/channels/repository.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
 import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
@@ -45,18 +49,26 @@ const makeChannel = (id: LineChannelId, channelId: LineMessagingChannelId, name:
 const channel1 = makeChannel(uid1, channelId1, "Alpha");
 const channel2 = makeChannel(uid2, channelId2, "Beta");
 
-const makeChannelStore = (): LineChannelRepositoryService =>
-  ({
-    create: () => Effect.die("unused"),
-    update: () => Effect.die("unused"),
-    findByLineChannelId: () => Effect.succeedNone,
-    findByBotUserId: () => Effect.succeedNone,
-    listByProvider: () =>
-      Effect.succeed(
-        paginate([channel1, channel2], { page: defaultPage, pageSize: defaultPageSize }),
-      ),
-    delete: () => Effect.void,
-  }) as LineChannelRepositoryService;
+const makeMessagingStore = (): LineMessagingChannelRepositoryService => ({
+  create: () => Effect.die("unused"),
+  update: () => Effect.die("unused"),
+  findByLineChannelId: () => Effect.succeedNone,
+  findByBotUserId: () => Effect.succeedNone,
+  listByProvider: () =>
+    Effect.succeed(
+      paginate([channel1, channel2], { page: defaultPage, pageSize: defaultPageSize }),
+    ),
+  delete: () => Effect.void,
+});
+
+const makeLoginStore = (): LineLoginChannelRepositoryService => ({
+  create: () => Effect.die("unused"),
+  update: () => Effect.die("unused"),
+  findByLineChannelId: () => Effect.succeedNone,
+  listByProvider: () =>
+    Effect.succeed(paginate([], { page: defaultPage, pageSize: defaultPageSize })),
+  delete: () => Effect.void,
+});
 
 const makeProviderRepository = (): LineProviderRepositoryService =>
   ({
@@ -88,7 +100,8 @@ const makeRegistry = (): LineClientRegistryService =>
   }) as LineClientRegistryService;
 
 const baseLayer = Layer.mergeAll(
-  Layer.succeed(LineChannelRepository)(makeChannelStore()),
+  Layer.succeed(LineMessagingChannelRepository)(makeMessagingStore()),
+  Layer.succeed(LineLoginChannelRepository)(makeLoginStore()),
   Layer.succeed(LineProviderRepository)(makeProviderRepository()),
   Layer.succeed(LineClientRegistry)(makeRegistry()),
 );
@@ -171,8 +184,10 @@ describe("LineChannelManagement service override", () => {
 
   test("consumer retains original deleteChannel when overriding listChannels()", async () => {
     let deleteCalled = false;
-    const channelStore: LineChannelRepositoryService = {
-      ...makeChannelStore(),
+    const messagingStore: LineMessagingChannelRepositoryService = {
+      ...makeMessagingStore(),
+      findByLineChannelId: () =>
+        Effect.succeed(Option.some(makeChannel(uid1, channelId1, "Alpha"))),
       delete: () =>
         Effect.sync(() => {
           deleteCalled = true;
@@ -180,7 +195,8 @@ describe("LineChannelManagement service override", () => {
     };
 
     const testBaseLayer = Layer.mergeAll(
-      Layer.succeed(LineChannelRepository)(channelStore),
+      Layer.succeed(LineMessagingChannelRepository)(messagingStore),
+      Layer.succeed(LineLoginChannelRepository)(makeLoginStore()),
       Layer.succeed(LineProviderRepository)(makeProviderRepository()),
       Layer.succeed(LineClientRegistry)(makeRegistry()),
     );
