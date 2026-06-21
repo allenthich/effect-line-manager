@@ -14,8 +14,10 @@ import {
 import { LinePersistenceError, LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry } from "../../src/registry/index.ts";
 import { LineChannelManagement } from "../../src/channel/service.ts";
-import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
-import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
+import {
+  LineChannelRepository,
+  type LineChannelRepositoryService,
+} from "../../src/channel/repository.ts";
 import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
 const channelId = Schema.decodeUnknownSync(LineChannelId)("record-1");
@@ -37,8 +39,8 @@ const makeChannel = (overrides: Partial<MessagingChannel> = {}) =>
   });
 
 const makeChannelStore = (
-  overrides: Partial<InternalLineChannelStoreService> = {},
-): InternalLineChannelStoreService =>
+  overrides: Partial<LineChannelRepositoryService> = {},
+): LineChannelRepositoryService =>
   ({
     create: () => Effect.succeed(makeChannel()),
     update: () => Effect.succeed(makeChannel()),
@@ -64,7 +66,7 @@ const makeRegistry = (invalidated: string[]): any =>
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineChannelManagement>,
-  store: InternalLineChannelStoreService,
+  store: LineChannelRepositoryService,
   providerRepository: LineProviderRepositoryService,
   registry: any,
 ) =>
@@ -72,7 +74,7 @@ const run = <A, E>(
     effect.pipe(
       Effect.provide(
         LineChannelManagement.layer.pipe(
-          Layer.provide(provideInternalLineChannelStore(store)),
+          Layer.provide(Layer.succeed(LineChannelRepository)(store)),
           Layer.provide(Layer.succeed(LineProviderRepository)(providerRepository)),
           Layer.provide(Layer.succeed(LineClientRegistry)(registry)),
         ),

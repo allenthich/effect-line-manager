@@ -36,7 +36,7 @@ import { LineLiffId, type LineLiffApp } from "../liff/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
 import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
 import { LineRepositoryError } from "../shared/errors.ts";
-import { InternalLineChannelStore } from "../internal/channel-store.ts";
+import { LineChannelRepository } from "../channel/repository.ts";
 import { LineLiffRepository } from "../liff/repository.ts";
 
 const defaultCapacity = 500;
@@ -126,7 +126,7 @@ const isLoginChannel = (channel: LineChannel): channel is LoginChannel =>
 
 const makeRegistry = (config: LineClientRegistryConfig = {}) =>
   Effect.gen(function* () {
-    const channelRepository = yield* InternalLineChannelStore;
+    const channelRepository = yield* LineChannelRepository;
     const liffRepository = yield* LineLiffRepository;
     const httpClient = yield* HttpClient.HttpClient;
     const successTimeToLive = config.timeToLive ?? defaultTimeToLive;

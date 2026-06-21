@@ -19,7 +19,7 @@ import {
   type PageResult,
 } from "../shared/domain.ts";
 import { LineClientRegistry } from "../registry/index.ts";
-import { InternalLineChannelStore } from "../internal/channel-store.ts";
+import { LineChannelRepository } from "./repository.ts";
 
 /** Service interface for LINE channel management operations. */
 export interface LineChannelManagementService {
@@ -140,7 +140,7 @@ const persistenceFailure = (error: LineRepositoryError) =>
 
 /** Constructs the LINE channel management service with its dependencies. */
 export const makeLineChannelManagement = Effect.gen(function* () {
-  const repository = yield* InternalLineChannelStore;
+  const repository = yield* LineChannelRepository;
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 

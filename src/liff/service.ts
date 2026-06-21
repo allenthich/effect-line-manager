@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
 import { LineChannelId, LineLoginChannelId, type LoginChannel } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
-import { InternalLineChannelStore } from "../internal/channel-store.ts";
+import { LineChannelRepository } from "../channel/repository.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "../provider/repository.ts";
 import {
@@ -103,7 +103,7 @@ const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 /** Creates the implementation for the LIFF management service. */
 export const makeLineLiffManagement = Effect.gen(function* () {
   const repository = yield* LineLiffRepository;
-  const channelRepository = yield* InternalLineChannelStore;
+  const channelRepository = yield* LineChannelRepository;
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 

@@ -11,9 +11,11 @@ import {
   LineMessagingChannelId,
 } from "../../src/channel/domain.ts";
 import { LineChannelManagement, makeLineChannelManagement } from "../../src/channel/service.ts";
+import {
+  LineChannelRepository,
+  type LineChannelRepositoryService,
+} from "../../src/channel/repository.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
-import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
-import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import { paginate, defaultPage, defaultPageSize } from "../../src/shared/domain.ts";
 
 const uid1 = Schema.decodeUnknownSync(LineChannelId)("record-1");
@@ -43,7 +45,7 @@ const makeChannel = (id: LineChannelId, channelId: LineMessagingChannelId, name:
 const channel1 = makeChannel(uid1, channelId1, "Alpha");
 const channel2 = makeChannel(uid2, channelId2, "Beta");
 
-const makeChannelStore = (): InternalLineChannelStoreService =>
+const makeChannelStore = (): LineChannelRepositoryService =>
   ({
     create: () => Effect.die("unused"),
     update: () => Effect.die("unused"),
@@ -54,7 +56,7 @@ const makeChannelStore = (): InternalLineChannelStoreService =>
         paginate([channel1, channel2], { page: defaultPage, pageSize: defaultPageSize }),
       ),
     delete: () => Effect.void,
-  }) as InternalLineChannelStoreService;
+  }) as LineChannelRepositoryService;
 
 const makeProviderRepository = (): LineProviderRepositoryService =>
   ({
@@ -86,7 +88,7 @@ const makeRegistry = (): LineClientRegistryService =>
   }) as LineClientRegistryService;
 
 const baseLayer = Layer.mergeAll(
-  provideInternalLineChannelStore(makeChannelStore()),
+  Layer.succeed(LineChannelRepository)(makeChannelStore()),
   Layer.succeed(LineProviderRepository)(makeProviderRepository()),
   Layer.succeed(LineClientRegistry)(makeRegistry()),
 );
@@ -169,7 +171,7 @@ describe("LineChannelManagement service override", () => {
 
   test("consumer retains original deleteChannel when overriding listChannels()", async () => {
     let deleteCalled = false;
-    const channelStore: InternalLineChannelStoreService = {
+    const channelStore: LineChannelRepositoryService = {
       ...makeChannelStore(),
       delete: () =>
         Effect.sync(() => {
@@ -178,7 +180,7 @@ describe("LineChannelManagement service override", () => {
     };
 
     const testBaseLayer = Layer.mergeAll(
-      provideInternalLineChannelStore(channelStore),
+      Layer.succeed(LineChannelRepository)(channelStore),
       Layer.succeed(LineProviderRepository)(makeProviderRepository()),
       Layer.succeed(LineClientRegistry)(makeRegistry()),
     );

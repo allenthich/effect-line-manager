@@ -54,31 +54,41 @@ test("exports the stable LINE manager API", () => {
   ]).not.toContain(undefined);
 });
 
-test("root exports do not leak generic internal channel symbols", () => {
-  const leakedSymbols = [
-    "LineChannelId",
-    "InternalLineChannelStore",
-    "LineChannelManagement",
-    "ChannelNotFoundError",
-    "ChannelDuplicateError",
-  ].filter((name) => name in RootModule);
+test("root exports do not leak generic channel management internals not required by consumers", () => {
+  // These symbols are intentionally private. Consumers implement LineChannelRepository
+  // (the persistence boundary) and consume LineChannelManagement (the service via LineApiLayer);
+  // those plus their input/error types are tested separately as exported.
+  const leakedSymbols = ["LineChannelManagementService", "makeLineChannelManagement"].filter(
+    (name) => name in RootModule,
+  );
 
   expect(leakedSymbols).toEqual([]);
 });
 
-test("root exports do not leak generic channel domain module", () => {
+test("root exports do not leak generic channel domain module not required by consumers", () => {
+  // Management-service API shapes (public ChannelView, CreateChannelInput, etc.)
+  // are kept private; consumers go through LineChannelManagement / the HTTP API.
   const leaked = [
-    "LineChannel",
     "CreateChannelInput",
     "UpdateChannelInput",
     "ChannelView",
     "ChannelListPage",
     "toChannelView",
-    "CreateChannelRecordInput",
-    "UpdateChannelRecordInput",
+    "toChannelListPage",
   ].filter((name) => name in RootModule);
 
   expect(leaked).toEqual([]);
+});
+
+test("root exports persistence boundary and channel management symbols for headless consumers", () => {
+  expect("LineChannelRepository" in RootModule).toBe(true);
+  expect("LineChannelManagement" in RootModule).toBe(true);
+  expect("LineChannelId" in RootModule).toBe(true);
+  expect("LineChannel" in RootModule).toBe(true);
+  expect("CreateChannelRecordInput" in RootModule).toBe(true);
+  expect("UpdateChannelRecordInput" in RootModule).toBe(true);
+  expect("ChannelNotFoundError" in RootModule).toBe(true);
+  expect("ChannelDuplicateError" in RootModule).toBe(true);
 });
 
 test("domain-specific channel IDs are exported from root", () => {

@@ -10,8 +10,10 @@ import {
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/registry/index.ts";
-import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
-import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
+import {
+  LineChannelRepository,
+  type LineChannelRepositoryService,
+} from "../../src/channel/repository.ts";
 import { LineLiffRepository, type LineLiffRepositoryService } from "../../src/liff/repository.ts";
 
 const decodeGeneric = Schema.decodeUnknownSync(LineChannelId);
@@ -35,9 +37,9 @@ const makeMessagingChannel = (token: string) =>
   });
 
 const makeChannelStore = (
-  findByLineChannelId: InternalLineChannelStoreService["findByLineChannelId"],
-  update?: InternalLineChannelStoreService["update"],
-): InternalLineChannelStoreService => ({
+  findByLineChannelId: LineChannelRepositoryService["findByLineChannelId"],
+  update?: LineChannelRepositoryService["update"],
+): LineChannelRepositoryService => ({
   create: () => Effect.die("unused"),
   update:
     update ??
@@ -72,7 +74,7 @@ const makeCapturingHttpClient = (status = 200, body: string | null = null) => {
 };
 
 const makeLayer = (
-  channelStore: InternalLineChannelStoreService,
+  channelStore: LineChannelRepositoryService,
   liffRepository: LineLiffRepositoryService,
   httpClient: HttpClient.HttpClient,
   config?: LineClientRegistryConfig,
@@ -80,7 +82,7 @@ const makeLayer = (
   LineClientRegistry.layer(config).pipe(
     Layer.provide(
       Layer.mergeAll(
-        provideInternalLineChannelStore(channelStore),
+        Layer.succeed(LineChannelRepository)(channelStore),
         Layer.succeed(LineLiffRepository)(liffRepository),
         Layer.succeed(HttpClient.HttpClient)(httpClient),
       ),
@@ -89,7 +91,7 @@ const makeLayer = (
 
 const run = <A, E>(
   effect: Effect.Effect<A, E, LineClientRegistry>,
-  channelStore: InternalLineChannelStoreService,
+  channelStore: LineChannelRepositoryService,
   liffRepository: LineLiffRepositoryService,
   httpClient: HttpClient.HttpClient,
   config?: LineClientRegistryConfig,

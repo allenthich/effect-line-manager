@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
 import { LineChannelId, type LoginChannel, type MessagingChannel } from "../channel/domain.ts";
-import { InternalLineChannelStore } from "../internal/channel-store.ts";
+import { LineChannelRepository } from "../channel/repository.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
 import {
   LineBotUserId,
@@ -56,7 +56,7 @@ const narrowLoginChannel = (
 const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 
 export const makeLineMessagingChannelRepository = Effect.gen(function* () {
-  const repository = yield* InternalLineChannelStore;
+  const repository = yield* LineChannelRepository;
 
   return LineMessagingChannelRepository.of({
     findByLineChannelId: Effect.fn("LineMessagingChannelRepository.findByLineChannelId")(
@@ -73,7 +73,7 @@ export const makeLineMessagingChannelRepository = Effect.gen(function* () {
 });
 
 export const makeLineLoginChannelRepository = Effect.gen(function* () {
-  const repository = yield* InternalLineChannelStore;
+  const repository = yield* LineChannelRepository;
 
   return LineLoginChannelRepository.of({
     findByLineChannelId: Effect.fn("LineLoginChannelRepository.findByLineChannelId")(

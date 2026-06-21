@@ -6,18 +6,18 @@ import type {
   LineChannel,
   LineChannelId,
   UpdateChannelRecordInput,
-} from "../channel/domain.ts";
-import type { ChannelDuplicateError, ChannelNotFoundError } from "../channel/errors.ts";
+} from "./domain.ts";
+import type { ChannelDuplicateError, ChannelNotFoundError } from "./errors.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
 
 /**
- * Internal persistence boundary for generic channel records.
+ * Persistence boundary for generic LINE channel records (messaging + login).
  *
- * Public consumers should use the domain-specific channel services exported
- * through `LineMessagingChannels` and `LineLoginChannels`.
+ * Consumers implement this repository to back the domain-specific channel
+ * services exported through `LineMessagingChannels` and `LineLoginChannels`.
  */
-export class InternalLineChannelStore extends Context.Service<
-  InternalLineChannelStore,
+export class LineChannelRepository extends Context.Service<
+  LineChannelRepository,
   {
     readonly create: (
       input: CreateChannelRecordInput,
@@ -40,6 +40,6 @@ export class InternalLineChannelStore extends Context.Service<
       id: LineChannelId,
     ) => Effect.Effect<void, ChannelNotFoundError | LineRepositoryError>;
   }
->()("effect-line-manager/internal/InternalLineChannelStore") {}
+>()("effect-line-manager/LineChannelRepository") {}
 
-export type InternalLineChannelStoreService = InternalLineChannelStore["Service"];
+export type LineChannelRepositoryService = LineChannelRepository["Service"];

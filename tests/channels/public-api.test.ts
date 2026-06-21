@@ -18,11 +18,13 @@ import {
   LineMessagingChannelRepository,
   LineMessagingChannelService,
 } from "../../src/channels/index.ts";
-import type { InternalLineChannelStoreService } from "../../src/internal/channel-store.ts";
+import {
+  LineChannelRepository,
+  type LineChannelRepositoryService,
+} from "../../src/channel/repository.ts";
 import { LineClientRegistry, type LineClientRegistryService } from "../../src/registry/index.ts";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineLoginChannels, LineMessagingChannels } from "../../src/public-api.ts";
-import { provideInternalLineChannelStore } from "../support/internal-channel-store.ts";
 import type { LineMessagingChannel } from "../../src/channels/domain.ts";
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
@@ -63,8 +65,8 @@ const makeLoginChannel = () =>
   });
 
 const makeChannelStore = (
-  overrides: Partial<InternalLineChannelStoreService> = {},
-): InternalLineChannelStoreService => ({
+  overrides: Partial<LineChannelRepositoryService> = {},
+): LineChannelRepositoryService => ({
   create: () => Effect.die("unused"),
   update: () => Effect.die("unused"),
   findByLineChannelId: () => Effect.succeed(Option.none()),
@@ -98,12 +100,12 @@ const makeRegistry = (
   invalidateAll: Effect.die("unused"),
 });
 
-const makeChannelStoreLayer = (store: InternalLineChannelStoreService) =>
-  provideInternalLineChannelStore(store);
+const makeChannelStoreLayer = (store: LineChannelRepositoryService) =>
+  Layer.succeed(LineChannelRepository)(store);
 
 const runRepositoryEffect = <A, E>(
   effect: Effect.Effect<A, E, LineMessagingChannelRepository | LineLoginChannelRepository>,
-  store: InternalLineChannelStoreService,
+  store: LineChannelRepositoryService,
 ) =>
   Effect.runPromise(
     effect.pipe(
@@ -125,7 +127,7 @@ const runServiceEffect = <A, E>(
     | LineMessagingChannelService
     | LineLoginChannelService
   >,
-  store: InternalLineChannelStoreService,
+  store: LineChannelRepositoryService,
   registry: LineClientRegistryService,
 ) =>
   Effect.runPromise(
