@@ -28,8 +28,8 @@ describe("HTTP API package boundary", () => {
       readonly devDependencies?: Record<string, string>;
       readonly exports?: Record<string, string>;
     };
-    expect(manifest.dependencies).not.toHaveProperty("hono");
-    expect(manifest.dependencies).not.toHaveProperty("express");
+    expect(manifest.dependencies?.hono).toBeUndefined();
+    expect(manifest.dependencies?.express).toBeUndefined();
     expect(manifest.devDependencies).toHaveProperty("hono");
     expect(manifest.devDependencies).toHaveProperty("express");
     expect(manifest.exports?.["./httpapi"]).toEqual("./dist/httpapi/index.mjs");
