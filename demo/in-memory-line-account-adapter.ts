@@ -87,10 +87,12 @@ export const createInMemoryLineAccountAdapter = (
           channelSecret: input.channelSecret,
           channelAccessToken: input.channelAccessToken,
           isActive: true,
-          displayName: input.displayName ?? null,
+          botDisplayName: input.botDisplayName ?? null,
           botUserId: input.botUserId ?? null,
-          basicId: input.basicId ?? null,
-          pictureUrl: input.pictureUrl ?? null,
+          botBasicId: input.botBasicId ?? null,
+          botPictureUrl: input.botPictureUrl ?? null,
+          addFriendUrl: input.addFriendUrl ?? null,
+          addFriendQrCodeUrl: input.addFriendQrCodeUrl ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -122,10 +124,18 @@ export const createInMemoryLineAccountAdapter = (
           channelSecret: input.channelSecret ?? current.channelSecret,
           channelAccessToken: input.channelAccessToken ?? current.channelAccessToken,
           isActive: input.isActive ?? current.isActive,
-          displayName: input.displayName !== undefined ? input.displayName : current.displayName,
+          botDisplayName:
+            input.botDisplayName !== undefined ? input.botDisplayName : current.botDisplayName,
           botUserId: input.botUserId !== undefined ? input.botUserId : current.botUserId,
-          basicId: input.basicId !== undefined ? input.basicId : current.basicId,
-          pictureUrl: input.pictureUrl !== undefined ? input.pictureUrl : current.pictureUrl,
+          botBasicId: input.botBasicId !== undefined ? input.botBasicId : current.botBasicId,
+          botPictureUrl:
+            input.botPictureUrl !== undefined ? input.botPictureUrl : current.botPictureUrl,
+          addFriendUrl:
+            input.addFriendUrl !== undefined ? input.addFriendUrl : current.addFriendUrl,
+          addFriendQrCodeUrl:
+            input.addFriendQrCodeUrl !== undefined
+              ? input.addFriendQrCodeUrl
+              : current.addFriendQrCodeUrl,
           updatedAt: new Date(),
         };
       } else {

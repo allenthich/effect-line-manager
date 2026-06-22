@@ -425,10 +425,10 @@ export class LineAccountCard extends LitElement {
     const isMessaging = channel.channelType === "messaging";
 
     let avatarHtml;
-    if (isMessaging && channel.pictureUrl) {
+    if (isMessaging && channel.botPictureUrl) {
       avatarHtml = html`<img
         class="avatar"
-        src=${channel.pictureUrl}
+        src=${channel.botPictureUrl}
         alt=${channel.name}
         part="avatar"
       />`;
@@ -481,10 +481,10 @@ export class LineAccountCard extends LitElement {
           <span class="details-label">Record ID:</span>
           <span class="details-value">${channel.id}</span>
         </div>
-        ${isMessaging && channel.displayName
+        ${isMessaging && channel.botDisplayName
           ? html`<div class="details-row">
               <span class="details-label">Bot Display Name:</span>
-              <span class="details-value">${channel.displayName}</span>
+              <span class="details-value">${channel.botDisplayName}</span>
             </div>`
           : ""}
       </div>

@@ -13,11 +13,13 @@ const mockChannel: ChannelView = {
   providerId: "provider-1",
   channelType: "messaging",
   name: "Support Bot",
-  displayName: "LINE Support",
+  botDisplayName: "LINE Support",
   channelId: "1234567890",
   botUserId: null,
-  basicId: null,
-  pictureUrl: null,
+  botBasicId: null,
+  botPictureUrl: null,
+  addFriendUrl: null,
+  addFriendQrCodeUrl: null,
   isActive: true,
   channelSecret: "channel-secret",
   channelAccessToken: "channel-token",
@@ -52,7 +54,7 @@ describe("line-account-card", () => {
   test("falls back to the account name and generated initial", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
     element.type = "channel";
-    element.item = { ...mockChannel, displayName: null };
+    element.item = { ...mockChannel, botDisplayName: null };
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;

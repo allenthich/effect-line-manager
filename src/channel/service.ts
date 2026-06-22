@@ -73,9 +73,11 @@ export const toChannelView = (channel: LineChannel): ChannelView => {
       name: channel.name,
       channelId: channel.channelId,
       botUserId: channel.botUserId ?? null,
-      basicId: channel.basicId ?? null,
-      displayName: channel.displayName ?? null,
-      pictureUrl: channel.pictureUrl ?? null,
+      botBasicId: channel.botBasicId ?? null,
+      botDisplayName: channel.botDisplayName ?? null,
+      botPictureUrl: channel.botPictureUrl ?? null,
+      addFriendUrl: channel.addFriendUrl ?? null,
+      addFriendQrCodeUrl: channel.addFriendQrCodeUrl ?? null,
       isActive: channel.isActive,
       channelSecret: Redacted.value(channel.channelSecret),
       channelAccessToken: Redacted.value(channel.channelAccessToken),
@@ -117,10 +119,14 @@ const toCreateMessagingInput = (input: MessagingCreateInput): CreateMessagingCha
   channelId: input.channelId,
   channelSecret: Redacted.make(input.channelSecret),
   channelAccessToken: Redacted.make(input.channelAccessToken),
-  ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
+  ...(input.botDisplayName === undefined ? {} : { botDisplayName: input.botDisplayName }),
   ...(input.botUserId === undefined ? {} : { botUserId: input.botUserId }),
-  ...(input.basicId === undefined ? {} : { basicId: input.basicId }),
-  ...(input.pictureUrl === undefined ? {} : { pictureUrl: input.pictureUrl }),
+  ...(input.botBasicId === undefined ? {} : { botBasicId: input.botBasicId }),
+  ...(input.botPictureUrl === undefined ? {} : { botPictureUrl: input.botPictureUrl }),
+  ...(input.addFriendUrl === undefined ? {} : { addFriendUrl: input.addFriendUrl }),
+  ...(input.addFriendQrCodeUrl === undefined
+    ? {}
+    : { addFriendQrCodeUrl: input.addFriendQrCodeUrl }),
 });
 
 const toCreateLoginInput = (input: LoginCreateInput): CreateLoginChannelInput => ({
@@ -141,10 +147,14 @@ const toUpdateMessagingInput = (input: UpdateChannelInput): UpdateMessagingChann
     ? {}
     : { channelAccessToken: Redacted.make(input.channelAccessToken) }),
   ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
-  ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
+  ...(input.botDisplayName === undefined ? {} : { botDisplayName: input.botDisplayName }),
   ...(input.botUserId === undefined ? {} : { botUserId: input.botUserId }),
-  ...(input.basicId === undefined ? {} : { basicId: input.basicId }),
-  ...(input.pictureUrl === undefined ? {} : { pictureUrl: input.pictureUrl }),
+  ...(input.botBasicId === undefined ? {} : { botBasicId: input.botBasicId }),
+  ...(input.botPictureUrl === undefined ? {} : { botPictureUrl: input.botPictureUrl }),
+  ...(input.addFriendUrl === undefined ? {} : { addFriendUrl: input.addFriendUrl }),
+  ...(input.addFriendQrCodeUrl === undefined
+    ? {}
+    : { addFriendQrCodeUrl: input.addFriendQrCodeUrl }),
 });
 
 const toUpdateLoginInput = (input: UpdateChannelInput): UpdateLoginChannelInput => ({

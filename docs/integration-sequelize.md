@@ -20,8 +20,10 @@ Recommended channel columns:
 - `channelId`
 - `channelSecretEncrypted`
 - `channelAccessTokenEncrypted` for messaging channels
-- optional bot-profile columns such as `botUserId`, `basicId`, `displayName`,
-  and `pictureUrl`
+- optional bot-profile columns such as `botUserId`, `botBasicId`,
+  `botDisplayName`, and `botPictureUrl` (auto-synced from LINE's
+  `GET /v2/bot/info`), plus user-supplied `addFriendUrl` and
+  `addFriendQrCodeUrl`
 
 Recommended LIFF columns:
 

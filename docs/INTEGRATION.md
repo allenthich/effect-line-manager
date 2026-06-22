@@ -105,8 +105,9 @@ implementations for exactly four persistence services exported by the library:
    not the DB record UUID.
 2. **`LineLoginChannelRepository`** — full-CRUD login channel records. Each
    method works against a single login-channel DB table. Login channels do not
-   have a `channelAccessToken`, `isActive`, `botUserId`, `basicId`,
-   `displayName`, or `pictureUrl` field — the typed input schemas
+   have a `channelAccessToken`, `isActive`, `botUserId`, `botBasicId`,
+   `botDisplayName`, `botPictureUrl`, `addFriendUrl`, or `addFriendQrCodeUrl`
+   field — the typed input schemas
    (`CreateLoginChannelInput`, `UpdateLoginChannelInput`) enforce this at
    compile time.
 3. **`LineProviderRepository`** — provider records.

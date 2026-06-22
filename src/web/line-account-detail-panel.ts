@@ -693,8 +693,12 @@ export class LineAccountDetailPanel extends LitElement {
         ? ""
         : html`<div class="details-header">
             <div class="details-identity">
-              ${isMessaging && channel.pictureUrl
-                ? html`<img class="details-avatar" src=${channel.pictureUrl} alt=${channel.name} />`
+              ${isMessaging && channel.botPictureUrl
+                ? html`<img
+                    class="details-avatar"
+                    src=${channel.botPictureUrl}
+                    alt=${channel.name}
+                  />`
                 : html`<span
                     class="details-initial ${isMessaging
                       ? "details-initial-channel-messaging"
@@ -768,26 +772,49 @@ export class LineAccountDetailPanel extends LitElement {
         ${isMessaging
           ? html`
               <div class="details-section">
-                <div class="details-section-title">Messaging Info</div>
+                <div class="details-section-title">Bot Profile</div>
                 ${channel.botUserId
                   ? html`<div class="details-row">
-                      <span class="details-label">Add Friend URL</span>
+                      <span class="details-label">Bot User ID</span>
                       <span class="details-value">${channel.botUserId}</span>
                     </div>`
                   : ""}
-                ${channel.basicId
+                ${channel.botBasicId
                   ? html`<div class="details-row">
                       <span class="details-label">Bot Basic ID</span>
-                      <span class="details-value">${channel.basicId}</span>
+                      <span class="details-value">${channel.botBasicId}</span>
                     </div>`
                   : ""}
-                ${channel.pictureUrl
+                ${channel.botDisplayName
                   ? html`<div class="details-row">
-                      <span class="details-label">Add Friend QR Code</span>
-                      <span class="details-value">${channel.pictureUrl}</span>
+                      <span class="details-label">Bot Display Name</span>
+                      <span class="details-value">${channel.botDisplayName}</span>
+                    </div>`
+                  : ""}
+                ${channel.botPictureUrl
+                  ? html`<div class="details-row">
+                      <span class="details-label">Bot Picture URL</span>
+                      <span class="details-value">${channel.botPictureUrl}</span>
                     </div>`
                   : ""}
               </div>
+              ${channel.addFriendUrl || channel.addFriendQrCodeUrl
+                ? html`<div class="details-section">
+                    <div class="details-section-title">Friend Discovery</div>
+                    ${channel.addFriendUrl
+                      ? html`<div class="details-row">
+                          <span class="details-label">Add Friend URL</span>
+                          <span class="details-value">${channel.addFriendUrl}</span>
+                        </div>`
+                      : ""}
+                    ${channel.addFriendQrCodeUrl
+                      ? html`<div class="details-row">
+                          <span class="details-label">Add Friend QR Code</span>
+                          <span class="details-value">${channel.addFriendQrCodeUrl}</span>
+                        </div>`
+                      : ""}
+                  </div>`
+                : ""}
             `
           : this.inline
             ? ""
