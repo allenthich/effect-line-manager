@@ -566,8 +566,8 @@ export class LineAccountManagement extends LitElement {
             c.name.toLowerCase().includes(query) ||
             c.channelId.toLowerCase().includes(query) ||
             (c.channelType === "messaging" &&
-              c.displayName !== null &&
-              c.displayName.toLowerCase().includes(query))
+              c.botDisplayName !== null &&
+              c.botDisplayName.toLowerCase().includes(query))
           );
         } else {
           const l = item as LiffAppView;

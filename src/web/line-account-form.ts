@@ -24,9 +24,11 @@ interface FormValues {
   channelSecret: string;
   channelAccessToken: string;
   channelBotUserId: string;
-  channelBasicId: string;
-  channelDisplayName: string;
-  channelPictureUrl: string;
+  channelBotBasicId: string;
+  channelBotDisplayName: string;
+  channelBotPictureUrl: string;
+  channelAddFriendUrl: string;
+  channelAddFriendQrCodeUrl: string;
 
   // LIFF App
   liffLoginChannelId: string;
@@ -436,10 +438,48 @@ export class LineAccountForm extends LitElement {
         ${this.#values.channelType === "messaging"
           ? html`
               <fieldset style="margin-top: 0.5rem;">
-                <legend>Messaging Info</legend>
+                <legend>Bot Profile (synced from LINE)</legend>
                 <div class="grid-2col">
                   ${this.#renderInputField(
                     "channelBotUserId",
+                    "Bot User ID",
+                    "text",
+                    false,
+                    undefined,
+                    false,
+                    "Uxxxxxxxxxx",
+                  )}
+                  ${this.#renderInputField(
+                    "channelBotBasicId",
+                    "Bot Basic ID",
+                    "text",
+                    false,
+                    undefined,
+                    false,
+                    "@your_basic_id",
+                  )}
+                  ${this.#renderInputField(
+                    "channelBotDisplayName",
+                    "Bot Display Name",
+                    "text",
+                    false,
+                    undefined,
+                    false,
+                    "Example name",
+                  )}
+                  ${this.#renderInputField(
+                    "channelBotPictureUrl",
+                    "Bot Picture URL",
+                    "text",
+                    false,
+                    undefined,
+                    false,
+                    "https://profile.line-scdn.net/...",
+                  )}
+                </div>
+                <div class="grid-2col" style="margin-top: 0.5rem;">
+                  ${this.#renderInputField(
+                    "channelAddFriendUrl",
                     "Add Friend URL",
                     "text",
                     false,
@@ -448,7 +488,7 @@ export class LineAccountForm extends LitElement {
                     "https://lin.ee/your-line-id",
                   )}
                   ${this.#renderInputField(
-                    "channelPictureUrl",
+                    "channelAddFriendQrCodeUrl",
                     "Add Friend QR Code",
                     "text",
                     false,
@@ -457,15 +497,6 @@ export class LineAccountForm extends LitElement {
                     "https://qr-official.line.me/gs/your-qr-code.png",
                   )}
                 </div>
-                ${this.#renderInputField(
-                  "channelBasicId",
-                  "Bot Basic ID",
-                  "text",
-                  false,
-                  undefined,
-                  false,
-                  "@your_basic_id",
-                )}
               </fieldset>
             `
           : ""}
@@ -680,9 +711,11 @@ export class LineAccountForm extends LitElement {
     let channelSecret = "";
     let channelAccessToken = "";
     let channelBotUserId = "";
-    let channelBasicId = "";
-    let channelDisplayName = "";
-    let channelPictureUrl = "";
+    let channelBotBasicId = "";
+    let channelBotDisplayName = "";
+    let channelBotPictureUrl = "";
+    let channelAddFriendUrl = "";
+    let channelAddFriendQrCodeUrl = "";
     let liffLoginChannelId = "";
     let liffId = "";
     let liffViewType: "compact" | "tall" | "full" = "tall";
@@ -703,9 +736,11 @@ export class LineAccountForm extends LitElement {
         if (channel.channelType === "messaging") {
           channelAccessToken = channel.channelAccessToken ?? "";
           channelBotUserId = channel.botUserId ?? "";
-          channelBasicId = channel.basicId ?? "";
-          channelDisplayName = channel.displayName ?? "";
-          channelPictureUrl = channel.pictureUrl ?? "";
+          channelBotBasicId = channel.botBasicId ?? "";
+          channelBotDisplayName = channel.botDisplayName ?? "";
+          channelBotPictureUrl = channel.botPictureUrl ?? "";
+          channelAddFriendUrl = channel.addFriendUrl ?? "";
+          channelAddFriendQrCodeUrl = channel.addFriendQrCodeUrl ?? "";
         }
       } else if (type === "liff") {
         const liff = item as LiffAppView;
@@ -738,9 +773,11 @@ export class LineAccountForm extends LitElement {
       channelSecret,
       channelAccessToken,
       channelBotUserId,
-      channelBasicId,
-      channelDisplayName,
-      channelPictureUrl,
+      channelBotBasicId,
+      channelBotDisplayName,
+      channelBotPictureUrl,
+      channelAddFriendUrl,
+      channelAddFriendQrCodeUrl,
       liffLoginChannelId,
       liffId,
       liffViewType,
@@ -800,10 +837,12 @@ export class LineAccountForm extends LitElement {
                   channelId: this.#values.channelId.trim(),
                   channelSecret: this.#values.channelSecret.trim(),
                   channelAccessToken: this.#values.channelAccessToken.trim(),
-                  displayName: trimOptional(this.#values.channelDisplayName) ?? null,
+                  botDisplayName: trimOptional(this.#values.channelBotDisplayName) ?? null,
                   botUserId: trimOptional(this.#values.channelBotUserId) ?? null,
-                  basicId: trimOptional(this.#values.channelBasicId) ?? null,
-                  pictureUrl: trimOptional(this.#values.channelPictureUrl) ?? null,
+                  botBasicId: trimOptional(this.#values.channelBotBasicId) ?? null,
+                  botPictureUrl: trimOptional(this.#values.channelBotPictureUrl) ?? null,
+                  addFriendUrl: trimOptional(this.#values.channelAddFriendUrl) ?? null,
+                  addFriendQrCodeUrl: trimOptional(this.#values.channelAddFriendQrCodeUrl) ?? null,
                 }
               : {
                   channelType: "login",
@@ -831,21 +870,29 @@ export class LineAccountForm extends LitElement {
           if (token !== "" && token !== (channel.channelAccessToken ?? "")) {
             input.channelAccessToken = token;
           }
-          const displayName = this.#values.channelDisplayName.trim();
-          if (displayName !== (channel.displayName ?? "")) {
-            input.displayName = displayName || null;
+          const botDisplayName = this.#values.channelBotDisplayName.trim();
+          if (botDisplayName !== (channel.botDisplayName ?? "")) {
+            input.botDisplayName = botDisplayName || null;
           }
           const botUserId = this.#values.channelBotUserId.trim();
           if (botUserId !== (channel.botUserId ?? "")) {
             input.botUserId = botUserId || null;
           }
-          const basicId = this.#values.channelBasicId.trim();
-          if (basicId !== (channel.basicId ?? "")) {
-            input.basicId = basicId || null;
+          const botBasicId = this.#values.channelBotBasicId.trim();
+          if (botBasicId !== (channel.botBasicId ?? "")) {
+            input.botBasicId = botBasicId || null;
           }
-          const pictureUrl = this.#values.channelPictureUrl.trim();
-          if (pictureUrl !== (channel.pictureUrl ?? "")) {
-            input.pictureUrl = pictureUrl || null;
+          const botPictureUrl = this.#values.channelBotPictureUrl.trim();
+          if (botPictureUrl !== (channel.botPictureUrl ?? "")) {
+            input.botPictureUrl = botPictureUrl || null;
+          }
+          const addFriendUrl = this.#values.channelAddFriendUrl.trim();
+          if (addFriendUrl !== (channel.addFriendUrl ?? "")) {
+            input.addFriendUrl = addFriendUrl || null;
+          }
+          const addFriendQrCodeUrl = this.#values.channelAddFriendQrCodeUrl.trim();
+          if (addFriendQrCodeUrl !== (channel.addFriendQrCodeUrl ?? "")) {
+            input.addFriendQrCodeUrl = addFriendQrCodeUrl || null;
           }
         }
         detail = {

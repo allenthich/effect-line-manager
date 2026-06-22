@@ -318,9 +318,9 @@ describe("LineClientRegistry", () => {
         expect(id).toBe(messagingChannelId);
         expect(input).toEqual({
           botUserId: "U-sync-bot",
-          basicId: "@sync-basic",
-          displayName: "Synced Bot",
-          pictureUrl: "https://sync.test/pic.png",
+          botBasicId: "@sync-basic",
+          botDisplayName: "Synced Bot",
+          botPictureUrl: "https://sync.test/pic.png",
         });
         expect(input).not.toHaveProperty("premiumId");
         expect(input).not.toHaveProperty("chatMode");
@@ -339,9 +339,9 @@ describe("LineClientRegistry", () => {
             createdAt: original.createdAt,
             updatedAt: original.updatedAt,
             botUserId: "U-sync-bot",
-            basicId: "@sync-basic",
-            displayName: "Synced Bot",
-            pictureUrl: "https://sync.test/pic.png",
+            botBasicId: "@sync-basic",
+            botDisplayName: "Synced Bot",
+            botPictureUrl: "https://sync.test/pic.png",
           }),
         );
       },
@@ -366,7 +366,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
         const synced = yield* registry.syncBotProfile(channelId);
-        expect(synced.displayName).toBe("Synced Bot");
+        expect(synced.botDisplayName).toBe("Synced Bot");
       }),
       messagingRepo,
       loginRepo,
@@ -382,9 +382,9 @@ describe("LineClientRegistry", () => {
         expect(id).toBe(messagingChannelId);
         expect(input).toEqual({
           botUserId: "U-sync-bot",
-          basicId: "@sync-basic",
-          displayName: "Synced Bot",
-          pictureUrl: null,
+          botBasicId: "@sync-basic",
+          botDisplayName: "Synced Bot",
+          botPictureUrl: null,
         });
         const original = makeMessagingChannel("token-1");
         return Effect.succeed(
@@ -400,9 +400,9 @@ describe("LineClientRegistry", () => {
             createdAt: original.createdAt,
             updatedAt: original.updatedAt,
             botUserId: "U-sync-bot",
-            basicId: "@sync-basic",
-            displayName: "Synced Bot",
-            pictureUrl: null,
+            botBasicId: "@sync-basic",
+            botDisplayName: "Synced Bot",
+            botPictureUrl: null,
           }),
         );
       },
@@ -424,7 +424,7 @@ describe("LineClientRegistry", () => {
       Effect.gen(function* () {
         const registry = yield* LineClientRegistry;
         const synced = yield* registry.syncBotProfile(channelId);
-        expect(synced.pictureUrl).toBeNull();
+        expect(synced.botPictureUrl).toBeNull();
       }),
       messagingRepo,
       loginRepo,

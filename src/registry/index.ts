@@ -275,9 +275,9 @@ const makeRegistry = (config: LineClientRegistryConfig = {}) =>
           const messagingId = Schema.decodeUnknownSync(LineMessagingChannelId)(channelId);
           const updatedChannel = yield* messagingRepository.update(messagingId, {
             botUserId: botInfo.userId,
-            basicId: botInfo.basicId,
-            displayName: botInfo.displayName,
-            pictureUrl: botInfo.pictureUrl ?? null,
+            botBasicId: botInfo.basicId,
+            botDisplayName: botInfo.displayName,
+            botPictureUrl: botInfo.pictureUrl ?? null,
           });
 
           // Invalidate the cache so next lookup gets fresh data

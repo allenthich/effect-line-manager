@@ -23,7 +23,17 @@ export const LineLoginChannelId = NonEmptyTrimmedString.pipe(
 /** {@link LineLoginChannelId} type alias. */
 export type LineLoginChannelId = typeof LineLoginChannelId.Type;
 
-/** Messaging API Channel (used for bot messaging). */
+/**
+ * Messaging API Channel (used for bot messaging).
+ *
+ * Bot profile fields (`botUserId`, `botBasicId`, `botDisplayName`,
+ * `botPictureUrl`) are auto-synced from LINE's `GET /v2/bot/info` —
+ * they mirror the response shape, prefixed `bot*` for domain clarity.
+ *
+ * `addFriendUrl` and `addFriendQrCodeUrl` are user-supplied discovery
+ * URLs (e.g. `https://lin.ee/...`, `https://qr-official.line.me/...`),
+ * not returned by the LINE API.
+ */
 export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingChannel")({
   channelType: Schema.Literal("messaging"),
   id: LineChannelId,
@@ -32,11 +42,14 @@ export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingC
   channelId: LineMessagingChannelId,
   channelSecret: LineCredential,
   channelAccessToken: LineCredential,
-  // Auto-synced bot profile metadata
+  // Auto-synced bot profile metadata (sourced from GET /v2/bot/info)
   botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  displayName: Schema.optional(Schema.NullOr(Schema.String)),
-  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  botBasicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  botDisplayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botPictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  // User-supplied friend-discovery URLs (not from LINE API)
+  addFriendUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendQrCodeUrl: Schema.optional(Schema.NullOr(Schema.String)),
   isActive: Schema.Boolean,
   createdAt: Schema.DateValid,
   updatedAt: Schema.DateValid,
@@ -67,10 +80,12 @@ export const CreateMessagingChannelInput = Schema.Struct({
   channelId: NonEmptyTrimmedString,
   channelSecret: LineCredential,
   channelAccessToken: LineCredential,
-  displayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botDisplayName: Schema.optional(Schema.NullOr(Schema.String)),
   botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  botBasicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  botPictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendQrCodeUrl: Schema.optional(Schema.NullOr(Schema.String)),
 });
 /** {@link CreateMessagingChannelInput} type alias. */
 export type CreateMessagingChannelInput = typeof CreateMessagingChannelInput.Type;
@@ -85,9 +100,11 @@ export class UpdateMessagingChannelInput extends Schema.Class<UpdateMessagingCha
   channelAccessToken: Schema.optional(LineCredential),
   isActive: Schema.optional(Schema.Boolean),
   botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  displayName: Schema.optional(Schema.NullOr(Schema.String)),
-  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  botBasicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  botDisplayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botPictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendQrCodeUrl: Schema.optional(Schema.NullOr(Schema.String)),
 }) {}
 
 /** Input type for creating a login channel record in the repository layer. */
@@ -119,10 +136,12 @@ export const CreateChannelInput = Schema.Union([
     channelId: NonEmptyTrimmedString,
     channelSecret: NonEmptyTrimmedString,
     channelAccessToken: NonEmptyTrimmedString,
-    displayName: Schema.optional(Schema.NullOr(Schema.String)),
+    botDisplayName: Schema.optional(Schema.NullOr(Schema.String)),
     botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-    basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-    pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+    botBasicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+    botPictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+    addFriendUrl: Schema.optional(Schema.NullOr(Schema.String)),
+    addFriendQrCodeUrl: Schema.optional(Schema.NullOr(Schema.String)),
   }),
   Schema.Struct({
     channelType: Schema.Literal("login"),
@@ -142,10 +161,12 @@ export const UpdateChannelInput = Schema.Struct({
   channelSecret: Schema.optional(NonEmptyTrimmedString),
   channelAccessToken: Schema.optional(NonEmptyTrimmedString),
   isActive: Schema.optional(Schema.Boolean),
-  displayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botDisplayName: Schema.optional(Schema.NullOr(Schema.String)),
   botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  botBasicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  botPictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendUrl: Schema.optional(Schema.NullOr(Schema.String)),
+  addFriendQrCodeUrl: Schema.optional(Schema.NullOr(Schema.String)),
 });
 /** {@link UpdateChannelInput} type alias. */
 export type UpdateChannelInput = typeof UpdateChannelInput.Type;
@@ -166,9 +187,11 @@ export const MessagingChannelView = Schema.Struct({
   name: NonEmptyTrimmedString,
   channelId: NonEmptyTrimmedString,
   botUserId: Schema.NullOr(NonEmptyTrimmedString),
-  basicId: Schema.NullOr(NonEmptyTrimmedString),
-  displayName: Schema.NullOr(Schema.String),
-  pictureUrl: Schema.NullOr(Schema.String),
+  botBasicId: Schema.NullOr(NonEmptyTrimmedString),
+  botDisplayName: Schema.NullOr(Schema.String),
+  botPictureUrl: Schema.NullOr(Schema.String),
+  addFriendUrl: Schema.NullOr(Schema.String),
+  addFriendQrCodeUrl: Schema.NullOr(Schema.String),
   isActive: Schema.Boolean,
   channelSecret: Schema.NullOr(NonEmptyTrimmedString),
   channelAccessToken: Schema.NullOr(NonEmptyTrimmedString),
