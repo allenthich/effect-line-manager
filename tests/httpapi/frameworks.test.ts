@@ -9,9 +9,11 @@ import {
   type LineProviderManagementService,
 } from "../../src/provider/service.ts";
 import {
-  LineChannelManagement,
-  type LineChannelManagementService,
-} from "../../src/channel/service.ts";
+  LineMessagingChannelManagement,
+  type LineMessagingChannelManagementService,
+  LineLoginChannelManagement,
+  type LineLoginChannelManagementService,
+} from "../../src/channels/management-service.ts";
 import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 
 const unusedProviderMgmt: LineProviderManagementService = {
@@ -22,10 +24,18 @@ const unusedProviderMgmt: LineProviderManagementService = {
   deleteProvider: () => Effect.die("unused"),
 };
 
-const unusedChannelMgmt: LineChannelManagementService = {
+const unusedMessagingChannelMgmt: LineMessagingChannelManagementService = {
   listChannels: () => Effect.die("unused"),
   getChannel: () => Effect.die("unused"),
   findChannelByBotUserId: () => Effect.die("unused"),
+  createChannel: () => Effect.die("unused"),
+  updateChannel: () => Effect.die("unused"),
+  deleteChannel: () => Effect.die("unused"),
+};
+
+const unusedLoginChannelMgmt: LineLoginChannelManagementService = {
+  listChannels: () => Effect.die("unused"),
+  getChannel: () => Effect.die("unused"),
   createChannel: () => Effect.die("unused"),
   updateChannel: () => Effect.die("unused"),
   deleteChannel: () => Effect.die("unused"),
@@ -153,7 +163,8 @@ describe("HTTP API framework examples", () => {
     );
     const managementLayer = Layer.mergeAll(
       providerMgmtLayer,
-      Layer.succeed(LineChannelManagement)(unusedChannelMgmt),
+      Layer.succeed(LineMessagingChannelManagement)(unusedMessagingChannelMgmt),
+      Layer.succeed(LineLoginChannelManagement)(unusedLoginChannelMgmt),
       Layer.succeed(LineLiffManagement)(unusedLiffMgmt),
     );
     const mounted = createHonoLineAccountManagementApp({
@@ -197,7 +208,8 @@ describe("HTTP API framework examples", () => {
       const mounted = createExpressLineAccountManagementMiddleware({
         managementLayer: Layer.mergeAll(
           Layer.succeed(LineProviderManagement)(providerMgmt),
-          Layer.succeed(LineChannelManagement)(unusedChannelMgmt),
+          Layer.succeed(LineMessagingChannelManagement)(unusedMessagingChannelMgmt),
+          Layer.succeed(LineLoginChannelManagement)(unusedLoginChannelMgmt),
           Layer.succeed(LineLiffManagement)(unusedLiffMgmt),
         ),
       });
@@ -223,7 +235,8 @@ describe("HTTP API framework examples", () => {
     const mounted = createExpressLineAccountManagementMiddleware({
       managementLayer: Layer.mergeAll(
         Layer.effect(LineProviderManagement)(Effect.fail(new SetupError("setup failed"))),
-        Layer.succeed(LineChannelManagement)(unusedChannelMgmt),
+        Layer.succeed(LineMessagingChannelManagement)(unusedMessagingChannelMgmt),
+        Layer.succeed(LineLoginChannelManagement)(unusedLoginChannelMgmt),
         Layer.succeed(LineLiffManagement)(unusedLiffMgmt),
       ),
     });

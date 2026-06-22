@@ -4,13 +4,18 @@ import { Effect, Layer, Schema } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
-import { ChannelView, LineChannelId, LineLoginChannelId } from "../../src/channel/domain.ts";
+import { LineChannelId, LineLoginChannelId } from "../../src/shared/domain.ts";
+import {
+  ChannelView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+} from "../../src/channels/management-domain.ts";
 import { LiffAppView, LineLiffId } from "../../src/liff/domain.ts";
 import {
   LineProviderNotFoundError,
   LineProviderDuplicateError,
 } from "../../src/provider/errors.ts";
-import { ChannelNotFoundError, ChannelDuplicateError } from "../../src/channel/errors.ts";
+import { ChannelNotFoundError, ChannelDuplicateError } from "../../src/shared/errors.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "../../src/liff/errors.ts";
 import { LinePersistenceError } from "../../src/shared/errors.ts";
 import {
@@ -18,16 +23,19 @@ import {
   type LineProviderManagementService,
 } from "../../src/provider/service.ts";
 import {
-  LineChannelManagement,
-  type LineChannelManagementService,
-} from "../../src/channel/service.ts";
+  LineMessagingChannelManagement,
+  type LineMessagingChannelManagementService,
+  LineLoginChannelManagement,
+  type LineLoginChannelManagementService,
+} from "../../src/channels/management-service.ts";
 import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 import {
   LineApi,
   LineApiLayer,
   LineValidationMiddlewareLayer,
   providerHandlers,
-  channelHandlers,
+  messagingChannelHandlers,
+  loginChannelHandlers,
   liffAppHandlers,
 } from "../../src/httpapi/index.ts";
 
@@ -43,10 +51,10 @@ const providerView = Schema.decodeUnknownSync(ProviderView)({
   updatedAt: "2026-06-11T00:00:00.000Z",
 });
 
-const channelView = Schema.decodeUnknownSync(ChannelView)({
-  id: channelRecordId,
-  providerId,
+const messagingChannelView: LineMessagingChannelView = {
+  id: "channel-record-1",
   channelType: "messaging",
+  providerId: "provider-1",
   name: "Support Channel",
   channelId: "1234567890",
   botUserId: null,
@@ -58,9 +66,25 @@ const channelView = Schema.decodeUnknownSync(ChannelView)({
   isActive: true,
   channelSecret: "channel-secret",
   channelAccessToken: "channel-token",
-  createdAt: "2026-06-10T00:00:00.000Z",
-  updatedAt: "2026-06-11T00:00:00.000Z",
-});
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-11T00:00:00.000Z"),
+};
+
+const loginChannelView: LineLoginChannelView = {
+  id: "channel-record-2",
+  channelType: "login",
+  providerId: "provider-1",
+  name: "Auth Portal",
+  channelId: "0987654321",
+  channelSecret: "channel-secret",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-11T00:00:00.000Z"),
+};
+
+// `ChannelView` runtime — the union view used by the adapter shim. We construct
+// this from the messaging view literal so the adapter's combined `listChannels`
+// shim test path still has a known value to assert against.
+const channelView: ChannelView = messagingChannelView;
 
 const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
   id: liffId,
@@ -75,16 +99,37 @@ const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
   updatedAt: "2026-06-11T00:00:00.000Z",
 });
 
+const messagingChannelPage = {
+  data: [messagingChannelView],
+  pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
+};
+
+const loginChannelPage = {
+  data: [loginChannelView],
+  pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
+};
+
 const makeClient = (
   providerMgmt: LineProviderManagementService,
-  channelMgmt: LineChannelManagementService,
+  messagingChannelMgmt: LineMessagingChannelManagementService,
+  loginChannelMgmt: LineLoginChannelManagementService,
   liffMgmt: LineLiffManagementService,
 ) =>
-  HttpApiTest.groups(LineApi, ["lineProviders", "lineChannels", "lineLiffApps"]).pipe(
+  HttpApiTest.groups(LineApi, [
+    "lineProviders",
+    "lineMessagingChannels",
+    "lineLoginChannels",
+    "lineLiffApps",
+  ]).pipe(
     Effect.provide(
       Layer.mergeAll(
         providerHandlers.pipe(Layer.provide(Layer.succeed(LineProviderManagement)(providerMgmt))),
-        channelHandlers.pipe(Layer.provide(Layer.succeed(LineChannelManagement)(channelMgmt))),
+        messagingChannelHandlers.pipe(
+          Layer.provide(Layer.succeed(LineMessagingChannelManagement)(messagingChannelMgmt)),
+        ),
+        loginChannelHandlers.pipe(
+          Layer.provide(Layer.succeed(LineLoginChannelManagement)(loginChannelMgmt)),
+        ),
         liffAppHandlers.pipe(Layer.provide(Layer.succeed(LineLiffManagement)(liffMgmt))),
         LineValidationMiddlewareLayer,
         NodeHttpServer.layerHttpServices,
@@ -105,16 +150,20 @@ const defaultProviderMgmt: LineProviderManagementService = {
   deleteProvider: () => Effect.void,
 };
 
-const defaultChannelMgmt: LineChannelManagementService = {
-  listChannels: () =>
-    Effect.succeed({
-      data: [channelView],
-      pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
-    }),
-  getChannel: () => Effect.succeed(channelView),
+const defaultMessagingChannelMgmt: LineMessagingChannelManagementService = {
+  listChannels: () => Effect.succeed(messagingChannelPage),
+  getChannel: () => Effect.succeed(messagingChannelView),
   findChannelByBotUserId: () => Effect.die("unused"),
-  createChannel: () => Effect.succeed(channelView),
-  updateChannel: () => Effect.succeed(channelView),
+  createChannel: () => Effect.succeed(messagingChannelView),
+  updateChannel: () => Effect.succeed(messagingChannelView),
+  deleteChannel: () => Effect.void,
+};
+
+const defaultLoginChannelMgmt: LineLoginChannelManagementService = {
+  listChannels: () => Effect.succeed(loginChannelPage),
+  getChannel: () => Effect.succeed(loginChannelView),
+  createChannel: () => Effect.succeed(loginChannelView),
+  updateChannel: () => Effect.succeed(loginChannelView),
   deleteChannel: () => Effect.void,
 };
 
@@ -132,13 +181,15 @@ const defaultLiffMgmt: LineLiffManagementService = {
 
 const makeWebHandler = (
   providerMgmt: LineProviderManagementService,
-  channelMgmt: LineChannelManagementService,
+  messagingChannelMgmt: LineMessagingChannelManagementService,
+  loginChannelMgmt: LineLoginChannelManagementService,
   liffMgmt: LineLiffManagementService,
 ) =>
   HttpRouter.toWebHandler(
     LineApiLayer.pipe(
       Layer.provide(Layer.succeed(LineProviderManagement)(providerMgmt)),
-      Layer.provide(Layer.succeed(LineChannelManagement)(channelMgmt)),
+      Layer.provide(Layer.succeed(LineMessagingChannelManagement)(messagingChannelMgmt)),
+      Layer.provide(Layer.succeed(LineLoginChannelManagement)(loginChannelMgmt)),
       Layer.provide(Layer.succeed(LineLiffManagement)(liffMgmt)),
       Layer.provide(HttpServer.layerServices),
     ),
@@ -165,22 +216,37 @@ describe("LineApi", () => {
       deleteProvider: (id) => Effect.sync(() => void calls.push(["deleteProvider", id])),
     };
 
-    const channelMgmt: LineChannelManagementService = {
+    const messagingMgmt: LineMessagingChannelManagementService = {
       listChannels: (query) =>
         Effect.sync(() => {
-          calls.push(["listChannels", query]);
-          return {
-            data: [channelView],
-            pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
-          };
+          calls.push(["listMessagingChannels", query]);
+          return messagingChannelPage;
         }),
-      getChannel: (id) => Effect.sync(() => (calls.push(["getChannel", id]), channelView)),
+      getChannel: (id) =>
+        Effect.sync(() => (calls.push(["getMessagingChannel", id]), messagingChannelView)),
       findChannelByBotUserId: () => Effect.die("unused in api test"),
       createChannel: (input) =>
-        Effect.sync(() => (calls.push(["createChannel", input]), channelView)),
+        Effect.sync(() => (calls.push(["createMessagingChannel", input]), messagingChannelView)),
       updateChannel: (id, input) =>
-        Effect.sync(() => (calls.push(["updateChannel", id, input]), channelView)),
-      deleteChannel: (id) => Effect.sync(() => void calls.push(["deleteChannel", id])),
+        Effect.sync(
+          () => (calls.push(["updateMessagingChannel", id, input]), messagingChannelView),
+        ),
+      deleteChannel: (id) => Effect.sync(() => void calls.push(["deleteMessagingChannel", id])),
+    };
+
+    const loginMgmt: LineLoginChannelManagementService = {
+      listChannels: (query) =>
+        Effect.sync(() => {
+          calls.push(["listLoginChannels", query]);
+          return loginChannelPage;
+        }),
+      getChannel: (id) =>
+        Effect.sync(() => (calls.push(["getLoginChannel", id]), loginChannelView)),
+      createChannel: (input) =>
+        Effect.sync(() => (calls.push(["createLoginChannel", input]), loginChannelView)),
+      updateChannel: (id, input) =>
+        Effect.sync(() => (calls.push(["updateLoginChannel", id, input]), loginChannelView)),
+      deleteChannel: (id) => Effect.sync(() => void calls.push(["deleteLoginChannel", id])),
     };
 
     const liffMgmt: LineLiffManagementService = {
@@ -202,7 +268,7 @@ describe("LineApi", () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeClient(providerMgmt, channelMgmt, liffMgmt);
+        const client = yield* makeClient(providerMgmt, messagingMgmt, loginMgmt, liffMgmt);
 
         // Providers
         const listedProviders = yield* client.lineProviders.listProviders({ query: {} });
@@ -218,26 +284,48 @@ describe("LineApi", () => {
         });
         yield* client.lineProviders.deleteProvider({ params: { id: providerId } });
 
-        // Channels
-        const listedChannels = yield* client.lineChannels.listChannels({ query: {} });
-        const createdChannel = yield* client.lineChannels.createChannel({
+        // Messaging Channels
+        const listedMessaging = yield* client.lineMessagingChannels.listMessagingChannels({
+          query: {},
+        });
+        const createdMessaging = yield* client.lineMessagingChannels.createMessagingChannel({
           payload: {
             providerId: "provider-1",
-            channelType: "messaging",
             name: "Support Channel",
             channelId: "1234567890",
             channelSecret: "secret",
             channelAccessToken: "token",
           },
         });
-        const updatedChannel = yield* client.lineChannels.updateChannel({
+        const updatedMessaging = yield* client.lineMessagingChannels.updateMessagingChannel({
           params: { id: channelRecordId },
           payload: { name: "New Support Bot" },
         });
-        const gottenChannel = yield* client.lineChannels.getChannel({
+        const gottenMessaging = yield* client.lineMessagingChannels.getMessagingChannel({
           params: { id: channelRecordId },
         });
-        yield* client.lineChannels.deleteChannel({ params: { id: channelRecordId } });
+        yield* client.lineMessagingChannels.deleteMessagingChannel({
+          params: { id: channelRecordId },
+        });
+
+        // Login Channels
+        const listedLogin = yield* client.lineLoginChannels.listLoginChannels({ query: {} });
+        const createdLogin = yield* client.lineLoginChannels.createLoginChannel({
+          payload: {
+            providerId: "provider-1",
+            name: "Auth Portal",
+            channelId: "0987654321",
+            channelSecret: "secret",
+          },
+        });
+        const updatedLogin = yield* client.lineLoginChannels.updateLoginChannel({
+          params: { id: channelRecordId },
+          payload: { name: "Renamed Auth Portal" },
+        });
+        const gottenLogin = yield* client.lineLoginChannels.getLoginChannel({
+          params: { id: channelRecordId },
+        });
+        yield* client.lineLoginChannels.deleteLoginChannel({ params: { id: channelRecordId } });
 
         // LIFF Apps
         const listedLiffs = yield* client.lineLiffApps.listLiffApps({ query: {} });
@@ -263,10 +351,17 @@ describe("LineApi", () => {
         expect(updatedProvider).toEqual(providerView);
         expect(gottenProvider).toEqual(providerView);
 
-        expect(listedChannels.data).toEqual([channelView]);
-        expect(createdChannel).toEqual(channelView);
-        expect(updatedChannel).toEqual(channelView);
-        expect(gottenChannel).toEqual(channelView);
+        expect(listedMessaging.data).toEqual([messagingChannelView]);
+        expect(createdMessaging).toEqual(messagingChannelView);
+        expect(updatedMessaging).toEqual(messagingChannelView);
+        expect(gottenMessaging).toEqual(messagingChannelView);
+
+        expect(listedLogin.data).toEqual([loginChannelView]);
+        expect(createdLogin).toEqual(loginChannelView);
+        expect(updatedLogin).toEqual(loginChannelView);
+        expect(gottenLogin).toEqual(loginChannelView);
+
+        expect(channelView).toEqual(messagingChannelView);
 
         expect(listedLiffs.data).toEqual([liffAppView]);
         expect(createdLiff).toEqual(liffAppView);
@@ -281,9 +376,13 @@ describe("LineApi", () => {
     expect(calls).toContainEqual(["getProvider", "provider-1"]);
     expect(calls).toContainEqual(["deleteProvider", "provider-1"]);
 
-    expect(calls.some((c) => Array.isArray(c) && c[0] === "listChannels")).toBe(true);
-    expect(calls).toContainEqual(["getChannel", "channel-record-1"]);
-    expect(calls).toContainEqual(["deleteChannel", "channel-record-1"]);
+    expect(calls.some((c) => Array.isArray(c) && c[0] === "listMessagingChannels")).toBe(true);
+    expect(calls).toContainEqual(["getMessagingChannel", "channel-record-1"]);
+    expect(calls).toContainEqual(["deleteMessagingChannel", "channel-record-1"]);
+
+    expect(calls.some((c) => Array.isArray(c) && c[0] === "listLoginChannels")).toBe(true);
+    expect(calls).toContainEqual(["getLoginChannel", "channel-record-1"]);
+    expect(calls).toContainEqual(["deleteLoginChannel", "channel-record-1"]);
 
     expect(calls.some((c) => Array.isArray(c) && c[0] === "listLiffApps")).toBe(true);
     expect(calls).toContainEqual(["getLiffApp", "liff-record-1"]);
@@ -306,8 +405,8 @@ describe("LineApi", () => {
       getProvider: () => Effect.fail(providerNotFound),
     };
 
-    const channelMgmt: LineChannelManagementService = {
-      ...defaultChannelMgmt,
+    const messagingMgmt: LineMessagingChannelManagementService = {
+      ...defaultMessagingChannelMgmt,
       createChannel: () => Effect.fail(channelDuplicate),
       getChannel: () => Effect.fail(channelNotFound),
     };
@@ -320,7 +419,12 @@ describe("LineApi", () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeClient(providerMgmt, channelMgmt, liffMgmt);
+        const client = yield* makeClient(
+          providerMgmt,
+          messagingMgmt,
+          defaultLoginChannelMgmt,
+          liffMgmt,
+        );
 
         const providerDupErr = yield* client.lineProviders
           .createProvider({ payload: { name: "LINE Marketing" } })
@@ -329,11 +433,10 @@ describe("LineApi", () => {
           .getProvider({ params: { id: providerId } })
           .pipe(Effect.flip);
 
-        const channelDupErr = yield* client.lineChannels
-          .createChannel({
+        const channelDupErr = yield* client.lineMessagingChannels
+          .createMessagingChannel({
             payload: {
               providerId: "provider-1",
-              channelType: "messaging",
               name: "Support Channel",
               channelId: "1234567890",
               channelSecret: "secret",
@@ -341,8 +444,8 @@ describe("LineApi", () => {
             },
           })
           .pipe(Effect.flip);
-        const channelNotErr = yield* client.lineChannels
-          .getChannel({ params: { id: channelRecordId } })
+        const channelNotErr = yield* client.lineMessagingChannels
+          .getMessagingChannel({ params: { id: channelRecordId } })
           .pipe(Effect.flip);
 
         const liffDupErr = yield* client.lineLiffApps
@@ -395,7 +498,12 @@ describe("LineApi", () => {
 
     await Effect.runPromise(
       Effect.gen(function* () {
-        const client = yield* makeClient(providerMgmt, defaultChannelMgmt, defaultLiffMgmt);
+        const client = yield* makeClient(
+          providerMgmt,
+          defaultMessagingChannelMgmt,
+          defaultLoginChannelMgmt,
+          defaultLiffMgmt,
+        );
         const error = yield* client.lineProviders.listProviders({ query: {} }).pipe(Effect.flip);
         expect(error).toMatchObject({
           _tag: "LinePersistenceHttpError",
@@ -407,7 +515,12 @@ describe("LineApi", () => {
   });
 
   test("returns declared success and validation statuses over Fetch", async () => {
-    const web = makeWebHandler(defaultProviderMgmt, defaultChannelMgmt, defaultLiffMgmt);
+    const web = makeWebHandler(
+      defaultProviderMgmt,
+      defaultMessagingChannelMgmt,
+      defaultLoginChannelMgmt,
+      defaultLiffMgmt,
+    );
 
     const listResponse = await web.handler(new Request("http://localhost/line-providers"));
     const createResponse = await web.handler(

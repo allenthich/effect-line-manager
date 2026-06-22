@@ -7,15 +7,21 @@ import {
   LineMessagingChannelRepository,
 } from "./channels/repository.ts";
 import { LineLoginChannelService, LineMessagingChannelService } from "./channels/service.ts";
+import {
+  LineMessagingChannelManagement,
+  LineLoginChannelManagement,
+} from "./channels/management-service.ts";
 
 export const LineMessagingChannels = {
   Repository: LineMessagingChannelRepository,
   Service: LineMessagingChannelService,
+  Management: LineMessagingChannelManagement,
 } as const;
 
 export const LineLoginChannels = {
   Repository: LineLoginChannelRepository,
   Service: LineLoginChannelService,
+  Management: LineLoginChannelManagement,
 } as const;
 
 export const LineProviders = {

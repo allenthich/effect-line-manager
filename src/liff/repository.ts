@@ -1,5 +1,5 @@
 import { Context, type Effect, type Option } from "effect";
-import type { LineLoginChannelId } from "../channel/domain.ts";
+import type { LineLoginChannelId } from "../shared/domain.ts";
 import type { NormalizedPageQuery, PageResult } from "../shared/domain.ts";
 import type {
   CreateLiffAppRecordInput,

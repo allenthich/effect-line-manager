@@ -1,7 +1,10 @@
 import { Effect, Layer } from "effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { LineProviderManagement } from "../provider/service.ts";
-import { LineChannelManagement } from "../channel/service.ts";
+import {
+  LineMessagingChannelManagement,
+  LineLoginChannelManagement,
+} from "../channels/management-service.ts";
 import { LineLiffManagement } from "../liff/service.ts";
 import { LineApi } from "./api.ts";
 import {
@@ -79,22 +82,81 @@ export const providerHandlers = HttpApiBuilder.group(LineApi, "lineProviders", (
 
 //#endregion
 
-//#region Channel Handlers
+//#region Messaging Channel Handlers
 
-/** HTTP API handler implementations for the LINE channels group. */
-export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (handlers) =>
+/** HTTP API handler implementations for the LINE messaging channels group. */
+export const messagingChannelHandlers = HttpApiBuilder.group(
+  LineApi,
+  "lineMessagingChannels",
+  (handlers) =>
+    Effect.gen(function* () {
+      const management = yield* LineMessagingChannelManagement;
+
+      return handlers
+        .handle("listMessagingChannels", ({ query }) =>
+          management.listChannels(query).pipe(
+            Effect.catchTags({
+              LinePersistenceError: mapPersistenceError,
+            }),
+          ),
+        )
+        .handle("getMessagingChannel", ({ params }) =>
+          management.getChannel(params.id).pipe(
+            Effect.catchTags({
+              ChannelNotFoundError: (error) =>
+                Effect.fail(new ChannelNotFoundHttpError({ channelId: error.channelId })),
+              LinePersistenceError: mapPersistenceError,
+            }),
+          ),
+        )
+        .handle("createMessagingChannel", ({ payload }) =>
+          management.createChannel(payload).pipe(
+            Effect.catchTags({
+              ChannelDuplicateError: (error) =>
+                Effect.fail(new ChannelDuplicateHttpError({ channelId: error.channelId })),
+              LinePersistenceError: mapPersistenceError,
+            }),
+          ),
+        )
+        .handle("updateMessagingChannel", ({ params, payload }) =>
+          management.updateChannel(params.id, payload).pipe(
+            Effect.catchTags({
+              ChannelNotFoundError: (error) =>
+                Effect.fail(new ChannelNotFoundHttpError({ channelId: error.channelId })),
+              LinePersistenceError: mapPersistenceError,
+            }),
+          ),
+        )
+        .handle("deleteMessagingChannel", ({ params }) =>
+          management.deleteChannel(params.id).pipe(
+            Effect.catchTags({
+              ChannelNotFoundError: (error) =>
+                Effect.fail(new ChannelNotFoundHttpError({ channelId: error.channelId })),
+              LinePersistenceError: mapPersistenceError,
+            }),
+          ),
+        );
+    }),
+).pipe(Layer.provide(LineValidationMiddlewareLayer));
+
+//#endregion
+
+//#region Login Channel Handlers
+
+/** HTTP API handler implementations for the LINE login channels group. */
+export const loginChannelHandlers = HttpApiBuilder.group(LineApi, "lineLoginChannels", (handlers) =>
   Effect.gen(function* () {
-    const management = yield* LineChannelManagement;
+    const management = yield* LineLoginChannelManagement;
 
     return handlers
-      .handle("listChannels", ({ query }) =>
+      .handle("listLoginChannels", ({ query }) =>
         management.listChannels(query).pipe(
           Effect.catchTags({
             LinePersistenceError: mapPersistenceError,
           }),
         ),
       )
-      .handle("getChannel", ({ params }) =>
+      .handle("getLoginChannel", ({ params }) =>
         management.getChannel(params.id).pipe(
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
@@ -103,7 +165,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           }),
         ),
       )
-      .handle("createChannel", ({ payload }) =>
+      .handle("createLoginChannel", ({ payload }) =>
         management.createChannel(payload).pipe(
           Effect.catchTags({
             ChannelDuplicateError: (error) =>
@@ -112,7 +174,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           }),
         ),
       )
-      .handle("updateChannel", ({ params, payload }) =>
+      .handle("updateLoginChannel", ({ params, payload }) =>
         management.updateChannel(params.id, payload).pipe(
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
@@ -121,7 +183,7 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
           }),
         ),
       )
-      .handle("deleteChannel", ({ params }) =>
+      .handle("deleteLoginChannel", ({ params }) =>
         management.deleteChannel(params.id).pipe(
           Effect.catchTags({
             ChannelNotFoundError: (error) =>
@@ -134,8 +196,6 @@ export const channelHandlers = HttpApiBuilder.group(LineApi, "lineChannels", (ha
 ).pipe(Layer.provide(LineValidationMiddlewareLayer));
 
 //#endregion
-
-//#region LIFF App Handlers
 
 /** HTTP API handler implementations for the LINE LIFF apps group. */
 export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (handlers) =>
@@ -198,7 +258,8 @@ export const liffAppHandlers = HttpApiBuilder.group(LineApi, "lineLiffApps", (ha
 /** Top-level HTTP API layer aggregating all handler groups. */
 export const LineApiLayer = HttpApiBuilder.layer(LineApi).pipe(
   Layer.provide(providerHandlers),
-  Layer.provide(channelHandlers),
+  Layer.provide(messagingChannelHandlers),
+  Layer.provide(loginChannelHandlers),
   Layer.provide(liffAppHandlers),
 );
 

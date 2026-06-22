@@ -4,13 +4,16 @@ export {
   LineMessagingChannelId,
   isLineLoginChannel,
   isLineMessagingChannel,
-} from "./domain.ts";
-export * from "./errors.ts";
-export * from "./repository.ts";
-export * from "./service.ts";
-export {
+  MessagingChannel,
+  LoginChannel,
+  LineChannel,
   CreateMessagingChannelInput,
   UpdateMessagingChannelInput,
   CreateLoginChannelInput,
   UpdateLoginChannelInput,
-} from "../channel/domain.ts";
+} from "./domain.ts";
+export * from "./errors.ts";
+export * from "./repository.ts";
+export * from "./service.ts";
+export * from "./management-domain.ts";
+export * from "./management-service.ts";

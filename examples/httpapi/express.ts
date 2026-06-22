@@ -3,13 +3,19 @@ import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { NodeHttpServer } from "@effect/platform-node";
 import type { RequestHandler } from "express";
 import { LineProviderManagement } from "../../src/provider/service.ts";
-import { LineChannelManagement } from "../../src/channel/service.ts";
+import {
+  LineMessagingChannelManagement,
+  LineLoginChannelManagement,
+} from "../../src/channels/management-service.ts";
 import { LineLiffManagement } from "../../src/liff/service.ts";
 import { LineApiLayer } from "../../src/httpapi/index.ts";
 
 export interface ExpressLineAccountManagementOptions {
   readonly managementLayer: Layer.Layer<
-    LineProviderManagement | LineChannelManagement | LineLiffManagement,
+    | LineProviderManagement
+    | LineMessagingChannelManagement
+    | LineLoginChannelManagement
+    | LineLiffManagement,
     unknown,
     never
   >;

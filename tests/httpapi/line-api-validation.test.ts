@@ -3,16 +3,24 @@ import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 
 import { type ProviderListPage } from "../../src/provider/domain.ts";
-import { type ChannelListPage } from "../../src/channel/domain.ts";
+import {
+  type ChannelListPage,
+  type LineMessagingChannelListPage,
+  type LineLoginChannelListPage,
+} from "../../src/channels/management-domain.ts";
 import { type LiffAppListPage } from "../../src/liff/domain.ts";
 import {
   LineProviderManagement,
   type LineProviderManagementService,
 } from "../../src/provider/service.ts";
 import {
-  LineChannelManagement,
-  type LineChannelManagementService,
-} from "../../src/channel/service.ts";
+  LineMessagingChannelManagement,
+  type LineMessagingChannelManagementService,
+} from "../../src/channels/management-service.ts";
+import {
+  LineLoginChannelManagement,
+  type LineLoginChannelManagementService,
+} from "../../src/channels/management-service.ts";
 import { LineLiffManagement, type LineLiffManagementService } from "../../src/liff/service.ts";
 import { LineApiLayer } from "../../src/httpapi/handlers.ts";
 
@@ -36,6 +44,12 @@ const emptyChannelPage: ChannelListPage = {
   },
 };
 
+const emptyMessagingChannelPage: LineMessagingChannelListPage =
+  emptyChannelPage as LineMessagingChannelListPage;
+
+const emptyLoginChannelPage: LineLoginChannelListPage =
+  emptyChannelPage as LineLoginChannelListPage;
+
 const emptyLiffPage: LiffAppListPage = {
   data: [],
   pagination: {
@@ -54,10 +68,18 @@ const defaultProviderMgmt: LineProviderManagementService = {
   deleteProvider: () => Effect.die("unused"),
 };
 
-const defaultChannelMgmt: LineChannelManagementService = {
-  listChannels: () => Effect.succeed(emptyChannelPage),
+const defaultMessagingChannelMgmt: LineMessagingChannelManagementService = {
+  listChannels: () => Effect.succeed(emptyMessagingChannelPage),
   getChannel: () => Effect.die("unused"),
   findChannelByBotUserId: () => Effect.die("unused"),
+  createChannel: () => Effect.die("unused"),
+  updateChannel: () => Effect.die("unused"),
+  deleteChannel: () => Effect.die("unused"),
+};
+
+const defaultLoginChannelMgmt: LineLoginChannelManagementService = {
+  listChannels: () => Effect.succeed(emptyLoginChannelPage),
+  getChannel: () => Effect.die("unused"),
   createChannel: () => Effect.die("unused"),
   updateChannel: () => Effect.die("unused"),
   deleteChannel: () => Effect.die("unused"),
@@ -73,13 +95,15 @@ const defaultLiffMgmt: LineLiffManagementService = {
 
 const makeWebHandler = (
   providerMgmt: LineProviderManagementService,
-  channelMgmt: LineChannelManagementService,
+  messagingChannelMgmt: LineMessagingChannelManagementService,
+  loginChannelMgmt: LineLoginChannelManagementService,
   liffMgmt: LineLiffManagementService,
 ) =>
   HttpRouter.toWebHandler(
     LineApiLayer.pipe(
       Layer.provide(Layer.succeed(LineProviderManagement)(providerMgmt)),
-      Layer.provide(Layer.succeed(LineChannelManagement)(channelMgmt)),
+      Layer.provide(Layer.succeed(LineMessagingChannelManagement)(messagingChannelMgmt)),
+      Layer.provide(Layer.succeed(LineLoginChannelManagement)(loginChannelMgmt)),
       Layer.provide(Layer.succeed(LineLiffManagement)(liffMgmt)),
       Layer.provide(HttpServer.layerServices),
     ),
@@ -87,22 +111,25 @@ const makeWebHandler = (
   );
 
 describe("LineApi query validation", () => {
-  test("rejects an empty providerId before calling listChannels", async () => {
+  test("rejects an empty providerId before calling listMessagingChannels", async () => {
     const calls: Array<unknown> = [];
     const web = makeWebHandler(
       defaultProviderMgmt,
       {
-        ...defaultChannelMgmt,
+        ...defaultMessagingChannelMgmt,
         listChannels: (query) =>
           Effect.sync(() => {
             calls.push(query);
-            return emptyChannelPage;
+            return emptyMessagingChannelPage;
           }),
       },
+      defaultLoginChannelMgmt,
       defaultLiffMgmt,
     );
 
-    const response = await web.handler(new Request("http://localhost/line-channels?providerId="));
+    const response = await web.handler(
+      new Request("http://localhost/line-messaging-channels?providerId="),
+    );
 
     expect(response.status).toBe(400);
     expect(calls).toEqual([]);
@@ -110,14 +137,19 @@ describe("LineApi query validation", () => {
 
   test("rejects an empty channelId before calling listLiffApps", async () => {
     const calls: Array<unknown> = [];
-    const web = makeWebHandler(defaultProviderMgmt, defaultChannelMgmt, {
-      ...defaultLiffMgmt,
-      listLiffApps: (query) =>
-        Effect.sync(() => {
-          calls.push(query);
-          return emptyLiffPage;
-        }),
-    });
+    const web = makeWebHandler(
+      defaultProviderMgmt,
+      defaultMessagingChannelMgmt,
+      defaultLoginChannelMgmt,
+      {
+        ...defaultLiffMgmt,
+        listLiffApps: (query) =>
+          Effect.sync(() => {
+            calls.push(query);
+            return emptyLiffPage;
+          }),
+      },
+    );
 
     const response = await web.handler(new Request("http://localhost/line-liff-apps?channelId="));
 

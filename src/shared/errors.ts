@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { LineChannelId } from "./domain.ts";
 
 /** Union type of all repository operation names. */
 export const LineRepositoryOperation = Schema.Literals([
@@ -38,6 +39,22 @@ export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryE
   {
     operation: LineRepositoryOperation,
     cause: Schema.Defect(),
+  },
+) {}
+
+/** Error raised when a higher-level service fails to find a LINE channel by its channel ID. */
+export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()(
+  "ChannelNotFoundError",
+  {
+    channelId: LineChannelId,
+  },
+) {}
+
+/** Error raised when attempting to create a LINE channel with a duplicate channel ID. */
+export class ChannelDuplicateError extends Schema.TaggedErrorClass<ChannelDuplicateError>()(
+  "ChannelDuplicateError",
+  {
+    channelId: LineChannelId,
   },
 ) {}
 

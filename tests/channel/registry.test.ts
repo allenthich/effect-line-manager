@@ -6,7 +6,7 @@ import {
   LineChannelId,
   LineMessagingChannelId,
   MessagingChannel,
-} from "../../src/channel/domain.ts";
+} from "../../src/channels/domain.ts";
 import { LineProviderId } from "../../src/provider/domain.ts";
 import { LineRepositoryError } from "../../src/shared/errors.ts";
 import { LineClientRegistry, type LineClientRegistryConfig } from "../../src/registry/index.ts";

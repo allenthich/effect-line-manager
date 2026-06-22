@@ -5,7 +5,7 @@ import {
   LineLoginChannelId,
   LoginChannel,
   MessagingChannel,
-} from "../../src/channel/domain.ts";
+} from "../../src/channels/domain.ts";
 import {
   MessagingChannelNotFoundError,
   LoginChannelNotFoundError,

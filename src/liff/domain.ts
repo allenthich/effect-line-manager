@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { LineLoginChannelId } from "../channel/domain.ts";
+import { LineLoginChannelId } from "../shared/domain.ts";
 import { NonEmptyTrimmedString, Pagination, PageQuery } from "../shared/domain.ts";
 
 /** Branded type for a LINE LIFF application ID. */

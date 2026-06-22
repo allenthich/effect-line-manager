@@ -1,16 +1,12 @@
 import type { LineProviderManagementAdapter } from "../adapter/types.ts";
+import type { CreateChannelInput, UpdateChannelInput } from "../adapter/compat.ts";
+import type { ChannelListPage, ChannelView } from "../channels/management-domain.ts";
 import type {
   ProviderView,
   CreateProviderInput,
   UpdateProviderInput,
   ProviderListPage,
 } from "../provider/domain.ts";
-import type {
-  ChannelView,
-  CreateChannelInput,
-  UpdateChannelInput,
-  ChannelListPage,
-} from "../channel/domain.ts";
 import type {
   LiffAppView,
   CreateLiffAppInput,
