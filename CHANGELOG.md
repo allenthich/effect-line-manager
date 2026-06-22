@@ -1,5 +1,12 @@
 # effect-line-manager
 
+## 0.1.2
+
+### Patch Changes
+
+- 70af146: Added changeset tag to trigger github release
+- 235fb0b: Moved GitHub release handling to changeset action
+
 ## 0.1.1
 
 ### Patch Changes
