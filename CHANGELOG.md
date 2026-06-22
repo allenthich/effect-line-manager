@@ -1,5 +1,12 @@
 # effect-line-manager
 
+## 0.1.2
+
+### Patch Changes
+
+- ba14140: Added changeset tag to trigger github release
+- ba14140: Moved GitHub release handling to changeset action
+
 ## 0.1.1
 
 ### Patch Changes
