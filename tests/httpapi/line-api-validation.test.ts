@@ -4,7 +4,6 @@ import { HttpRouter, HttpServer } from "effect/unstable/http";
 
 import { type ProviderListPage } from "../../src/provider/domain.ts";
 import {
-  type ChannelListPage,
   type LineMessagingChannelListPage,
   type LineLoginChannelListPage,
 } from "../../src/channels/management-domain.ts";
@@ -34,7 +33,7 @@ const emptyProviderPage: ProviderListPage = {
   },
 };
 
-const emptyChannelPage: ChannelListPage = {
+const emptyMessagingChannelPage: LineMessagingChannelListPage = {
   data: [],
   pagination: {
     page: 1,
@@ -44,11 +43,15 @@ const emptyChannelPage: ChannelListPage = {
   },
 };
 
-const emptyMessagingChannelPage: LineMessagingChannelListPage =
-  emptyChannelPage as LineMessagingChannelListPage;
-
-const emptyLoginChannelPage: LineLoginChannelListPage =
-  emptyChannelPage as LineLoginChannelListPage;
+const emptyLoginChannelPage: LineLoginChannelListPage = {
+  data: [],
+  pagination: {
+    page: 1,
+    pageSize: 0,
+    totalItems: 0,
+    totalPages: 1,
+  },
+};
 
 const emptyLiffPage: LiffAppListPage = {
   data: [],

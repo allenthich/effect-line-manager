@@ -64,7 +64,8 @@ Compose your Sequelize-backed repositories with:
 Current HTTP CRUD routes are:
 
 - `/line-providers`
-- `/line-channels`
+- `/line-messaging-channels`
+- `/line-login-channels`
 - `/line-liff-apps`
 
 No deprecated account-era routes are part of the supported surface.

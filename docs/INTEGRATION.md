@@ -27,7 +27,7 @@ flowchart TD
 
     subgraph PrivateImpls["Private (not exported from root)"]
       Direction["makeLineChannelManagement"]
-      MgmtTypes["CreateChannelInput, UpdateChannelInput,<br/>ChannelView, ChannelListPage"]
+      MgmtTypes["CreateLineMessagingChannelInput,<br/>UpdateLineMessagingChannelInput,<br/>CreateLineLoginChannelInput,<br/>UpdateLineLoginChannelInput,<br/>LineMessagingChannelView,<br/>LineLoginChannelView"]
     end
 
     %% Dependency edges
@@ -325,7 +325,8 @@ physical DB table.
 The `effect-line-manager/httpapi` entrypoint exposes the current CRUD routes:
 
 - providers under `/line-providers`
-- channels under `/line-channels`
+- messaging channels under `/line-messaging-channels`
+- login channels under `/line-login-channels`
 - LIFF apps under `/line-liff-apps`
 
 Use `LineApiLayer` on the server and `makeLineClient` on the client. If you

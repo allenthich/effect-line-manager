@@ -1,16 +1,11 @@
 import { LitElement, css, html } from "lit";
-import type { ProviderView, ChannelView } from "./types.ts";
 
-/** LitElement toolbar component with search, variant switcher (grid/split), and contextual filters. */
+/** LitElement toolbar component with search and variant switcher (grid/split). */
 export class LineAccountToolbar extends LitElement {
   static properties = {
     searchQuery: { state: true },
     variant: { type: String, reflect: true },
     currentTab: { type: String },
-    providers: { attribute: false },
-    channels: { attribute: false },
-    selectedProviderId: { type: String },
-    selectedChannelId: { type: String },
   };
 
   static styles = css`
@@ -86,24 +81,6 @@ export class LineAccountToolbar extends LitElement {
       color: var(--line-account-text-color, #1f2933);
     }
 
-    .filter-wrapper select {
-      height: 2.5rem;
-      padding: 0 1.5rem 0 0.75rem;
-      border: 1px solid var(--line-account-border-color, #c7d0d9);
-      border-radius: var(--line-account-button-radius, 0.5rem);
-      background: var(--line-account-surface-background, #fff);
-      color: inherit;
-      font: inherit;
-      font-size: 0.875rem;
-      cursor: pointer;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .filter-wrapper select:focus {
-      border-color: var(--line-account-primary-color, #06c755);
-    }
-
     .variant-switcher {
       display: inline-flex;
       background: var(--line-account-muted-background, #eef2f5);
@@ -144,20 +121,12 @@ export class LineAccountToolbar extends LitElement {
   declare searchQuery: string;
   declare variant: string;
   declare currentTab: string;
-  declare providers: readonly ProviderView[];
-  declare channels: readonly ChannelView[];
-  declare selectedProviderId: string;
-  declare selectedChannelId: string;
 
   constructor() {
     super();
     this.searchQuery = "";
     this.variant = "grid";
     this.currentTab = "provider";
-    this.providers = [];
-    this.channels = [];
-    this.selectedProviderId = "";
-    this.selectedChannelId = "";
   }
 
   #emitSearchChange(value: string): void {
@@ -207,6 +176,7 @@ export class LineAccountToolbar extends LitElement {
             fill="none"
             stroke="currentColor"
             stroke-width="2"
+            stroke-linecap="round"
             stroke-linecap="round"
             stroke-linejoin="round"
           >

@@ -5,7 +5,7 @@ import {
   defineLineAccountManagementElements,
   type LineAccountFormSubmitDetail,
   type ProviderView,
-  type ChannelView,
+  type LineMessagingChannelView,
 } from "../../src/web/index.ts";
 
 const mockProvider: ProviderView = {
@@ -15,7 +15,7 @@ const mockProvider: ProviderView = {
   updatedAt: new Date(),
 };
 
-const mockChannel: ChannelView = {
+const mockMessagingChannel: LineMessagingChannelView = {
   id: "channel-1",
   providerId: "provider-1",
   channelType: "messaging",
@@ -43,18 +43,16 @@ afterEach(() => {
 });
 
 const makeForm = async (
-  type: "provider" | "channel" | "liff",
+  type: "provider" | "messagingChannel" | "loginChannel" | "liff",
   mode: "create" | "edit",
   item?: any,
   providers: ProviderView[] = [],
-  channels: ChannelView[] = [],
 ) => {
   const element = document.createElement("line-account-form") as LineAccountForm;
   element.type = type;
   element.mode = mode;
   element.item = item;
   element.providers = providers;
-  element.channels = channels;
   element.messages = defaultLineAccountManagementMessages;
   document.body.append(element);
   await element.updateComplete;
@@ -122,9 +120,9 @@ describe("Provider form", () => {
   });
 });
 
-describe("Channel form", () => {
+describe("Messaging Channel form", () => {
   test("requires Messaging API fields and submits correctly", async () => {
-    const element = await makeForm("channel", "create", undefined, [mockProvider]);
+    const element = await makeForm("messagingChannel", "create", undefined, [mockProvider]);
     setSelectValue(element, "channelProviderId", "provider-1");
     setValue(element, "channelName", "Support Bot");
     setValue(element, "channelId", "987654");
@@ -132,10 +130,9 @@ describe("Channel form", () => {
     setValue(element, "channelAccessToken", "my-token");
 
     expect(submit(element)).toEqual({
-      type: "channel",
+      type: "messagingChannel",
       mode: "create",
       input: {
-        channelType: "messaging",
         providerId: "provider-1",
         name: "Support Bot",
         channelId: "987654",
@@ -151,11 +148,13 @@ describe("Channel form", () => {
     });
   });
 
-  test("submits Channel edit correctly", async () => {
-    const element = await makeForm("channel", "edit", mockChannel, [mockProvider]);
+  test("submits Messaging Channel edit correctly", async () => {
+    const element = await makeForm("messagingChannel", "edit", mockMessagingChannel, [
+      mockProvider,
+    ]);
     setValue(element, "channelName", "New Support Bot");
     expect(submit(element)).toEqual({
-      type: "channel",
+      type: "messagingChannel",
       mode: "edit",
       input: {
         name: "New Support Bot",

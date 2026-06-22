@@ -67,23 +67,6 @@ test("root exports do not leak the deleted generic LineChannelManagement surface
   expect(leakedSymbols).toEqual([]);
 });
 
-test("root exports do not leak generic management-shim DTOs from the deleted channel module", () => {
-  // Management-service DTOs (`ChannelView`, `ChannelListPage`) live in
-  // `src/channels/management-domain.ts` and are now exported via that module.
-  // The legacy shim-only DTOs (`CreateChannelInput`, `UpdateChannelInput`,
-  // `ListChannelsQuery`) live in `src/adapter/compat.ts` and are reachable
-  // via the adapter subpath — not the root export.
-  const leaked = [
-    "CreateChannelInput",
-    "UpdateChannelInput",
-    "ListChannelsQuery",
-    "toChannelView",
-    "toChannelListPage",
-  ].filter((name) => name in RootModule);
-
-  expect(leaked).toEqual([]);
-});
-
 test("root exports the aggregate-specific channel management services", () => {
   expect("LineMessagingChannelManagement" in RootModule).toBe(true);
   expect("LineLoginChannelManagement" in RootModule).toBe(true);
@@ -100,8 +83,6 @@ test("root exports the aggregate-specific management-layer DTOs and views", () =
   expect("LineLoginChannelView" in RootModule).toBe(true);
   expect("LineMessagingChannelListPage" in RootModule).toBe(true);
   expect("LineLoginChannelListPage" in RootModule).toBe(true);
-  expect("ChannelView" in RootModule).toBe(true);
-  expect("ChannelListPage" in RootModule).toBe(true);
 });
 
 test("root exports persistence boundary and brands for headless consumers", () => {

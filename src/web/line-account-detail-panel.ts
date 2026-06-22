@@ -1,7 +1,14 @@
 import { LitElement, css, html } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import type { ProviderView, ChannelView, LiffAppView } from "./types.ts";
+import type {
+  ProviderView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LiffAppView,
+  ChannelView,
+  LineAccountEntity,
+} from "./types.ts";
 
 /** LitElement detail panel component rendering full metadata for a selected provider, channel, or LIFF app. */
 export class LineAccountDetailPanel extends LitElement {
@@ -9,7 +16,8 @@ export class LineAccountDetailPanel extends LitElement {
     item: { attribute: false },
     currentTab: { type: String },
     providers: { attribute: false },
-    channels: { attribute: false },
+    messagingChannels: { attribute: false },
+    loginChannels: { attribute: false },
     liffApps: { attribute: false },
     pendingItemIds: { attribute: false },
     messages: { attribute: false },
@@ -363,10 +371,11 @@ export class LineAccountDetailPanel extends LitElement {
     }
   `;
 
-  declare item: ProviderView | ChannelView | LiffAppView | undefined;
+  declare item: LineAccountEntity | undefined;
   declare currentTab: string;
   declare providers: readonly ProviderView[];
-  declare channels: readonly ChannelView[];
+  declare messagingChannels: readonly LineMessagingChannelView[];
+  declare loginChannels: readonly LineLoginChannelView[];
   declare liffApps: readonly LiffAppView[];
   declare pendingItemIds: ReadonlySet<string>;
   declare messages: LineAccountManagementMessages;
@@ -379,13 +388,19 @@ export class LineAccountDetailPanel extends LitElement {
     this.item = undefined;
     this.currentTab = "provider";
     this.providers = [];
-    this.channels = [];
+    this.messagingChannels = [];
+    this.loginChannels = [];
     this.liffApps = [];
     this.pendingItemIds = new Set();
     this.messages = defaultLineAccountManagementMessages;
     this.readonly = false;
     this.inline = false;
     this._visibleCredentials = new Set();
+  }
+
+  /** Combined view for table iteration and parent resolution. */
+  get #allChannels(): readonly ChannelView[] {
+    return [...this.messagingChannels, ...this.loginChannels];
   }
 
   #emit(type: string, detail: unknown): void {
@@ -398,21 +413,21 @@ export class LineAccountDetailPanel extends LitElement {
     );
   }
 
-  #emitEdit = (e: Event, item: ProviderView | ChannelView | LiffAppView): void => {
+  #emitEdit = (e: Event, item: LineAccountEntity): void => {
     e.stopPropagation();
     this.#emit("detail-edit", { item });
   };
 
-  #emitDelete = (e: Event, item: ProviderView | ChannelView | LiffAppView): void => {
+  #emitDelete = (e: Event, item: LineAccountEntity): void => {
     e.stopPropagation();
     this.#emit("detail-delete", { item });
   };
 
-  #emitToggle = (channel: ChannelView): void => {
+  #emitToggle = (channel: LineMessagingChannelView): void => {
     this.#emit("detail-toggle", { item: channel });
   };
 
-  #emitSync = (channel: ChannelView): void => {
+  #emitSync = (channel: LineMessagingChannelView): void => {
     this.#emit("detail-sync", { item: channel });
   };
 
@@ -424,8 +439,12 @@ export class LineAccountDetailPanel extends LitElement {
     this.#emit("detail-drill-liff", { liff });
   };
 
-  #emitCreateChannel = (providerId: string): void => {
-    this.#emit("detail-create-channel", { providerId });
+  #emitCreateMessagingChannel = (providerId: string): void => {
+    this.#emit("detail-create-messaging-channel", { providerId });
+  };
+
+  #emitCreateLoginChannel = (providerId: string): void => {
+    this.#emit("detail-create-login-channel", { providerId });
   };
 
   #emitCreateLiff = (channelId: string): void => {
@@ -522,8 +541,11 @@ export class LineAccountDetailPanel extends LitElement {
     if (this.currentTab === "provider") {
       return this.#renderProviderDetails(this.item as ProviderView);
     }
-    if (this.currentTab === "channel") {
-      return this.#renderChannelDetails(this.item as ChannelView);
+    if (this.currentTab === "messagingChannel") {
+      return this.#renderMessagingChannelDetails(this.item as LineMessagingChannelView);
+    }
+    if (this.currentTab === "loginChannel") {
+      return this.#renderLoginChannelDetails(this.item as LineLoginChannelView);
     }
     return this.#renderLiffDetails(this.item as LiffAppView);
   }
@@ -531,6 +553,7 @@ export class LineAccountDetailPanel extends LitElement {
   #renderProviderDetails(provider: ProviderView) {
     const initial = provider.name.trim().charAt(0).toUpperCase();
     const isPending = this.pendingItemIds.has(provider.id);
+    const providerChannels = this.#allChannels.filter((c) => c.providerId === provider.id);
 
     return html`
       ${this.inline
@@ -566,16 +589,26 @@ export class LineAccountDetailPanel extends LitElement {
             <span>Channels</span>
             ${this.readonly
               ? ""
-              : html`<button
-                  class="primary"
-                  type="button"
-                  style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
-                  @click=${() => this.#emitCreateChannel(provider.id)}
-                >
-                  + Add Channel
-                </button>`}
+              : html`<div style="display: flex; gap: 0.5rem;">
+                  <button
+                    class="primary"
+                    type="button"
+                    style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                    @click=${() => this.#emitCreateMessagingChannel(provider.id)}
+                  >
+                    + Messaging Channel
+                  </button>
+                  <button
+                    class="primary"
+                    type="button"
+                    style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                    @click=${() => this.#emitCreateLoginChannel(provider.id)}
+                  >
+                    + Login Channel
+                  </button>
+                </div>`}
           </div>
-          ${this.channels.filter((c) => c.providerId === provider.id).length === 0
+          ${providerChannels.length === 0
             ? html`<p
                 style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
               >
@@ -603,57 +636,57 @@ export class LineAccountDetailPanel extends LitElement {
                     </tr>
                   </thead>
                   <tbody>
-                    ${this.channels
-                      .filter((c) => c.providerId === provider.id)
-                      .map(
-                        (c) => html`
-                          <tr
-                            style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
-                            @click=${() => this.#emitDrillChannel(c)}
+                    ${providerChannels.map(
+                      (c) => html`
+                        <tr
+                          style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
+                          @click=${() => this.#emitDrillChannel(c)}
+                        >
+                          <td
+                            style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
                           >
-                            <td
-                              style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
-                            >
-                              ${c.name}
-                            </td>
-                            <td style="padding: 0.5rem 0.25rem;">
-                              ${c.channelType === "messaging" ? "Messaging API" : "LINE Login"}
-                            </td>
-                            <td style="padding: 0.5rem 0.25rem;">
-                              ${c.channelType === "messaging"
-                                ? html`<span
-                                    class="badge ${c.isActive
-                                      ? "badge-status"
-                                      : "badge-status-inactive"}"
-                                    style="font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 9999px; font-weight: 600;"
-                                  >
-                                    ${c.isActive ? "Active" : "Inactive"}
-                                  </span>`
-                                : "-"}
-                            </td>
-                            ${this.readonly
-                              ? ""
-                              : html`<td
-                                  style="padding: 0.5rem 0.25rem; text-align: right;"
-                                  @click=${(e: Event) => e.stopPropagation()}
+                            ${c.name}
+                          </td>
+                          <td style="padding: 0.5rem 0.25rem;">
+                            ${c.channelType === "messaging" ? "Messaging API" : "LINE Login"}
+                          </td>
+                          <td style="padding: 0.5rem 0.25rem;">
+                            ${c.channelType === "messaging"
+                              ? html`<span
+                                  class="badge ${(c as LineMessagingChannelView).isActive
+                                    ? "badge-status"
+                                    : "badge-status-inactive"}"
+                                  style="font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 9999px; font-weight: 600;"
                                 >
-                                  <button
-                                    style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
-                                    @click=${(e: Event) => this.#emitEdit(e, c)}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    class="danger"
-                                    style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
-                                    @click=${(e: Event) => this.#emitDelete(e, c)}
-                                  >
-                                    Delete
-                                  </button>
-                                </td>`}
-                          </tr>
-                        `,
-                      )}
+                                  ${(c as LineMessagingChannelView).isActive
+                                    ? "Active"
+                                    : "Inactive"}
+                                </span>`
+                              : "-"}
+                          </td>
+                          ${this.readonly
+                            ? ""
+                            : html`<td
+                                style="padding: 0.5rem 0.25rem; text-align: right;"
+                                @click=${(e: Event) => e.stopPropagation()}
+                              >
+                                <button
+                                  style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
+                                  @click=${(e: Event) => this.#emitEdit(e, c)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  class="danger"
+                                  style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
+                                  @click=${(e: Event) => this.#emitDelete(e, c)}
+                                >
+                                  Delete
+                                </button>
+                              </td>`}
+                        </tr>
+                      `,
+                    )}
                   </tbody>
                 </table>
               `}
@@ -683,8 +716,7 @@ export class LineAccountDetailPanel extends LitElement {
     `;
   }
 
-  #renderChannelDetails(channel: ChannelView) {
-    const isMessaging = channel.channelType === "messaging";
+  #renderMessagingChannelDetails(channel: LineMessagingChannelView) {
     const isPending = this.pendingItemIds.has(channel.id);
     const initial = channel.name.trim().charAt(0).toUpperCase();
 
@@ -693,16 +725,13 @@ export class LineAccountDetailPanel extends LitElement {
         ? ""
         : html`<div class="details-header">
             <div class="details-identity">
-              ${isMessaging && channel.botPictureUrl
+              ${channel.botPictureUrl
                 ? html`<img
                     class="details-avatar"
                     src=${channel.botPictureUrl}
                     alt=${channel.name}
                   />`
-                : html`<span
-                    class="details-initial ${isMessaging
-                      ? "details-initial-channel-messaging"
-                      : "details-initial-channel-login"}"
+                : html`<span class="details-initial details-initial-channel-messaging"
                     >${initial}</span
                   >`}
               <div class="details-title-group">
@@ -710,21 +739,17 @@ export class LineAccountDetailPanel extends LitElement {
                 <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
               </div>
             </div>
-            ${isMessaging
-              ? html`
-                  <button
-                    class="switch ${channel.isActive ? "checked" : ""}"
-                    part="status-button"
-                    role="switch"
-                    aria-checked=${channel.isActive ? "true" : "false"}
-                    aria-label=${channel.isActive ? "Deactivate Channel" : "Activate Channel"}
-                    ?disabled=${this.readonly || isPending}
-                    @click=${() => this.#emitToggle(channel)}
-                  >
-                    <span class="switch-thumb"></span>
-                  </button>
-                `
-              : ""}
+            <button
+              class="switch ${channel.isActive ? "checked" : ""}"
+              part="status-button"
+              role="switch"
+              aria-checked=${channel.isActive ? "true" : "false"}
+              aria-label=${channel.isActive ? "Deactivate Channel" : "Activate Channel"}
+              ?disabled=${this.readonly || isPending}
+              @click=${() => this.#emitToggle(channel)}
+            >
+              <span class="switch-thumb"></span>
+            </button>
           </div>`}
 
       <div class="details-grid">
@@ -760,176 +785,246 @@ export class LineAccountDetailPanel extends LitElement {
             channel.channelSecret,
             `secret-${channel.id}`,
           )}
-          ${isMessaging
-            ? this.#renderCredentialField(
-                this.messages.channelAccessTokenLabel,
-                channel.channelAccessToken,
-                `token-${channel.id}`,
-              )
-            : ""}
+          ${this.#renderCredentialField(
+            this.messages.messagingChannelAccessTokenLabel,
+            channel.channelAccessToken,
+            `token-${channel.id}`,
+          )}
         </div>
 
-        ${isMessaging
-          ? html`
-              <div class="details-section">
-                <div class="details-section-title">Bot Profile</div>
-                ${channel.botUserId
-                  ? html`<div class="details-row">
-                      <span class="details-label">Bot User ID</span>
-                      <span class="details-value">${channel.botUserId}</span>
-                    </div>`
-                  : ""}
-                ${channel.botBasicId
-                  ? html`<div class="details-row">
-                      <span class="details-label">Bot Basic ID</span>
-                      <span class="details-value">${channel.botBasicId}</span>
-                    </div>`
-                  : ""}
-                ${channel.botDisplayName
-                  ? html`<div class="details-row">
-                      <span class="details-label">Bot Display Name</span>
-                      <span class="details-value">${channel.botDisplayName}</span>
-                    </div>`
-                  : ""}
-                ${channel.botPictureUrl
-                  ? html`<div class="details-row">
-                      <span class="details-label">Bot Picture URL</span>
-                      <span class="details-value">${channel.botPictureUrl}</span>
-                    </div>`
-                  : ""}
-              </div>
-              ${channel.addFriendUrl || channel.addFriendQrCodeUrl
-                ? html`<div class="details-section">
-                    <div class="details-section-title">Friend Discovery</div>
-                    ${channel.addFriendUrl
-                      ? html`<div class="details-row">
-                          <span class="details-label">Add Friend URL</span>
-                          <span class="details-value">${channel.addFriendUrl}</span>
-                        </div>`
-                      : ""}
-                    ${channel.addFriendQrCodeUrl
-                      ? html`<div class="details-row">
-                          <span class="details-label">Add Friend QR Code</span>
-                          <span class="details-value">${channel.addFriendQrCodeUrl}</span>
-                        </div>`
-                      : ""}
+        <div class="details-section">
+          <div class="details-section-title">Bot Profile</div>
+          ${channel.botUserId
+            ? html`<div class="details-row">
+                <span class="details-label">Bot User ID</span>
+                <span class="details-value">${channel.botUserId}</span>
+              </div>`
+            : ""}
+          ${channel.botBasicId
+            ? html`<div class="details-row">
+                <span class="details-label">Bot Basic ID</span>
+                <span class="details-value">${channel.botBasicId}</span>
+              </div>`
+            : ""}
+          ${channel.botDisplayName
+            ? html`<div class="details-row">
+                <span class="details-label">Bot Display Name</span>
+                <span class="details-value">${channel.botDisplayName}</span>
+              </div>`
+            : ""}
+          ${channel.botPictureUrl
+            ? html`<div class="details-row">
+                <span class="details-label">Bot Picture URL</span>
+                <span class="details-value">${channel.botPictureUrl}</span>
+              </div>`
+            : ""}
+        </div>
+        ${channel.addFriendUrl || channel.addFriendQrCodeUrl
+          ? html`<div class="details-section">
+              <div class="details-section-title">Friend Discovery</div>
+              ${channel.addFriendUrl
+                ? html`<div class="details-row">
+                    <span class="details-label">Add Friend URL</span>
+                    <span class="details-value">${channel.addFriendUrl}</span>
                   </div>`
                 : ""}
-            `
-          : this.inline
-            ? ""
-            : html`
-                <div class="details-section" style="grid-column: 1 / -1;">
-                  <div
-                    class="details-section-title"
-                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
-                  >
-                    <span>LIFF Applications</span>
-                    ${this.readonly
-                      ? ""
-                      : html`<button
-                          class="primary"
-                          type="button"
-                          style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
-                          @click=${() => this.#emitCreateLiff(channel.channelId)}
-                        >
-                          + Add LIFF App
-                        </button>`}
-                  </div>
-                  ${this.liffApps.filter((l) => l.loginChannelId === channel.channelId).length === 0
-                    ? html`<p
-                        style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
-                      >
-                        No LIFF applications found under this channel.
-                      </p>`
-                    : html`
-                        <table
-                          class="details-table"
-                          style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
-                        >
-                          <thead>
-                            <tr
-                              style="border-bottom: 1px solid var(--line-account-border-color); text-align: left; color: var(--line-account-muted-color);"
-                            >
-                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
-                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
-                              <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
-                              ${this.readonly
-                                ? ""
-                                : html`<th
-                                    style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
-                                  >
-                                    Actions
-                                  </th>`}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            ${this.liffApps
-                              .filter((l) => l.loginChannelId === channel.channelId)
-                              .map(
-                                (l) => html`
-                                  <tr
-                                    style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
-                                    @click=${() => this.#emitDrillLiff(l)}
-                                  >
-                                    <td
-                                      style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
-                                    >
-                                      ${l.liffId}
-                                    </td>
-                                    <td style="padding: 0.5rem 0.25rem;">
-                                      ${l.view.type.toUpperCase()}
-                                    </td>
-                                    <td
-                                      style="padding: 0.5rem 0.25rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                                      title=${l.view.url}
-                                    >
-                                      ${l.view.url}
-                                    </td>
-                                    ${this.readonly
-                                      ? ""
-                                      : html`<td
-                                          style="padding: 0.5rem 0.25rem; text-align: right;"
-                                          @click=${(e: Event) => e.stopPropagation()}
-                                        >
-                                          <button
-                                            style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
-                                            @click=${(e: Event) => this.#emitEdit(e, l)}
-                                          >
-                                            Edit
-                                          </button>
-                                          <button
-                                            class="danger"
-                                            style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
-                                            @click=${(e: Event) => this.#emitDelete(e, l)}
-                                          >
-                                            Delete
-                                          </button>
-                                        </td>`}
-                                  </tr>
-                                `,
-                              )}
-                          </tbody>
-                        </table>
-                      `}
-                </div>
-              `}
+              ${channel.addFriendQrCodeUrl
+                ? html`<div class="details-row">
+                    <span class="details-label">Add Friend QR Code</span>
+                    <span class="details-value">${channel.addFriendQrCodeUrl}</span>
+                  </div>`
+                : ""}
+            </div>`
+          : ""}
       </div>
 
       ${this.readonly
         ? ""
         : html`<div class="details-actions">
-            ${isMessaging
-              ? html`<button
-                  class="action-btn"
-                  type="button"
-                  ?disabled=${isPending}
-                  @click=${() => this.#emitSync(channel)}
-                  style="margin-right: auto;"
+            <button
+              class="action-btn"
+              type="button"
+              ?disabled=${isPending}
+              @click=${() => this.#emitSync(channel)}
+              style="margin-right: auto;"
+            >
+              Sync
+            </button>
+            <button
+              class="action-btn"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitEdit(e, channel)}
+            >
+              Edit
+            </button>
+            <button
+              class="danger"
+              type="button"
+              ?disabled=${isPending}
+              @click=${(e: Event) => this.#emitDelete(e, channel)}
+            >
+              Delete
+            </button>
+          </div>`}
+    `;
+  }
+
+  #renderLoginChannelDetails(channel: LineLoginChannelView) {
+    const isPending = this.pendingItemIds.has(channel.id);
+    const initial = channel.name.trim().charAt(0).toUpperCase();
+
+    return html`
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
+            <div class="details-identity">
+              <span class="details-initial details-initial-channel-login">${initial}</span>
+              <div class="details-title-group">
+                <h2>${channel.name}</h2>
+                <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
+              </div>
+            </div>
+          </div>`}
+
+      <div class="details-grid">
+        <div class="details-section">
+          <div class="details-section-title">Channel Details</div>
+          <div class="details-row">
+            <span class="details-label">Channel ID</span>
+            <div class="details-value-wrapper">
+              <span class="details-value">${channel.channelId}</span>
+              <button
+                class="copy-btn"
+                type="button"
+                title="Copy to clipboard"
+                @click=${() => this.#copyToClipboard(channel.channelId)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
                 >
-                  Sync
-                </button>`
-              : ""}
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          ${this.#renderCredentialField(
+            this.messages.channelSecretLabel,
+            channel.channelSecret,
+            `secret-${channel.id}`,
+          )}
+        </div>
+
+        ${this.inline
+          ? ""
+          : html`
+              <div class="details-section" style="grid-column: 1 / -1;">
+                <div
+                  class="details-section-title"
+                  style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
+                >
+                  <span>LIFF Applications</span>
+                  ${this.readonly
+                    ? ""
+                    : html`<button
+                        class="primary"
+                        type="button"
+                        style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
+                        @click=${() => this.#emitCreateLiff(channel.channelId)}
+                      >
+                        + Add LIFF App
+                      </button>`}
+                </div>
+                ${this.liffApps.filter((l) => l.loginChannelId === channel.channelId).length === 0
+                  ? html`<p
+                      style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
+                    >
+                      No LIFF applications found under this channel.
+                    </p>`
+                  : html`
+                      <table
+                        class="details-table"
+                        style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
+                      >
+                        <thead>
+                          <tr
+                            style="border-bottom: 1px solid var(--line-account-border-color); text-align: left; color: var(--line-account-muted-color);"
+                          >
+                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
+                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
+                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
+                            ${this.readonly
+                              ? ""
+                              : html`<th
+                                  style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
+                                >
+                                  Actions
+                                </th>`}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${this.liffApps
+                            .filter((l) => l.loginChannelId === channel.channelId)
+                            .map(
+                              (l) => html`
+                                <tr
+                                  style="border-bottom: 1px dashed var(--line-account-border-color); cursor: pointer;"
+                                  @click=${() => this.#emitDrillLiff(l)}
+                                >
+                                  <td
+                                    style="padding: 0.5rem 0.25rem; font-weight: 600; color: var(--line-account-primary-color);"
+                                  >
+                                    ${l.liffId}
+                                  </td>
+                                  <td style="padding: 0.5rem 0.25rem;">
+                                    ${l.view.type.toUpperCase()}
+                                  </td>
+                                  <td
+                                    style="padding: 0.5rem 0.25rem; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                                    title=${l.view.url}
+                                  >
+                                    ${l.view.url}
+                                  </td>
+                                  ${this.readonly
+                                    ? ""
+                                    : html`<td
+                                        style="padding: 0.5rem 0.25rem; text-align: right;"
+                                        @click=${(e: Event) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600;"
+                                          @click=${(e: Event) => this.#emitEdit(e, l)}
+                                        >
+                                          Edit
+                                        </button>
+                                        <button
+                                          class="danger"
+                                          style="min-height: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem;"
+                                          @click=${(e: Event) => this.#emitDelete(e, l)}
+                                        >
+                                          Delete
+                                        </button>
+                                      </td>`}
+                                </tr>
+                              `,
+                            )}
+                        </tbody>
+                      </table>
+                    `}
+              </div>
+            `}
+      </div>
+
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
             <button
               class="action-btn"
               type="button"

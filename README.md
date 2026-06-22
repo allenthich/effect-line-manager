@@ -66,11 +66,17 @@ POST   /line-providers
 PATCH  /line-providers/:id
 DELETE /line-providers/:id
 
-GET    /line-channels?providerId=...
-GET    /line-channels/:id
-POST   /line-channels
-PATCH  /line-channels/:id
-DELETE /line-channels/:id
+GET    /line-messaging-channels?providerId=...
+GET    /line-messaging-channels/:id
+POST   /line-messaging-channels
+PATCH  /line-messaging-channels/:id
+DELETE /line-messaging-channels/:id
+
+GET    /line-login-channels?providerId=...
+GET    /line-login-channels/:id
+POST   /line-login-channels
+PATCH  /line-login-channels/:id
+DELETE /line-login-channels/:id
 
 GET    /line-liff-apps?channelId=...
 GET    /line-liff-apps/:id

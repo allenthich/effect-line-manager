@@ -1,32 +1,27 @@
-import type {
-  LineProviderManagementAdapter,
-  ProviderView,
-  ChannelView,
-  LiffAppView,
-} from "../src/web/index.ts";
+import type { LineProviderManagementAdapter, ProviderView, LiffAppView } from "../src/web/index.ts";
 import { paginate, normalizePageQuery, type PageQuery } from "../src/shared/domain.ts";
-import type { ListChannelsQuery } from "../src/adapter/compat.ts";
-import type { ListLiffAppsQuery } from "../src/liff/domain.ts";
-import {
-  isLineMessagingChannelView,
-  isLineLoginChannelView,
-  type LineMessagingChannelView,
-  type LineLoginChannelView,
-  type LineMessagingChannelListPage,
-  type LineLoginChannelListPage,
+import type {
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LineMessagingChannelListPage,
+  LineLoginChannelListPage,
 } from "../src/channels/management-domain.ts";
+import type { ListLiffAppsQuery } from "../src/liff/domain.ts";
 
 export const createInMemoryLineAccountAdapter = (
   initialProviders: ProviderView[] = [],
-  initialChannels: ChannelView[] = [],
+  initialMessagingChannels: LineMessagingChannelView[] = [],
+  initialLoginChannels: LineLoginChannelView[] = [],
   initialLiffApps: LiffAppView[] = [],
 ): LineProviderManagementAdapter => {
   let providers = [...initialProviders];
-  let channels = [...initialChannels];
+  let messagingChannels = [...initialMessagingChannels];
+  let loginChannels = [...initialLoginChannels];
   let liffApps = [...initialLiffApps];
 
   let nextProviderId = providers.length + 1;
-  let nextChannelId = channels.length + 1;
+  let nextMessagingChannelId = messagingChannels.length + 1;
+  let nextLoginChannelId = loginChannels.length + 1;
   let nextLiffId = liffApps.length + 1;
 
   const copy = <T>(obj: T): T => ({ ...obj });
@@ -60,127 +55,32 @@ export const createInMemoryLineAccountAdapter = (
     },
     deleteProvider: async (id) => {
       providers = providers.filter((p) => p.id !== id);
-      const channelsToDelete = channels.filter((c) => c.providerId === id);
-      channels = channels.filter((c) => c.providerId !== id);
-      for (const channel of channelsToDelete) {
-        if (channel.channelType === "login") {
-          liffApps = liffApps.filter((l) => l.loginChannelId !== channel.channelId);
-        }
+      const messagingToDelete = messagingChannels.filter((c) => c.providerId === id);
+      const loginToDelete = loginChannels.filter((c) => c.providerId === id);
+      messagingChannels = messagingChannels.filter((c) => c.providerId !== id);
+      loginChannels = loginChannels.filter((c) => c.providerId !== id);
+      for (const channel of loginToDelete) {
+        liffApps = liffApps.filter((l) => l.loginChannelId !== channel.channelId);
       }
+      void messagingToDelete;
     },
 
-    listChannels: async (query?: ListChannelsQuery) => {
-      let filtered = channels;
-      if (query?.providerId) {
-        filtered = filtered.filter((c) => c.providerId === query.providerId);
-      }
-      return paginateViews(filtered.map(copy), query);
-    },
-    getChannel: async (id) => {
-      const channel = channels.find((c) => c.channelId === id);
-      if (!channel) throw new Error(`Channel not found: ${id}`);
-      return copy(channel);
-    },
-    createChannel: async (input) => {
-      const now = new Date();
-      const id = `demo-channel-${nextChannelId++}`;
-      let channel: ChannelView;
-      if (input.channelType === "messaging") {
-        channel = {
-          id,
-          providerId: input.providerId,
-          channelType: "messaging",
-          name: input.name,
-          channelId: input.channelId,
-          channelSecret: input.channelSecret,
-          channelAccessToken: input.channelAccessToken,
-          isActive: true,
-          botDisplayName: input.botDisplayName ?? null,
-          botUserId: input.botUserId ?? null,
-          botBasicId: input.botBasicId ?? null,
-          botPictureUrl: input.botPictureUrl ?? null,
-          addFriendUrl: input.addFriendUrl ?? null,
-          addFriendQrCodeUrl: input.addFriendQrCodeUrl ?? null,
-          createdAt: now,
-          updatedAt: now,
-        };
-      } else {
-        channel = {
-          id,
-          providerId: input.providerId,
-          channelType: "login",
-          name: input.name,
-          channelId: input.channelId,
-          channelSecret: input.channelSecret,
-          createdAt: now,
-          updatedAt: now,
-        };
-      }
-      channels = [...channels, channel];
-      return copy(channel);
-    },
-    updateChannel: async (id, input) => {
-      const index = channels.findIndex((c) => c.channelId === id);
-      if (index === -1) throw new Error(`Channel not found: ${id}`);
-      const current = channels[index];
-      let updated: ChannelView;
-      if (current.channelType === "messaging") {
-        updated = {
-          ...current,
-          name: input.name ?? current.name,
-          channelId: input.channelId ?? current.channelId,
-          channelSecret: input.channelSecret ?? current.channelSecret,
-          channelAccessToken: input.channelAccessToken ?? current.channelAccessToken,
-          isActive: input.isActive ?? current.isActive,
-          botDisplayName:
-            input.botDisplayName !== undefined ? input.botDisplayName : current.botDisplayName,
-          botUserId: input.botUserId !== undefined ? input.botUserId : current.botUserId,
-          botBasicId: input.botBasicId !== undefined ? input.botBasicId : current.botBasicId,
-          botPictureUrl:
-            input.botPictureUrl !== undefined ? input.botPictureUrl : current.botPictureUrl,
-          addFriendUrl:
-            input.addFriendUrl !== undefined ? input.addFriendUrl : current.addFriendUrl,
-          addFriendQrCodeUrl:
-            input.addFriendQrCodeUrl !== undefined
-              ? input.addFriendQrCodeUrl
-              : current.addFriendQrCodeUrl,
-          updatedAt: new Date(),
-        };
-      } else {
-        updated = {
-          ...current,
-          name: input.name ?? current.name,
-          channelId: input.channelId ?? current.channelId,
-          channelSecret: input.channelSecret ?? current.channelSecret,
-          updatedAt: new Date(),
-        };
-      }
-      channels[index] = updated;
-      return copy(updated);
-    },
-    deleteChannel: async (id) => {
-      channels = channels.filter((c) => c.channelId !== id);
-      liffApps = liffApps.filter((l) => l.loginChannelId !== id);
-    },
-
-    // Aggregate-specific messaging channel methods.
+    // Aggregate-specific messaging channels.
     listMessagingChannels: async (query) => {
-      let filtered: ChannelView[] = channels.filter(isLineMessagingChannelView);
+      let filtered = messagingChannels;
       if (query?.providerId) {
         filtered = filtered.filter((c) => c.providerId === query.providerId);
       }
       return paginateViews(filtered.map(copy), query) as LineMessagingChannelListPage;
     },
     getMessagingChannel: async (id) => {
-      const channel = channels.find(
-        (c): c is LineMessagingChannelView => c.channelId === id && isLineMessagingChannelView(c),
-      );
+      const channel = messagingChannels.find((c) => c.channelId === id);
       if (!channel) throw new Error(`Messaging channel not found: ${id}`);
       return copy(channel);
     },
     createMessagingChannel: async (input) => {
       const now = new Date();
-      const id = `demo-channel-${nextChannelId++}`;
+      const id = `demo-channel-${nextMessagingChannelId++}`;
       const channel: LineMessagingChannelView = {
         id,
         providerId: input.providerId,
@@ -199,15 +99,13 @@ export const createInMemoryLineAccountAdapter = (
         createdAt: now,
         updatedAt: now,
       };
-      channels = [...channels, channel];
+      messagingChannels = [...messagingChannels, channel];
       return copy(channel);
     },
     updateMessagingChannel: async (id, input) => {
-      const index = channels.findIndex(
-        (c): c is LineMessagingChannelView => c.channelId === id && isLineMessagingChannelView(c),
-      );
+      const index = messagingChannels.findIndex((c) => c.channelId === id);
       if (index === -1) throw new Error(`Messaging channel not found: ${id}`);
-      const current = channels[index] as LineMessagingChannelView;
+      const current = messagingChannels[index];
       const updated: LineMessagingChannelView = {
         ...current,
         name: input.name ?? current.name,
@@ -228,32 +126,32 @@ export const createInMemoryLineAccountAdapter = (
             : current.addFriendQrCodeUrl,
         updatedAt: new Date(),
       };
-      channels[index] = updated;
+      messagingChannels[index] = updated;
       return copy(updated);
     },
     deleteMessagingChannel: async (id) => {
-      channels = channels.filter((c) => !(c.channelId === id && c.channelType === "messaging"));
+      messagingChannels = messagingChannels.filter((c) => c.channelId !== id);
+      // Messaging channels can't parent LIFF apps, but clear defensively in case
+      // future state accidentally parked one there.
       liffApps = liffApps.filter((l) => l.loginChannelId !== id);
     },
 
-    // Aggregate-specific login channel methods.
+    // Aggregate-specific login channels.
     listLoginChannels: async (query) => {
-      let filtered: ChannelView[] = channels.filter(isLineLoginChannelView);
+      let filtered = loginChannels;
       if (query?.providerId) {
         filtered = filtered.filter((c) => c.providerId === query.providerId);
       }
       return paginateViews(filtered.map(copy), query) as LineLoginChannelListPage;
     },
     getLoginChannel: async (id) => {
-      const channel = channels.find(
-        (c): c is LineLoginChannelView => c.channelId === id && isLineLoginChannelView(c),
-      );
+      const channel = loginChannels.find((c) => c.channelId === id);
       if (!channel) throw new Error(`Login channel not found: ${id}`);
       return copy(channel);
     },
     createLoginChannel: async (input) => {
       const now = new Date();
-      const id = `demo-channel-${nextChannelId++}`;
+      const id = `demo-channel-${nextLoginChannelId++}`;
       const channel: LineLoginChannelView = {
         id,
         providerId: input.providerId,
@@ -264,15 +162,13 @@ export const createInMemoryLineAccountAdapter = (
         createdAt: now,
         updatedAt: now,
       };
-      channels = [...channels, channel];
+      loginChannels = [...loginChannels, channel];
       return copy(channel);
     },
     updateLoginChannel: async (id, input) => {
-      const index = channels.findIndex(
-        (c): c is LineLoginChannelView => c.channelId === id && isLineLoginChannelView(c),
-      );
+      const index = loginChannels.findIndex((c) => c.channelId === id);
       if (index === -1) throw new Error(`Login channel not found: ${id}`);
-      const current = channels[index] as LineLoginChannelView;
+      const current = loginChannels[index];
       const updated: LineLoginChannelView = {
         ...current,
         name: input.name ?? current.name,
@@ -280,11 +176,11 @@ export const createInMemoryLineAccountAdapter = (
         channelSecret: input.channelSecret ?? current.channelSecret,
         updatedAt: new Date(),
       };
-      channels[index] = updated;
+      loginChannels[index] = updated;
       return copy(updated);
     },
     deleteLoginChannel: async (id) => {
-      channels = channels.filter((c) => !(c.channelId === id && c.channelType === "login"));
+      loginChannels = loginChannels.filter((c) => c.channelId !== id);
       liffApps = liffApps.filter((l) => l.loginChannelId !== id);
     },
 
