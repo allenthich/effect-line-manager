@@ -33,7 +33,8 @@ jobs:
         uses: changesets/action@v1
         with:
           version: vp run version
-          publish: vp run release && vpx changeset tag
+          # Force the shell context so '&&' isn't swallowed by your wrapper tool
+          publish: sh -c "vp run release && vpx changeset tag"
           createGithubReleases: true
           commit: "chore: version packages"
           title: "chore: version packages"
