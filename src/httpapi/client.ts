@@ -71,25 +71,8 @@ export const makeLineProviderManagementAdapter = (
   createChannel: (input) =>
     Effect.runPromise(
       input.channelType === "messaging"
-        ? client.lineChannels.createChannel({
-            payload: {
-              channelType: "messaging",
-              providerId: input.providerId,
-              name: input.name,
-              channelId: input.channelId,
-              channelSecret: input.channelSecret,
-              channelAccessToken: input.channelAccessToken,
-            },
-          })
-        : client.lineChannels.createChannel({
-            payload: {
-              channelType: "login",
-              providerId: input.providerId,
-              name: input.name,
-              channelId: input.channelId,
-              channelSecret: input.channelSecret,
-            },
-          }),
+        ? client.lineChannels.createChannel({ payload: input })
+        : client.lineChannels.createChannel({ payload: input }),
     ),
   updateChannel: (id, input) =>
     Effect.runPromise(
