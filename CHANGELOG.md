@@ -1,5 +1,31 @@
 # effect-line-manager
 
+## 0.1.0
+
+### Minor Changes
+
+- 8c51b53: Real offset-based pagination for list endpoints.
+
+  - New shared schemas: `PageQuery`, `NormalizedPageQuery`, `PageResult<A>`, `Pagination` (now Int-based), plus `normalizePageQuery` and `paginate` helpers.
+  - Repositories now accept `NormalizedPageQuery` and return `PageResult<T>` instead of `ReadonlyArray<T>`. Consumers implementing repositories own the counts and slicing (SQL `LIMIT`/`OFFSET`, etc.).
+  - Management services and HTTP API accept an optional `PageQuery` (`{ page?, pageSize? }`) on list operations and pass pagination metadata through unchanged.
+  - List query schemas extended additively: `ListProvidersQuery` = `PageQuery`, `ListChannelsQuery` = `PageQuery + providerId?`, `ListLiffAppsQuery` = `PageQuery + channelId?`.
+  - `LineProviderManagementAdapter.listProviders/listChannels/listLiffApps` now accept an optional query argument.
+  - Demo in-memory adapter uses the shared `paginate` helper with the standard defaults (page=1, pageSize=20, max=100).
+  - Removed fabricated pagination metadata (always `page: 1, pageSize: totalItems`). The `Pagination` contract now reflects actual server-side pagination.
+
+### Patch Changes
+
+- 679c4df: - Replaced the generic root channel surface with domain-specific messaging/login channel APIs
+  - Introduced domain-specific channel identifiers and not-found errors (LineMessagingChannelId, LineLoginChannelId, LineBotUserId, MessagingChannelNotFoundError, LoginChannelNotFoundError)
+  - Removed generic internal channel symbols from the root export and adds grouped public entry points like LineMessagingChannels, LineLoginChannels, LineProviders, and LineLiffApps
+  - Renamed persistence/error language from account-oriented/generic record naming toward provider/channel/liff domain naming, including LinePersistenceError
+  - Updated HTTP API/client/tests/docs to match the new provider/channel/liff split
+- b9190c4: - Removed the legacy `LineChannelRepository` symbol and `LineChannelRepositoryService` type. The persistence port for channels is `InternalLineChannelStore`; hosts implement its methods (`create`, `update`, `findByLineChannelId`, `findByBotUserId`, `listByProvider`, `delete`) directly via `Layer.effect(InternalLineChannelStore)(...)`.
+  - Added `LineLoginChannelService.getLoginClientByLineChannelId(id: LineLoginChannelId)` mirroring the messaging service's `getClientByLineChannelId`. Login consumers no longer need to drop down to `LineClientRegistry.getLoginClient` and bridge the brand conversion themselves.
+  - Documented the three persistence ports hosts must implement (`InternalLineChannelStore`, `LineProviderRepository`, `LineLiffRepository`) in `docs/INTEGRATION.md` with a skeleton `Layer.effect` block.
+  - Updated intent docs to record the removal of `LineChannelRepository` and point consumers at `InternalLineChannelStore`.
+
 ## 0.0.5
 
 ### Patch Changes
