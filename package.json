@@ -1,6 +1,6 @@
 {
   "name": "effect-line-manager",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Headless Effect library for managing LINE Messaging API channels and clients.",
   "license": "MIT",
   "files": [
