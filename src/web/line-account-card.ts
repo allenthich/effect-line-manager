@@ -1,17 +1,24 @@
 import { LitElement, css, html } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import type { ProviderView, ChannelView, LiffAppView } from "./types.ts";
+import type {
+  ProviderView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LiffAppView,
+  LineAccountEntity,
+  LineAccountFormType,
+} from "./types.ts";
 
 /** LitElement card component displaying a provider, channel, or LIFF app summary with action buttons. */
 export class LineAccountCard extends LitElement {
   static properties = {
-    type: { type: String, reflect: true }, // "provider" | "channel" | "liff"
+    type: { type: String, reflect: true },
     item: { attribute: false },
     messages: { attribute: false },
     disabled: { type: Boolean, reflect: true },
     selected: { type: Boolean, reflect: true },
-    variant: { type: String, reflect: true }, // "grid" | "split"
+    variant: { type: String, reflect: true },
     error: { type: String },
   };
 
@@ -297,8 +304,8 @@ export class LineAccountCard extends LitElement {
     }
   `;
 
-  declare type: "provider" | "channel" | "liff";
-  declare item: ProviderView | ChannelView | LiffAppView | undefined;
+  declare type: LineAccountFormType;
+  declare item: LineAccountEntity | undefined;
   declare messages: LineAccountManagementMessages;
   declare disabled: boolean;
   declare selected: boolean;
@@ -327,12 +334,15 @@ export class LineAccountCard extends LitElement {
     );
   }
 
+  /**
+   * Cards are selectable when:
+   * - in split variant (drill-down UI), OR
+   * - the entry is a provider, OR
+   * - the entry is a login channel (login channels can parent LIFF apps,
+   *   messaging channels cannot).
+   */
   get #isSelectable(): boolean {
-    return (
-      this.variant === "split" ||
-      this.type === "provider" ||
-      (this.type === "channel" && (this.item as ChannelView)?.channelType === "login")
-    );
+    return this.variant === "split" || this.type === "provider" || this.type === "loginChannel";
   }
 
   #handleCardClick = (): void => {
@@ -353,7 +363,7 @@ export class LineAccountCard extends LitElement {
 
   #handleToggle = (event: Event): void => {
     event.stopPropagation();
-    if (this.disabled) return;
+    if (this.disabled || this.type !== "messagingChannel") return;
     this.dispatchEvent(
       new CustomEvent("line-account-toggle-request", {
         bubbles: true,
@@ -365,7 +375,7 @@ export class LineAccountCard extends LitElement {
 
   #handleSync = (event: Event): void => {
     event.stopPropagation();
-    if (this.disabled) return;
+    if (this.disabled || this.type !== "messagingChannel") return;
     this.dispatchEvent(
       new CustomEvent("line-account-sync-request", {
         bubbles: true,
@@ -395,9 +405,11 @@ export class LineAccountCard extends LitElement {
       >
         ${this.type === "provider"
           ? this.#renderProviderCard(this.item as ProviderView)
-          : this.type === "channel"
-            ? this.#renderChannelCard(this.item as ChannelView)
-            : this.#renderLiffCard(this.item as LiffAppView)}
+          : this.type === "messagingChannel"
+            ? this.#renderMessagingChannelCard(this.item as LineMessagingChannelView)
+            : this.type === "loginChannel"
+              ? this.#renderLoginChannelCard(this.item as LineLoginChannelView)
+              : this.#renderLiffCard(this.item as LiffAppView)}
         ${this.error ? html`<div class="error-alert" role="alert">${this.error}</div>` : ""}
       </article>
     `;
@@ -420,12 +432,12 @@ export class LineAccountCard extends LitElement {
     `;
   }
 
-  #renderChannelCard(channel: ChannelView) {
+  #renderMessagingChannelCard(channel: LineMessagingChannelView) {
     const initial = channel.name.trim().slice(0, 1).toUpperCase();
-    const isMessaging = channel.channelType === "messaging";
+    const showStatusToggle = !this.disabled && this.variant !== "split";
 
     let avatarHtml;
-    if (isMessaging && channel.botPictureUrl) {
+    if (channel.botPictureUrl) {
       avatarHtml = html`<img
         class="avatar"
         src=${channel.botPictureUrl}
@@ -433,12 +445,7 @@ export class LineAccountCard extends LitElement {
         part="avatar"
       />`;
     } else {
-      avatarHtml = html`<div
-        class="avatar-placeholder ${isMessaging
-          ? "avatar-channel-messaging"
-          : "avatar-channel-login"}"
-        aria-hidden="true"
-      >
+      avatarHtml = html`<div class="avatar-placeholder avatar-channel-messaging" aria-hidden="true">
         ${initial}
       </div>`;
     }
@@ -450,7 +457,7 @@ export class LineAccountCard extends LitElement {
           <h3 class="name" part="name">${channel.name}</h3>
           <p class="subtitle">Channel ID: ${channel.channelId}</p>
         </div>
-        ${isMessaging && !this.disabled && this.variant !== "split"
+        ${showStatusToggle
           ? html`
               <div class="status-toggle">
                 <button
@@ -469,26 +476,47 @@ export class LineAccountCard extends LitElement {
           : ""}
       </div>
       <div class="badges">
-        <span class="badge badge-type">${isMessaging ? "Messaging API" : "LINE Login"}</span>
-        ${isMessaging
-          ? html`<span class="badge ${channel.isActive ? "badge-status" : "badge-status-inactive"}"
-              >${channel.isActive ? this.messages.activeStatus : this.messages.inactiveStatus}</span
-            >`
-          : ""}
+        <span class="badge badge-type">Messaging API</span>
+        <span class="badge ${channel.isActive ? "badge-status" : "badge-status-inactive"}"
+          >${channel.isActive ? this.messages.activeStatus : this.messages.inactiveStatus}</span
+        >
       </div>
       <div class="details">
         <div class="details-row">
           <span class="details-label">Record ID:</span>
           <span class="details-value">${channel.id}</span>
         </div>
-        ${isMessaging && channel.botDisplayName
+        ${channel.botDisplayName
           ? html`<div class="details-row">
               <span class="details-label">Bot Display Name:</span>
               <span class="details-value">${channel.botDisplayName}</span>
             </div>`
           : ""}
       </div>
-      ${this.#renderCardActions(isMessaging)}
+      ${this.#renderCardActions(true)}
+    `;
+  }
+
+  #renderLoginChannelCard(channel: LineLoginChannelView) {
+    const initial = channel.name.trim().slice(0, 1).toUpperCase();
+    return html`
+      <div class="header">
+        <div class="avatar-placeholder avatar-channel-login" aria-hidden="true">${initial}</div>
+        <div class="identity">
+          <h3 class="name" part="name">${channel.name}</h3>
+          <p class="subtitle">Channel ID: ${channel.channelId}</p>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge badge-type">LINE Login</span>
+      </div>
+      <div class="details">
+        <div class="details-row">
+          <span class="details-label">Record ID:</span>
+          <span class="details-value">${channel.id}</span>
+        </div>
+      </div>
+      ${this.#renderCardActions()}
     `;
   }
 

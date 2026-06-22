@@ -141,39 +141,3 @@ export const LineLoginChannelListPage = Schema.Struct({
 export type LineLoginChannelListPage = typeof LineLoginChannelListPage.Type;
 
 //#endregion
-
-//#region Combined channel view (adapter shim compatibility)
-
-/**
- * Discriminated union of all LINE channel views.
- *
- * Used by the combined `LineProviderManagementAdapter.listChannels()` shim
- * that aggregates messaging + login channels into a single list. Per-aggregate
- * HTTP endpoints return only their own view — this union exists for the
- * transport shim only.
- */
-export const ChannelView = Schema.Union([LineMessagingChannelView, LineLoginChannelView]);
-/** {@link ChannelView} type alias. */
-export type ChannelView = typeof ChannelView.Type;
-
-/** Paginated list of all LINE channel views (messaging + login combined). */
-export const ChannelListPage = Schema.Struct({
-  data: Schema.Array(ChannelView),
-  pagination: Pagination,
-});
-/** {@link ChannelListPage} type alias. */
-export type ChannelListPage = typeof ChannelListPage.Type;
-
-//#endregion
-
-//#region Type guards
-
-/** Narrows a {@link ChannelView} union to its messaging variant. */
-export const isLineMessagingChannelView = (view: ChannelView): view is LineMessagingChannelView =>
-  view.channelType === "messaging";
-
-/** Narrows a {@link ChannelView} union to its login variant. */
-export const isLineLoginChannelView = (view: ChannelView): view is LineLoginChannelView =>
-  view.channelType === "login";
-
-//#endregion

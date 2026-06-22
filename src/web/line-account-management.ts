@@ -5,8 +5,11 @@ import type { LineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountForm } from "./line-account-form.ts";
 import type {
   ProviderView,
-  ChannelView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
   LiffAppView,
+  ChannelView,
+  LineAccountEntity,
   LineAccountFormType,
   LineAccountFormSubmitDetail,
   LineProviderManagementAdapter,
@@ -30,11 +33,9 @@ const eventOptions = <T>(detail: T): CustomEventInit<T> => ({
   detail,
 });
 
-const adapterEntityId = (
-  item: ProviderView | ChannelView | LiffAppView,
-  type: LineAccountFormType,
-): string => {
-  if (type === "channel") return (item as ChannelView).channelId;
+const adapterEntityId = (item: LineAccountEntity, type: LineAccountFormType): string => {
+  if (type === "messagingChannel") return (item as LineMessagingChannelView).channelId;
+  if (type === "loginChannel") return (item as LineLoginChannelView).channelId;
   if (type === "liff") return (item as LiffAppView).liffId;
   return (item as ProviderView).id;
 };
@@ -44,9 +45,10 @@ export class LineAccountManagement extends LitElement {
   static properties = {
     adapter: { attribute: false },
     messages: { attribute: false },
-    currentTab: { state: true }, // "provider" | "channel" | "liff"
+    currentTab: { state: true },
     providers: { state: true },
-    channels: { state: true },
+    messagingChannels: { state: true },
+    loginChannels: { state: true },
     liffApps: { state: true },
     loading: { state: true },
     loadError: { state: true },
@@ -62,8 +64,8 @@ export class LineAccountManagement extends LitElement {
     variant: { type: String, reflect: true },
     searchQuery: { state: true },
     selectedItemId: { state: true },
-    selectedProviderId: { type: String, attribute: "selected-provider-id" }, // Filter channels by provider
-    selectedChannelId: { type: String, attribute: "selected-channel-id" }, // Filter LIFF apps by login channel
+    selectedProviderId: { type: String, attribute: "selected-provider-id" },
+    selectedChannelId: { type: String, attribute: "selected-channel-id" },
     selectedLiffId: { type: String, attribute: "selected-liff-id" },
   };
 
@@ -296,38 +298,6 @@ export class LineAccountManagement extends LitElement {
       line-height: 1.6;
     }
 
-    /* Tabs Bar styling */
-    .tabs-bar {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.25rem;
-      border-bottom: 2px solid var(--line-account-border-color, #e4e7eb);
-      padding-bottom: 0.375rem;
-    }
-
-    .tab-btn {
-      min-height: auto;
-      padding: 0.5rem 1rem;
-      border: none;
-      background: transparent;
-      color: var(--line-account-muted-color, #52606d);
-      font-weight: 600;
-      cursor: pointer;
-      border-radius: 0.375rem;
-      transition: all 0.15s ease-in-out;
-    }
-
-    .tab-btn:hover {
-      color: var(--line-account-text-color, #1f2933);
-      background: var(--line-account-muted-background, #eef2f5);
-    }
-
-    .tab-btn.active {
-      color: var(--line-account-primary-color, #06c755);
-      background: var(--line-account-selected-bg, #e6fdf0);
-    }
-
-    /* Split Pane Layout styles */
     .split-container {
       display: grid;
       grid-template-columns: 20rem 1fr;
@@ -365,12 +335,13 @@ export class LineAccountManagement extends LitElement {
   declare messages: Partial<LineAccountManagementMessages> | undefined;
   declare currentTab: LineAccountFormType;
   declare providers: readonly ProviderView[];
-  declare channels: readonly ChannelView[];
+  declare messagingChannels: readonly LineMessagingChannelView[];
+  declare loginChannels: readonly LineLoginChannelView[];
   declare liffApps: readonly LiffAppView[];
   declare loading: boolean;
   declare loadError: boolean;
   declare dialogKind: DialogKind;
-  declare selectedItem: ProviderView | ChannelView | LiffAppView | undefined;
+  declare selectedItem: LineAccountEntity | undefined;
   declare mutationError: string | undefined;
   declare notice: string | undefined;
   declare itemErrors: ReadonlyMap<string, string>;
@@ -395,7 +366,8 @@ export class LineAccountManagement extends LitElement {
     this.messages = undefined;
     this.currentTab = "provider";
     this.providers = [];
-    this.channels = [];
+    this.messagingChannels = [];
+    this.loginChannels = [];
     this.liffApps = [];
     this.loading = false;
     this.loadError = false;
@@ -422,14 +394,18 @@ export class LineAccountManagement extends LitElement {
       if (type === "provider") {
         this.selectedProviderId = item.id;
         if (this.variant !== "split") {
-          this.currentTab = "channel";
+          this.currentTab = "messagingChannel";
           this.selectedItemId = undefined;
         }
-      } else if (type === "channel") {
-        const c = item as ChannelView;
+      } else if (type === "messagingChannel") {
+        const c = item as LineMessagingChannelView;
         this.selectedProviderId = c.providerId;
         this.selectedChannelId = c.channelId;
-        if (this.variant !== "split" && c.channelType === "login") {
+      } else if (type === "loginChannel") {
+        const c = item as LineLoginChannelView;
+        this.selectedProviderId = c.providerId;
+        this.selectedChannelId = c.channelId;
+        if (this.variant !== "split") {
           this.currentTab = "liff";
           this.selectedItemId = undefined;
         }
@@ -437,7 +413,7 @@ export class LineAccountManagement extends LitElement {
         const l = item as LiffAppView;
         this.selectedLiffId = l.id;
         this.selectedChannelId = l.loginChannelId;
-        const parentChannel = this.channels.find((c) => c.channelId === l.loginChannelId);
+        const parentChannel = this.loginChannels.find((c) => c.channelId === l.loginChannelId);
         if (parentChannel) {
           this.selectedProviderId = parentChannel.providerId;
         }
@@ -466,22 +442,26 @@ export class LineAccountManagement extends LitElement {
     if (adapter === undefined) {
       this.loading = false;
       this.providers = [];
-      this.channels = [];
+      this.messagingChannels = [];
+      this.loginChannels = [];
       this.liffApps = [];
       return;
     }
 
     this.loading = true;
     try {
-      const [providersPage, channelsPage, liffAppsPage] = await Promise.all([
-        adapter.listProviders(),
-        adapter.listChannels(),
-        adapter.listLiffApps(),
-      ]);
+      const [providersPage, messagingChannelsPage, loginChannelsPage, liffAppsPage] =
+        await Promise.all([
+          adapter.listProviders(),
+          adapter.listMessagingChannels(),
+          adapter.listLoginChannels(),
+          adapter.listLiffApps(),
+        ]);
 
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
       this.providers = [...providersPage.data];
-      this.channels = [...channelsPage.data];
+      this.messagingChannels = [...messagingChannelsPage.data];
+      this.loginChannels = [...loginChannelsPage.data];
       this.liffApps = [...liffAppsPage.data];
 
       const currentItems = this.#currentItems();
@@ -494,7 +474,8 @@ export class LineAccountManagement extends LitElement {
     } catch (error) {
       if (generation !== this.#loadGeneration || this.adapter !== adapter) return;
       this.providers = [];
-      this.channels = [];
+      this.messagingChannels = [];
+      this.loginChannels = [];
       this.liffApps = [];
       this.loadError = true;
       this.#emitError("listProviders", error);
@@ -511,22 +492,29 @@ export class LineAccountManagement extends LitElement {
         if (liff) {
           this.selectedLiffId = liff.id;
           this.selectedChannelId = liff.loginChannelId;
-          const channel = this.channels.find((c) => c.channelId === liff.loginChannelId);
+          const channel = this.loginChannels.find((c) => c.channelId === liff.loginChannelId);
           if (channel) {
             this.selectedProviderId = channel.providerId;
           }
         } else {
-          const channel = this.channels.find((c) => c.id === id);
-          if (channel) {
-            this.selectedChannelId = channel.channelId;
-            this.selectedProviderId = channel.providerId;
+          const messagingChannel = this.messagingChannels.find((c) => c.id === id);
+          if (messagingChannel) {
+            this.selectedChannelId = messagingChannel.channelId;
+            this.selectedProviderId = messagingChannel.providerId;
             this.selectedLiffId = undefined;
           } else {
-            const provider = this.providers.find((p) => p.id === id);
-            if (provider) {
-              this.selectedProviderId = provider.id;
-              this.selectedChannelId = "";
+            const loginChannel = this.loginChannels.find((c) => c.id === id);
+            if (loginChannel) {
+              this.selectedChannelId = loginChannel.channelId;
+              this.selectedProviderId = loginChannel.providerId;
               this.selectedLiffId = undefined;
+            } else {
+              const provider = this.providers.find((p) => p.id === id);
+              if (provider) {
+                this.selectedProviderId = provider.id;
+                this.selectedChannelId = "";
+                this.selectedLiffId = undefined;
+              }
             }
           }
         }
@@ -543,11 +531,14 @@ export class LineAccountManagement extends LitElement {
     }
   }
 
-  #resolvedItems(): readonly (ProviderView | ChannelView | LiffAppView)[] {
+  #resolvedItems(): readonly LineAccountEntity[] {
     const query = this.searchQuery.toLowerCase().trim();
     let items = this.#currentItems();
 
-    if (this.currentTab === "channel" && this.selectedProviderId) {
+    if (
+      (this.currentTab === "messagingChannel" || this.currentTab === "loginChannel") &&
+      this.selectedProviderId
+    ) {
       items = items.filter((c) => (c as ChannelView).providerId === this.selectedProviderId);
     } else if (this.currentTab === "liff" && this.selectedChannelId) {
       items = items.filter((l) => (l as LiffAppView).loginChannelId === this.selectedChannelId);
@@ -560,15 +551,16 @@ export class LineAccountManagement extends LitElement {
             (item as ProviderView).name.toLowerCase().includes(query) ||
             item.id.toLowerCase().includes(query)
           );
-        } else if (this.currentTab === "channel") {
-          const c = item as ChannelView;
+        } else if (this.currentTab === "messagingChannel") {
+          const c = item as LineMessagingChannelView;
           return (
             c.name.toLowerCase().includes(query) ||
             c.channelId.toLowerCase().includes(query) ||
-            (c.channelType === "messaging" &&
-              c.botDisplayName !== null &&
-              c.botDisplayName.toLowerCase().includes(query))
+            (c.botDisplayName !== null && c.botDisplayName.toLowerCase().includes(query))
           );
+        } else if (this.currentTab === "loginChannel") {
+          const c = item as LineLoginChannelView;
+          return c.name.toLowerCase().includes(query) || c.channelId.toLowerCase().includes(query);
         } else {
           const l = item as LiffAppView;
           return (
@@ -583,9 +575,10 @@ export class LineAccountManagement extends LitElement {
     return items;
   }
 
-  #currentItems(): readonly (ProviderView | ChannelView | LiffAppView)[] {
+  #currentItems(): readonly LineAccountEntity[] {
     if (this.currentTab === "provider") return this.providers;
-    if (this.currentTab === "channel") return this.channels;
+    if (this.currentTab === "messagingChannel") return this.messagingChannels;
+    if (this.currentTab === "loginChannel") return this.loginChannels;
     return this.liffApps;
   }
 
@@ -593,12 +586,13 @@ export class LineAccountManagement extends LitElement {
     const messages = this.#resolvedMessages;
 
     let activeItem = this.providers.find((p) => p.id === this.selectedItemId) as
-      | ProviderView
-      | ChannelView
-      | LiffAppView
+      | LineAccountEntity
       | undefined;
     if (!activeItem) {
-      activeItem = this.channels.find((c) => c.id === this.selectedItemId);
+      activeItem = this.messagingChannels.find((c) => c.id === this.selectedItemId);
+    }
+    if (!activeItem) {
+      activeItem = this.loginChannels.find((c) => c.id === this.selectedItemId);
     }
     if (!activeItem) {
       activeItem = this.liffApps.find((l) => l.id === this.selectedItemId);
@@ -612,7 +606,8 @@ export class LineAccountManagement extends LitElement {
     }
 
     let addBtnLabel = messages.addProvider;
-    if (this.currentTab === "channel") addBtnLabel = messages.addChannel;
+    if (this.currentTab === "messagingChannel") addBtnLabel = messages.addMessagingChannel;
+    else if (this.currentTab === "loginChannel") addBtnLabel = messages.addLoginChannel;
     else if (this.currentTab === "liff") addBtnLabel = messages.addLiffApp;
 
     return html`
@@ -675,21 +670,16 @@ export class LineAccountManagement extends LitElement {
                   .searchQuery=${this.searchQuery}
                   .variant=${this.variant}
                   .currentTab=${this.currentTab}
-                  .providers=${this.providers}
-                  .channels=${this.channels}
-                  .selectedProviderId=${this.selectedProviderId}
-                  .selectedChannelId=${this.selectedChannelId}
                   @search-change=${this.#onToolbarSearch}
                   @variant-change=${this.#onToolbarVariant}
-                  @provider-filter-change=${this.#onToolbarProviderFilter}
-                  @channel-filter-change=${this.#onToolbarChannelFilter}
                 ></line-account-toolbar>
 
                 ${this.variant !== "split"
                   ? html`
                       <line-account-hierarchy
                         .providers=${this.providers}
-                        .channels=${this.channels}
+                        .messagingChannels=${this.messagingChannels}
+                        .loginChannels=${this.loginChannels}
                         .liffApps=${this.liffApps}
                         .messages=${messages}
                         .pendingItemIds=${this.pendingItemIds}
@@ -706,7 +696,8 @@ export class LineAccountManagement extends LitElement {
                         @hierarchy-toggle=${this.#onHierarchyToggle}
                         @hierarchy-sync=${this.#onHierarchySync}
                         @hierarchy-add-provider=${this.#openCreate}
-                        @hierarchy-add-channel=${this.#onHierarchyAddChannel}
+                        @hierarchy-add-messaging-channel=${this.#onHierarchyAddMessagingChannel}
+                        @hierarchy-add-login-channel=${this.#onHierarchyAddLoginChannel}
                         @hierarchy-add-liff=${this.#onHierarchyAddLiff}
                       ></line-account-hierarchy>
                     `
@@ -763,10 +754,14 @@ export class LineAccountManagement extends LitElement {
     let headingEdit = messages.editProviderHeading;
     let headingDelete = messages.deleteProviderHeading;
 
-    if (this.currentTab === "channel") {
-      headingCreate = messages.createChannelHeading;
-      headingEdit = messages.editChannelHeading;
-      headingDelete = messages.deleteChannelHeading;
+    if (this.currentTab === "messagingChannel") {
+      headingCreate = messages.createMessagingChannelHeading;
+      headingEdit = messages.editMessagingChannelHeading;
+      headingDelete = messages.deleteMessagingChannelHeading;
+    } else if (this.currentTab === "loginChannel") {
+      headingCreate = messages.createLoginChannelHeading;
+      headingEdit = messages.editLoginChannelHeading;
+      headingDelete = messages.deleteLoginChannelHeading;
     } else if (this.currentTab === "liff") {
       headingCreate = messages.createLiffAppHeading;
       headingEdit = messages.editLiffAppHeading;
@@ -776,12 +771,20 @@ export class LineAccountManagement extends LitElement {
     const deleteConfirmMsg = this.selectedItem
       ? this.currentTab === "provider"
         ? messages.deleteConfirmation("Provider", (this.selectedItem as ProviderView).name)
-        : this.currentTab === "channel"
-          ? messages.deleteConfirmation("Channel", (this.selectedItem as ChannelView).name)
-          : messages.deleteConfirmation(
-              "LIFF Application",
-              (this.selectedItem as LiffAppView).liffId,
+        : this.currentTab === "messagingChannel"
+          ? messages.deleteConfirmation(
+              "Messaging Channel",
+              (this.selectedItem as LineMessagingChannelView).name,
             )
+          : this.currentTab === "loginChannel"
+            ? messages.deleteConfirmation(
+                "Login Channel",
+                (this.selectedItem as LineLoginChannelView).name,
+              )
+            : messages.deleteConfirmation(
+                "LIFF Application",
+                (this.selectedItem as LiffAppView).liffId,
+              )
       : "";
 
     return html`
@@ -795,7 +798,7 @@ export class LineAccountManagement extends LitElement {
           .type=${this.currentTab}
           .mode=${"create"}
           .providers=${this.providers}
-          .channels=${this.channels}
+          .loginChannels=${this.loginChannels}
           .messages=${messages}
           .submitting=${this.createPending}
           .error=${this.dialogKind === "create" ? this.mutationError : undefined}
@@ -834,7 +837,7 @@ export class LineAccountManagement extends LitElement {
           .mode=${"edit"}
           .item=${this.selectedItem}
           .providers=${this.providers}
-          .channels=${this.channels}
+          .loginChannels=${this.loginChannels}
           .messages=${messages}
           .submitting=${this.editPending}
           .error=${this.dialogKind === "edit" ? this.mutationError : undefined}
@@ -902,26 +905,23 @@ export class LineAccountManagement extends LitElement {
     this.variant = event.detail.variant;
   };
 
-  #onToolbarProviderFilter = (event: CustomEvent<{ value: string }>): void => {
-    this.selectedProviderId = event.detail.value;
-    this.selectedItemId = undefined;
-  };
-
-  #onToolbarChannelFilter = (event: CustomEvent<{ value: string }>): void => {
-    this.selectedChannelId = event.detail.value;
-    this.selectedItemId = undefined;
-  };
-
-  #drillDownToChannel = (channel: ChannelView): void => {
+  #drillDownToMessagingChannel = (channel: LineMessagingChannelView): void => {
     this.selectedProviderId = channel.providerId;
     this.selectedChannelId = channel.channelId;
     this.selectedItemId = channel.id;
-    this.currentTab = "channel";
+    this.currentTab = "messagingChannel";
+  };
+
+  #drillDownToLoginChannel = (channel: LineLoginChannelView): void => {
+    this.selectedProviderId = channel.providerId;
+    this.selectedChannelId = channel.channelId;
+    this.selectedItemId = channel.id;
+    this.currentTab = "loginChannel";
   };
 
   #drillDownToLiff = (liff: LiffAppView): void => {
     this.selectedChannelId = liff.loginChannelId;
-    const parentChannel = this.channels.find((c) => c.channelId === liff.loginChannelId);
+    const parentChannel = this.loginChannels.find((c) => c.channelId === liff.loginChannelId);
     if (parentChannel) {
       this.selectedProviderId = parentChannel.providerId;
     }
@@ -929,15 +929,21 @@ export class LineAccountManagement extends LitElement {
     this.currentTab = "liff";
   };
 
-  #openCreateChannelForProvider = (providerId: string): void => {
+  #openCreateMessagingChannelForProvider = (providerId: string): void => {
     this.selectedProviderId = providerId;
-    this.currentTab = "channel";
+    this.currentTab = "messagingChannel";
+    this.#openCreate();
+  };
+
+  #openCreateLoginChannelForProvider = (providerId: string): void => {
+    this.selectedProviderId = providerId;
+    this.currentTab = "loginChannel";
     this.#openCreate();
   };
 
   #openCreateLiffForChannel = (channelId: string): void => {
     this.selectedChannelId = channelId;
-    const parentChannel = this.channels.find((c) => c.channelId === channelId);
+    const parentChannel = this.loginChannels.find((c) => c.channelId === channelId);
     if (parentChannel) {
       this.selectedProviderId = parentChannel.providerId;
     }
@@ -947,10 +953,11 @@ export class LineAccountManagement extends LitElement {
 
   #renderSplitPane(
     messages: LineAccountManagementMessages,
-    activeItem: ProviderView | ChannelView | LiffAppView | undefined,
+    activeItem: LineAccountEntity | undefined,
   ) {
     let addBtnLabel = messages.addProvider;
-    if (this.currentTab === "channel") addBtnLabel = messages.addChannel;
+    if (this.currentTab === "messagingChannel") addBtnLabel = messages.addMessagingChannel;
+    else if (this.currentTab === "loginChannel") addBtnLabel = messages.addLoginChannel;
     else if (this.currentTab === "liff") addBtnLabel = messages.addLiffApp;
 
     return html`
@@ -982,7 +989,8 @@ export class LineAccountManagement extends LitElement {
 
           <line-account-hierarchy
             .providers=${this.providers}
-            .channels=${this.channels}
+            .messagingChannels=${this.messagingChannels}
+            .loginChannels=${this.loginChannels}
             .liffApps=${this.liffApps}
             .messages=${messages}
             .pendingItemIds=${this.pendingItemIds}
@@ -999,7 +1007,8 @@ export class LineAccountManagement extends LitElement {
             @hierarchy-toggle=${this.#onHierarchyToggle}
             @hierarchy-sync=${this.#onHierarchySync}
             @hierarchy-add-provider=${this.#openCreate}
-            @hierarchy-add-channel=${this.#onHierarchyAddChannel}
+            @hierarchy-add-messaging-channel=${this.#onHierarchyAddMessagingChannel}
+            @hierarchy-add-login-channel=${this.#onHierarchyAddLoginChannel}
             @hierarchy-add-liff=${this.#onHierarchyAddLiff}
           ></line-account-hierarchy>
         </div>
@@ -1008,7 +1017,8 @@ export class LineAccountManagement extends LitElement {
           .item=${activeItem}
           .currentTab=${this.currentTab}
           .providers=${this.providers}
-          .channels=${this.channels}
+          .messagingChannels=${this.messagingChannels}
+          .loginChannels=${this.loginChannels}
           .liffApps=${this.liffApps}
           .pendingItemIds=${this.pendingItemIds}
           .messages=${messages}
@@ -1019,47 +1029,52 @@ export class LineAccountManagement extends LitElement {
           @detail-sync=${this.#onDetailSync}
           @detail-drill-channel=${this.#onDetailDrillChannel}
           @detail-drill-liff=${this.#onDetailDrillLiff}
-          @detail-create-channel=${this.#onDetailCreateChannel}
+          @detail-create-messaging-channel=${this.#onDetailCreateMessagingChannel}
+          @detail-create-login-channel=${this.#onDetailCreateLoginChannel}
           @detail-create-liff=${this.#onDetailCreateLiff}
         ></line-account-detail-panel>
       </div>
     `;
   }
 
-  #onDetailEdit = (
-    event: CustomEvent<{ item: ProviderView | ChannelView | LiffAppView }>,
-  ): void => {
+  #onDetailEdit = (event: CustomEvent<{ item: LineAccountEntity }>): void => {
     this.selectedItem = event.detail.item;
     this.mutationError = undefined;
     this.dialogKind = "edit";
   };
 
-  #onDetailDelete = (
-    event: CustomEvent<{ item: ProviderView | ChannelView | LiffAppView }>,
-  ): void => {
+  #onDetailDelete = (event: CustomEvent<{ item: LineAccountEntity }>): void => {
     this.selectedItem = event.detail.item;
     this.mutationError = undefined;
     this.dialogKind = "delete";
   };
 
-  #onDetailToggle = (event: CustomEvent<{ item: ChannelView }>): void => {
+  #onDetailToggle = (event: CustomEvent<{ item: LineMessagingChannelView }>): void => {
     void this.#performToggle(event.detail.item);
   };
 
-  #onDetailSync = (event: CustomEvent<{ item: ChannelView }>): void => {
+  #onDetailSync = (event: CustomEvent<{ item: LineMessagingChannelView }>): void => {
     void this.#performSync(event.detail.item);
   };
 
   #onDetailDrillChannel = (event: CustomEvent<{ channel: ChannelView }>): void => {
-    this.#drillDownToChannel(event.detail.channel);
+    if (event.detail.channel.channelType === "messaging") {
+      this.#drillDownToMessagingChannel(event.detail.channel as LineMessagingChannelView);
+    } else {
+      this.#drillDownToLoginChannel(event.detail.channel as LineLoginChannelView);
+    }
   };
 
   #onDetailDrillLiff = (event: CustomEvent<{ liff: LiffAppView }>): void => {
     this.#drillDownToLiff(event.detail.liff);
   };
 
-  #onDetailCreateChannel = (event: CustomEvent<{ providerId: string }>): void => {
-    this.#openCreateChannelForProvider(event.detail.providerId);
+  #onDetailCreateMessagingChannel = (event: CustomEvent<{ providerId: string }>): void => {
+    this.#openCreateMessagingChannelForProvider(event.detail.providerId);
+  };
+
+  #onDetailCreateLoginChannel = (event: CustomEvent<{ providerId: string }>): void => {
+    this.#openCreateLoginChannelForProvider(event.detail.providerId);
   };
 
   #onDetailCreateLiff = (event: CustomEvent<{ channelId: string }>): void => {
@@ -1132,12 +1147,24 @@ export class LineAccountManagement extends LitElement {
     if (adapter === undefined || this.createPending) return;
     this.createPending = true;
     this.mutationError = undefined;
+
+    const operation: LineAccountOperation =
+      type === "provider"
+        ? "createProvider"
+        : type === "messagingChannel"
+          ? "createMessagingChannel"
+          : type === "loginChannel"
+            ? "createLoginChannel"
+            : "createLiffApp";
+
     try {
-      let created: ProviderView | ChannelView | LiffAppView;
+      let created: LineAccountEntity;
       if (type === "provider") {
         created = await adapter.createProvider(input);
-      } else if (type === "channel") {
-        created = await adapter.createChannel(input);
+      } else if (type === "messagingChannel") {
+        created = await adapter.createMessagingChannel(input);
+      } else if (type === "loginChannel") {
+        created = await adapter.createLoginChannel(input);
       } else {
         created = await adapter.createLiffApp(input);
       }
@@ -1150,7 +1177,7 @@ export class LineAccountManagement extends LitElement {
       );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.createFailure;
-      this.#emitError("createProvider", error); // Simple fallback operation name
+      this.#emitError(operation, error);
     } finally {
       this.createPending = false;
     }
@@ -1166,12 +1193,24 @@ export class LineAccountManagement extends LitElement {
 
     this.editPending = true;
     this.mutationError = undefined;
+
+    const operation: LineAccountOperation =
+      type === "provider"
+        ? "updateProvider"
+        : type === "messagingChannel"
+          ? "updateMessagingChannel"
+          : type === "loginChannel"
+            ? "updateLoginChannel"
+            : "updateLiffApp";
+
     try {
-      let updated: ProviderView | ChannelView | LiffAppView;
+      let updated: LineAccountEntity;
       if (type === "provider") {
         updated = await adapter.updateProvider(id, input);
-      } else if (type === "channel") {
-        updated = await adapter.updateChannel(id, input);
+      } else if (type === "messagingChannel") {
+        updated = await adapter.updateMessagingChannel(id, input);
+      } else if (type === "loginChannel") {
+        updated = await adapter.updateLoginChannel(id, input);
       } else {
         updated = await adapter.updateLiffApp(id, input);
       }
@@ -1185,15 +1224,15 @@ export class LineAccountManagement extends LitElement {
       );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.updateFailure;
-      this.#emitError("updateProvider", error);
+      this.#emitError(operation, error);
     } finally {
       this.editPending = false;
     }
   }
 
-  async #performSync(channel: ChannelView): Promise<void> {
+  async #performSync(channel: LineMessagingChannelView): Promise<void> {
     const adapter = this.adapter;
-    if (!adapter || channel.channelType !== "messaging" || !adapter.syncChannel) return;
+    if (!adapter || !adapter.syncMessagingChannel) return;
 
     this.pendingItemIds = new Set(this.pendingItemIds).add(channel.id);
     const itemErrors = new Map(this.itemErrors);
@@ -1201,18 +1240,21 @@ export class LineAccountManagement extends LitElement {
     this.itemErrors = itemErrors;
 
     try {
-      const updated = await adapter.syncChannel(channel.channelId);
+      const updated = await adapter.syncMessagingChannel(channel.channelId);
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-updated", eventOptions({ item: updated, type: "channel" })),
+        new CustomEvent(
+          "line-account-updated",
+          eventOptions({ item: updated, type: "messagingChannel" }),
+        ),
       );
     } catch (error) {
       this.itemErrors = new Map(this.itemErrors).set(
         channel.id,
         this.#resolvedMessages.updateFailure,
       );
-      this.#emitError("syncChannel", error);
+      this.#emitError("syncMessagingChannel", error);
     } finally {
       const pending = new Set(this.pendingItemIds);
       pending.delete(channel.id);
@@ -1220,7 +1262,7 @@ export class LineAccountManagement extends LitElement {
     }
   }
 
-  async #performToggle(channel: ChannelView): Promise<void> {
+  async #performToggle(channel: LineMessagingChannelView): Promise<void> {
     const adapter = this.adapter;
     if (adapter === undefined || this.pendingItemIds.has(channel.id)) return;
     this.pendingItemIds = new Set([...this.pendingItemIds, channel.id]);
@@ -1228,16 +1270,20 @@ export class LineAccountManagement extends LitElement {
     itemErrors.delete(channel.id);
     this.itemErrors = itemErrors;
     try {
-      const isActive = channel.channelType === "messaging" ? channel.isActive : false;
-      const updated = await adapter.updateChannel(channel.channelId, { isActive: !isActive });
+      const updated = await adapter.updateMessagingChannel(channel.channelId, {
+        isActive: !channel.isActive,
+      });
       this.#showNotice(this.#resolvedMessages.updateSuccess);
       await this.reload();
       this.dispatchEvent(
-        new CustomEvent("line-account-updated", eventOptions({ item: updated, type: "channel" })),
+        new CustomEvent(
+          "line-account-updated",
+          eventOptions({ item: updated, type: "messagingChannel" }),
+        ),
       );
     } catch (error) {
       this.itemErrors = new Map(this.itemErrors).set(channel.id, "Failed to toggle status");
-      this.#emitError("updateChannel", error);
+      this.#emitError("updateMessagingChannel", error);
     } finally {
       const pending = new Set(this.pendingItemIds);
       pending.delete(channel.id);
@@ -1256,11 +1302,23 @@ export class LineAccountManagement extends LitElement {
     this.deletePending = true;
     this.mutationError = undefined;
     const type = this.currentTab;
+
+    const operation: LineAccountOperation =
+      type === "provider"
+        ? "deleteProvider"
+        : type === "messagingChannel"
+          ? "deleteMessagingChannel"
+          : type === "loginChannel"
+            ? "deleteLoginChannel"
+            : "deleteLiffApp";
+
     try {
       if (type === "provider") {
         await adapter.deleteProvider(item.id);
-      } else if (type === "channel") {
-        await adapter.deleteChannel((item as ChannelView).channelId);
+      } else if (type === "messagingChannel") {
+        await adapter.deleteMessagingChannel((item as LineMessagingChannelView).channelId);
+      } else if (type === "loginChannel") {
+        await adapter.deleteLoginChannel((item as LineLoginChannelView).channelId);
       } else {
         await adapter.deleteLiffApp((item as LiffAppView).liffId);
       }
@@ -1277,7 +1335,7 @@ export class LineAccountManagement extends LitElement {
       );
     } catch (error) {
       this.mutationError = this.#resolvedMessages.deleteFailure;
-      this.#emitError("deleteProvider", error);
+      this.#emitError(operation, error);
     } finally {
       this.deletePending = false;
     }
@@ -1290,12 +1348,14 @@ export class LineAccountManagement extends LitElement {
       if (type === "provider") {
         const oldProviderId = this.selectedProviderId;
         this.selectedProviderId = "";
-        const channel = this.channels.find((c) => c.channelId === this.selectedChannelId);
+        const channel =
+          this.messagingChannels.find((c) => c.channelId === this.selectedChannelId) ??
+          this.loginChannels.find((c) => c.channelId === this.selectedChannelId);
         if (channel && channel.providerId === oldProviderId) {
           this.selectedChannelId = "";
           this.selectedLiffId = undefined;
         }
-      } else if (type === "channel") {
+      } else if (type === "messagingChannel" || type === "loginChannel") {
         const oldChannelId = this.selectedChannelId;
         this.selectedChannelId = "";
         if (this.selectedLiffId) {
@@ -1314,15 +1374,19 @@ export class LineAccountManagement extends LitElement {
 
     if (type === "provider") {
       this.selectedProviderId = item.id;
-    } else if (type === "channel") {
-      const c = item as ChannelView;
+    } else if (type === "messagingChannel") {
+      const c = item as LineMessagingChannelView;
+      this.selectedProviderId = c.providerId;
+      this.selectedChannelId = c.channelId;
+    } else if (type === "loginChannel") {
+      const c = item as LineLoginChannelView;
       this.selectedProviderId = c.providerId;
       this.selectedChannelId = c.channelId;
     } else if (type === "liff") {
       const l = item as LiffAppView;
       this.selectedLiffId = l.id;
       this.selectedChannelId = l.loginChannelId;
-      const parentChannel = this.channels.find((c) => c.channelId === l.loginChannelId);
+      const parentChannel = this.loginChannels.find((c) => c.channelId === l.loginChannelId);
       if (parentChannel) {
         this.selectedProviderId = parentChannel.providerId;
       }
@@ -1343,23 +1407,29 @@ export class LineAccountManagement extends LitElement {
     this.dialogKind = "delete";
   };
 
-  #onHierarchyToggle = (event: CustomEvent<{ item: ChannelView }>): void => {
+  #onHierarchyToggle = (event: CustomEvent<{ item: LineMessagingChannelView }>): void => {
     void this.#performToggle(event.detail.item);
   };
 
-  #onHierarchySync = (event: CustomEvent<{ item: ChannelView }>): void => {
+  #onHierarchySync = (event: CustomEvent<{ item: LineMessagingChannelView }>): void => {
     void this.#performSync(event.detail.item);
   };
 
-  #onHierarchyAddChannel = (event: CustomEvent<{ providerId: string }>): void => {
+  #onHierarchyAddMessagingChannel = (event: CustomEvent<{ providerId: string }>): void => {
     this.selectedProviderId = event.detail.providerId;
-    this.currentTab = "channel";
+    this.currentTab = "messagingChannel";
+    this.#openCreate();
+  };
+
+  #onHierarchyAddLoginChannel = (event: CustomEvent<{ providerId: string }>): void => {
+    this.selectedProviderId = event.detail.providerId;
+    this.currentTab = "loginChannel";
     this.#openCreate();
   };
 
   #onHierarchyAddLiff = (event: CustomEvent<{ channelId: string }>): void => {
     this.selectedChannelId = event.detail.channelId;
-    const parentChannel = this.channels.find((c) => c.channelId === event.detail.channelId);
+    const parentChannel = this.loginChannels.find((c) => c.channelId === event.detail.channelId);
     if (parentChannel) {
       this.selectedProviderId = parentChannel.providerId;
     }
@@ -1367,8 +1437,10 @@ export class LineAccountManagement extends LitElement {
     this.#openCreate();
   };
 
-  #typeOfItem(item: any): LineAccountFormType {
-    if ("channelType" in item) return "channel";
+  #typeOfItem(item: LineAccountEntity): LineAccountFormType {
+    if ("channelType" in item) {
+      return item.channelType === "messaging" ? "messagingChannel" : "loginChannel";
+    }
     if ("liffId" in item) return "liff";
     return "provider";
   }

@@ -5,10 +5,10 @@ import {
   LineAccountList,
   defaultLineAccountManagementMessages,
   defineLineAccountManagementElements,
-  type ChannelView,
+  type LineMessagingChannelView,
 } from "../../src/web/index.ts";
 
-const mockChannel: ChannelView = {
+const mockMessagingChannel: LineMessagingChannelView = {
   id: "channel-1",
   providerId: "provider-1",
   channelType: "messaging",
@@ -38,8 +38,8 @@ afterEach(() => {
 describe("line-account-card", () => {
   test("renders identity and explicit configuration statuses", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
-    element.type = "channel";
-    element.item = mockChannel;
+    element.type = "messagingChannel";
+    element.item = mockMessagingChannel;
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
@@ -53,8 +53,8 @@ describe("line-account-card", () => {
 
   test("falls back to the account name and generated initial", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
-    element.type = "channel";
-    element.item = { ...mockChannel, botDisplayName: null };
+    element.type = "messagingChannel";
+    element.item = { ...mockMessagingChannel, botDisplayName: null };
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
@@ -65,8 +65,8 @@ describe("line-account-card", () => {
 
   test("emits composed account request events and disables every action", async () => {
     const element = document.createElement("line-account-card") as LineAccountCard;
-    element.type = "channel";
-    element.item = mockChannel;
+    element.type = "messagingChannel";
+    element.item = mockMessagingChannel;
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
@@ -86,7 +86,7 @@ describe("line-account-card", () => {
 
     expect(events).toHaveLength(3);
     expect(events.every((event) => event.bubbles && event.composed)).toBe(true);
-    expect(events.every((event) => event.detail.item === mockChannel)).toBe(true);
+    expect(events.every((event) => event.detail.item === mockMessagingChannel)).toBe(true);
 
     element.disabled = true;
     await element.updateComplete;
@@ -112,14 +112,14 @@ describe("line-account-list", () => {
 
   test("renders cards and forwards their request events", async () => {
     const element = document.createElement("line-account-list") as LineAccountList;
-    element.type = "channel";
-    element.items = [mockChannel];
+    element.type = "messagingChannel";
+    element.items = [mockMessagingChannel];
     element.messages = defaultLineAccountManagementMessages;
     document.body.append(element);
     await element.updateComplete;
 
     const card = element.shadowRoot?.querySelector("line-account-card") as LineAccountCard;
-    expect(card.item).toBe(mockChannel);
+    expect(card.item).toBe(mockMessagingChannel);
 
     let received: CustomEvent | undefined;
     element.addEventListener("line-account-edit-request", (event) => {
@@ -128,7 +128,7 @@ describe("line-account-list", () => {
     await card.updateComplete;
     card.shadowRoot?.querySelector<HTMLButtonElement>('[part="edit-button"]')?.click();
 
-    expect(received?.detail.item).toBe(mockChannel);
+    expect(received?.detail.item).toBe(mockMessagingChannel);
     expect(received?.composed).toBe(true);
   });
 });
@@ -192,9 +192,7 @@ describe("line-account-dialog", () => {
       closeRequestCalled = true;
     });
 
-    // Mousedown starts inside content (heading)
     heading.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
-    // Click (mouseup) ends on the backdrop (dialog itself)
     dialog.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
 
     expect(closeRequestCalled).toBe(false);

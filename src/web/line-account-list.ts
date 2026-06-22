@@ -1,13 +1,13 @@
 import { LitElement, css, html } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import type { ProviderView, ChannelView, LiffAppView, LineAccountFormType } from "./types.ts";
+import type { LineAccountEntity, LineAccountFormType } from "./types.ts";
 import "./line-account-card.ts";
 
 /** LitElement list component rendering a grid or list of line-account-card elements. */
 export class LineAccountList extends LitElement {
   static properties = {
-    type: { type: String, reflect: true }, // "provider" | "channel" | "liff"
+    type: { type: String, reflect: true },
     items: { attribute: false },
     messages: { attribute: false },
     disabled: { type: Boolean, reflect: true },
@@ -78,7 +78,7 @@ export class LineAccountList extends LitElement {
   `;
 
   declare type: LineAccountFormType;
-  declare items: readonly (ProviderView | ChannelView | LiffAppView)[];
+  declare items: readonly LineAccountEntity[];
   declare messages: LineAccountManagementMessages;
   declare disabled: boolean;
   declare disabledItemIds: ReadonlySet<string>;
@@ -101,8 +101,10 @@ export class LineAccountList extends LitElement {
   protected render() {
     if (this.items.length === 0) {
       let emptyMsg = this.messages.emptyProviders;
-      if (this.type === "channel") {
-        emptyMsg = this.messages.emptyChannels;
+      if (this.type === "messagingChannel") {
+        emptyMsg = this.messages.emptyMessagingChannels;
+      } else if (this.type === "loginChannel") {
+        emptyMsg = this.messages.emptyLoginChannels;
       } else if (this.type === "liff") {
         emptyMsg = this.messages.emptyLiffApps;
       }

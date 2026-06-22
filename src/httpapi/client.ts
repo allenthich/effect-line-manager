@@ -5,8 +5,6 @@ import { LineProviderId } from "../provider/domain.ts";
 import { LineChannelId } from "../shared/domain.ts";
 import { LineLiffId } from "../liff/domain.ts";
 import { type LineProviderManagementAdapter } from "../adapter/types.ts";
-import type { ChannelListPage, ChannelView } from "../channels/management-domain.ts";
-import type { UpdateChannelInput } from "../adapter/compat.ts";
 import { LineApi } from "./api.ts";
 
 //#region New API Client
@@ -40,11 +38,10 @@ const decodeLiffId = Schema.decodeEffect(LineLiffId);
 /**
  * Creates a provider management adapter backed by a LINE API client.
  *
- * Aggregate-specific channel methods (`listMessagingChannels`,
- * `createLoginChannel`, etc.) are the preferred surface.
- * `listChannels`/`getChannel`/`createChannel`/`updateChannel`/`deleteChannel`
- * remain as compatibility shims that combine messaging + login aggregates
- * for UIs that present a unified channel list.
+ * The adapter exposes only aggregate-specific channel methods
+ * (`listMessagingChannels`, `createLoginChannel`, etc.). There is no
+ * combined "channel" facade; UIs that need both channel kinds should
+ * call the per-aggregate methods explicitly.
  */
 export const makeLineProviderManagementAdapter = (
   client: LineClient,
@@ -133,99 +130,6 @@ export const makeLineProviderManagementAdapter = (
         ),
       ),
     ),
-
-  // Combined channel compatibility shims (deprecated).
-  listChannels: async (query) => {
-    const [messagingPage, loginPage] = await Promise.all([
-      Effect.runPromise(client.lineMessagingChannels.listMessagingChannels({ query: query ?? {} })),
-      Effect.runPromise(client.lineLoginChannels.listLoginChannels({ query: query ?? {} })),
-    ]);
-    const data: ChannelView[] = [...messagingPage.data, ...loginPage.data];
-    return {
-      data,
-      pagination: messagingPage.pagination,
-    } satisfies ChannelListPage;
-  },
-  getChannel: async (id) => {
-    const channelId = Effect.runSync(decodeChannelId(id));
-    try {
-      return await Effect.runPromise(
-        client.lineMessagingChannels.getMessagingChannel({ params: { id: channelId } }),
-      );
-    } catch {
-      return await Effect.runPromise(
-        client.lineLoginChannels.getLoginChannel({ params: { id: channelId } }),
-      );
-    }
-  },
-  createChannel: (input) =>
-    input.channelType === "messaging"
-      ? Effect.runPromise(
-          client.lineMessagingChannels.createMessagingChannel({
-            payload: {
-              providerId: input.providerId,
-              name: input.name,
-              channelId: input.channelId,
-              channelSecret: input.channelSecret,
-              channelAccessToken: input.channelAccessToken,
-              ...(input.botDisplayName === undefined
-                ? {}
-                : { botDisplayName: input.botDisplayName }),
-              ...(input.botUserId === undefined ? {} : { botUserId: input.botUserId }),
-              ...(input.botBasicId === undefined ? {} : { botBasicId: input.botBasicId }),
-              ...(input.botPictureUrl === undefined ? {} : { botPictureUrl: input.botPictureUrl }),
-              ...(input.addFriendUrl === undefined ? {} : { addFriendUrl: input.addFriendUrl }),
-              ...(input.addFriendQrCodeUrl === undefined
-                ? {}
-                : { addFriendQrCodeUrl: input.addFriendQrCodeUrl }),
-            },
-          }),
-        )
-      : Effect.runPromise(
-          client.lineLoginChannels.createLoginChannel({
-            payload: {
-              providerId: input.providerId,
-              name: input.name,
-              channelId: input.channelId,
-              channelSecret: input.channelSecret,
-            },
-          }),
-        ),
-  updateChannel: async (id, input) => {
-    const channelId = Effect.runSync(decodeChannelId(id));
-    const payload: UpdateChannelInput = input;
-    try {
-      return await Effect.runPromise(
-        client.lineMessagingChannels.updateMessagingChannel({
-          params: { id: channelId },
-          payload: payload as unknown as Parameters<
-            typeof client.lineMessagingChannels.updateMessagingChannel
-          >[0]["payload"],
-        }),
-      );
-    } catch {
-      return await Effect.runPromise(
-        client.lineLoginChannels.updateLoginChannel({
-          params: { id: channelId },
-          payload: payload as unknown as Parameters<
-            typeof client.lineLoginChannels.updateLoginChannel
-          >[0]["payload"],
-        }),
-      );
-    }
-  },
-  deleteChannel: async (id) => {
-    const channelId = Effect.runSync(decodeChannelId(id));
-    try {
-      await Effect.runPromise(
-        client.lineMessagingChannels.deleteMessagingChannel({ params: { id: channelId } }),
-      );
-    } catch {
-      await Effect.runPromise(
-        client.lineLoginChannels.deleteLoginChannel({ params: { id: channelId } }),
-      );
-    }
-  },
 
   listLiffApps: (query) =>
     Effect.runPromise(client.lineLiffApps.listLiffApps({ query: query ?? {} })),

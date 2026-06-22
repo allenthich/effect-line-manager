@@ -5,7 +5,6 @@ import type {
   ProviderView,
   ListProvidersQuery,
 } from "../provider/domain.ts";
-import type { CreateChannelInput, UpdateChannelInput, ListChannelsQuery } from "./compat.ts";
 import type {
   CreateLineMessagingChannelInput,
   UpdateLineMessagingChannelInput,
@@ -17,8 +16,6 @@ import type {
   LineLoginChannelView,
   LineMessagingChannelListPage,
   LineLoginChannelListPage,
-  ChannelView,
-  ChannelListPage,
 } from "../channels/management-domain.ts";
 import type {
   CreateLiffAppInput,
@@ -33,10 +30,9 @@ import type {
  * API clients or memory adapters.
  *
  * Aggregate-specific channel operations (`listMessagingChannels`,
- * `createLoginChannel`, etc.) are the preferred surface going forward. The
- * generic `listChannels`/`getChannel`/etc. methods are retained as
- * compatibility shims that combine the two aggregates for UIs that present
- * a unified channel list.
+ * `createLoginChannel`, etc.) are the provided surface. There is no
+ * combined "channel" facade; consumers that need both aggregates should
+ * call the per-aggregate methods explicitly.
  */
 export interface LineProviderManagementAdapter {
   readonly listProviders: (query?: ListProvidersQuery) => Promise<ProviderListPage>;
@@ -72,14 +68,6 @@ export interface LineProviderManagementAdapter {
     input: UpdateLineLoginChannelInput,
   ) => Promise<LineLoginChannelView>;
   readonly deleteLoginChannel: (id: string) => Promise<void>;
-
-  // Combined-channel compatibility shims (deprecated; use aggregate-specific methods).
-  readonly listChannels: (query?: ListChannelsQuery) => Promise<ChannelListPage>;
-  readonly getChannel: (id: string) => Promise<ChannelView>;
-  readonly createChannel: (input: CreateChannelInput) => Promise<ChannelView>;
-  readonly updateChannel: (id: string, input: UpdateChannelInput) => Promise<ChannelView>;
-  readonly deleteChannel: (id: string) => Promise<void>;
-  readonly syncChannel?: (id: string) => Promise<ChannelView>;
 
   readonly listLiffApps: (query?: ListLiffAppsQuery) => Promise<LiffAppListPage>;
   readonly getLiffApp: (id: string) => Promise<LiffAppView>;

@@ -11,6 +11,11 @@
  * - Use these components directly with a custom adapter.
  * - Build their own UI using only the `LineProviderManagementAdapter`.
  * - Use the domain-specific Effect services directly.
+ *
+ * Public type surface is the named export list below — the internal
+ * `ChannelView` alias from `./types.ts` is deliberately NOT re-exported.
+ * Consumers should use `LineMessagingChannelView` or `LineLoginChannelView`
+ * directly so that the per-aggregate shape dependency is explicit.
  */
 export * from "./define.ts";
 export * from "./line-account-breadcrumbs.ts";
@@ -23,4 +28,29 @@ export * from "./line-account-list.ts";
 export * from "./line-account-management.ts";
 export * from "./line-account-toolbar.ts";
 export * from "./messages.ts";
-export type * from "./types.ts";
+export type {
+  LineProviderManagementAdapter,
+  ProviderView,
+  LiffAppView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  CreateProviderInput,
+  UpdateProviderInput,
+  CreateLineMessagingChannelInput,
+  UpdateLineMessagingChannelInput,
+  CreateLineLoginChannelInput,
+  UpdateLineLoginChannelInput,
+  CreateLiffAppInput,
+  UpdateLiffAppInput,
+  ProviderListPage,
+  LineMessagingChannelListPage,
+  LineLoginChannelListPage,
+  LiffAppListPage,
+  LineAccountFormMode,
+  LineAccountFormType,
+  LineAccountEntity,
+  LineAccountOperation,
+  LineAccountRequestDetail,
+  LineAccountFormSubmitDetail,
+  LineAccountErrorEventDetail,
+} from "./types.ts";

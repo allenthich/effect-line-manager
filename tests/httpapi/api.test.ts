@@ -6,7 +6,6 @@ import { HttpApiTest } from "effect/unstable/httpapi";
 import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
 import { LineChannelId, LineLoginChannelId } from "../../src/shared/domain.ts";
 import {
-  ChannelView,
   LineMessagingChannelView,
   LineLoginChannelView,
 } from "../../src/channels/management-domain.ts";
@@ -80,11 +79,6 @@ const loginChannelView: LineLoginChannelView = {
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-11T00:00:00.000Z"),
 };
-
-// `ChannelView` runtime — the union view used by the adapter shim. We construct
-// this from the messaging view literal so the adapter's combined `listChannels`
-// shim test path still has a known value to assert against.
-const channelView: ChannelView = messagingChannelView;
 
 const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
   id: liffId,
@@ -360,8 +354,6 @@ describe("LineApi", () => {
         expect(createdLogin).toEqual(loginChannelView);
         expect(updatedLogin).toEqual(loginChannelView);
         expect(gottenLogin).toEqual(loginChannelView);
-
-        expect(channelView).toEqual(messagingChannelView);
 
         expect(listedLiffs.data).toEqual([liffAppView]);
         expect(createdLiff).toEqual(liffAppView);

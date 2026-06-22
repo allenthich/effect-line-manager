@@ -2,10 +2,18 @@ import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import type { ProviderView, ChannelView, LiffAppView, LineAccountFormType } from "./types.ts";
+import type {
+  ProviderView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LiffAppView,
+  ChannelView,
+  LineAccountFormType,
+  LineAccountEntity,
+} from "./types.ts";
 import "./line-account-detail-panel.ts";
 
-type EntityItem = ProviderView | ChannelView | LiffAppView;
+type EntityItem = LineAccountEntity;
 
 interface TreeChannel {
   item: ChannelView;
@@ -23,7 +31,8 @@ interface TreeProvider {
 export class LineAccountHierarchy extends LitElement {
   static properties = {
     providers: { attribute: false },
-    channels: { attribute: false },
+    messagingChannels: { attribute: false },
+    loginChannels: { attribute: false },
     liffApps: { attribute: false },
     messages: { attribute: false },
     pendingItemIds: { attribute: false },
@@ -293,7 +302,8 @@ export class LineAccountHierarchy extends LitElement {
   `;
 
   declare providers: readonly ProviderView[];
-  declare channels: readonly ChannelView[];
+  declare messagingChannels: readonly LineMessagingChannelView[];
+  declare loginChannels: readonly LineLoginChannelView[];
   declare liffApps: readonly LiffAppView[];
   declare messages: LineAccountManagementMessages;
   declare pendingItemIds: ReadonlySet<string>;
@@ -311,7 +321,8 @@ export class LineAccountHierarchy extends LitElement {
   constructor() {
     super();
     this.providers = [];
-    this.channels = [];
+    this.messagingChannels = [];
+    this.loginChannels = [];
     this.liffApps = [];
     this.messages = defaultLineAccountManagementMessages;
     this.pendingItemIds = new Set();
@@ -327,6 +338,11 @@ export class LineAccountHierarchy extends LitElement {
     this.expandedChannelIds = new Set();
   }
 
+  /** Combined view of messaging + login channels for tree-building and lookup. */
+  get #allChannels(): readonly ChannelView[] {
+    return [...this.messagingChannels, ...this.loginChannels];
+  }
+
   willUpdate(changedProperties: PropertyValues<this>): void {
     if (
       (changedProperties.has("selectedItemId") && this.selectedItemId) ||
@@ -340,7 +356,7 @@ export class LineAccountHierarchy extends LitElement {
       const liff = activeLiffId ? this.liffApps.find((l) => l.id === activeLiffId) : undefined;
       if (liff) {
         newExpandedChannels.add(liff.loginChannelId);
-        const channel = this.channels.find((c) => c.channelId === liff.loginChannelId);
+        const channel = this.#allChannels.find((c) => c.channelId === liff.loginChannelId);
         if (channel) {
           newExpandedProviders.add(channel.providerId);
         }
@@ -349,7 +365,7 @@ export class LineAccountHierarchy extends LitElement {
       const activeChannelId =
         this.selectedChannelId || (activeLiffId ? undefined : this.selectedItemId);
       if (activeChannelId) {
-        const channel = this.channels.find((c) => c.channelId === activeChannelId);
+        const channel = this.#allChannels.find((c) => c.channelId === activeChannelId);
         if (channel) {
           newExpandedProviders.add(channel.providerId);
         }
@@ -382,7 +398,7 @@ export class LineAccountHierarchy extends LitElement {
     else next.add(id);
     this.expandedChannelIds = next;
 
-    const channel = this.channels.find((c) => c.id === id);
+    const channel = this.#allChannels.find((c) => c.id === id);
     if (channel) {
       this.#selectItem(channel);
     }
@@ -393,7 +409,7 @@ export class LineAccountHierarchy extends LitElement {
     let isAlreadySelected = false;
     if (type === "provider") {
       isAlreadySelected = this.selectedProviderId === item.id;
-    } else if (type === "channel") {
+    } else if (type === "messagingChannel" || type === "loginChannel") {
       isAlreadySelected = this.selectedChannelId === (item as ChannelView).channelId;
     } else if (type === "liff") {
       isAlreadySelected = this.selectedLiffId === item.id;
@@ -407,7 +423,9 @@ export class LineAccountHierarchy extends LitElement {
   };
 
   #typeOf(item: EntityItem): LineAccountFormType {
-    if ("channelType" in item) return "channel";
+    if ("channelType" in item) {
+      return item.channelType === "messaging" ? "messagingChannel" : "loginChannel";
+    }
     if ("liffId" in item) return "liff";
     return "provider";
   }
@@ -415,12 +433,13 @@ export class LineAccountHierarchy extends LitElement {
   #buildTree(): TreeProvider[] {
     const query = this.searchQuery.toLowerCase().trim();
     const tree: TreeProvider[] = this.providers.map((p) => {
-      const providerChannels = this.channels.filter((c) => c.providerId === p.id);
+      const providerChannels = this.#allChannels.filter((c) => c.providerId === p.id);
       const treeChannels: TreeChannel[] = providerChannels.map((c) => ({
         item: c,
-        liffApps: this.liffApps.filter(
-          (l) => c.channelType === "login" && l.loginChannelId === c.channelId,
-        ),
+        liffApps:
+          c.channelType === "login"
+            ? this.liffApps.filter((l) => l.loginChannelId === c.channelId)
+            : [],
         match: false,
       }));
       return { item: p, channels: treeChannels, match: false };
@@ -528,10 +547,21 @@ export class LineAccountHierarchy extends LitElement {
                   class="node-btn primary"
                   type="button"
                   ?disabled=${isPending}
-                  @click=${() => this.#emit("hierarchy-add-channel", { providerId: p.item.id })}
-                  title="Add Channel"
+                  @click=${() =>
+                    this.#emit("hierarchy-add-messaging-channel", { providerId: p.item.id })}
+                  title="Add Messaging Channel"
                 >
-                  +
+                  + M
+                </button>
+                <button
+                  class="node-btn primary"
+                  type="button"
+                  ?disabled=${isPending}
+                  @click=${() =>
+                    this.#emit("hierarchy-add-login-channel", { providerId: p.item.id })}
+                  title="Add Login Channel"
+                >
+                  + L
                 </button>
                 <button
                   class="node-btn"
@@ -560,24 +590,48 @@ export class LineAccountHierarchy extends LitElement {
             ${p.channels.map((c) => this.#renderChannel(c))}
             ${this.variant === "split"
               ? ""
-              : html`<button
-                  class="add-child-btn"
-                  type="button"
-                  @click=${() => this.#emit("hierarchy-add-channel", { providerId: p.item.id })}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+              : html`<div style="display: flex; gap: 0.5rem; margin-inline: 1.5rem;">
+                  <button
+                    class="add-child-btn"
+                    type="button"
+                    style="flex: 1;"
+                    @click=${() =>
+                      this.#emit("hierarchy-add-messaging-channel", { providerId: p.item.id })}
                   >
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  Add Channel
-                </button>`}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Messaging Channel
+                  </button>
+                  <button
+                    class="add-child-btn"
+                    type="button"
+                    style="flex: 1;"
+                    @click=${() =>
+                      this.#emit("hierarchy-add-login-channel", { providerId: p.item.id })}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Login Channel
+                  </button>
+                </div>`}
           </div>`
         : ""}
     </div>`;
@@ -590,6 +644,7 @@ export class LineAccountHierarchy extends LitElement {
     const error = this.itemErrors.get(c.item.id);
     const initial = c.item.name.charAt(0).toUpperCase();
     const hasLiff = c.liffApps.length > 0;
+    const channelTypeTab: LineAccountFormType = isMessaging ? "messagingChannel" : "loginChannel";
     return html` <div
       class="tree-node ${this.selectedChannelId === c.item.channelId ? "selected" : ""}"
       part="node"
@@ -610,9 +665,12 @@ export class LineAccountHierarchy extends LitElement {
           <span class="node-subtitle"
             >${isMessaging ? "Messaging API" : "LINE Login"} · ${c.item.channelId}</span
           >
-          ${c.item.channelType === "messaging"
-            ? html`<span class="badge ${c.item.isActive ? "badge-active" : "badge-inactive"}"
-                >${c.item.isActive ? "Active" : "Inactive"}</span
+          ${isMessaging
+            ? html`<span
+                class="badge ${(c.item as LineMessagingChannelView).isActive
+                  ? "badge-active"
+                  : "badge-inactive"}"
+                >${(c.item as LineMessagingChannelView).isActive ? "Active" : "Inactive"}</span
               >`
             : ""}
         </div>
@@ -620,12 +678,18 @@ export class LineAccountHierarchy extends LitElement {
           ? ""
           : html`
               <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
-                ${c.item.channelType === "messaging"
+                ${isMessaging
                   ? html`<button
-                      class="switch ${c.item.isActive ? "checked" : ""}"
+                      class="switch ${(c.item as LineMessagingChannelView).isActive
+                        ? "checked"
+                        : ""}"
                       role="switch"
-                      aria-checked=${c.item.isActive ? "true" : "false"}
-                      aria-label=${c.item.isActive ? "Deactivate" : "Activate"}
+                      aria-checked=${(c.item as LineMessagingChannelView).isActive
+                        ? "true"
+                        : "false"}
+                      aria-label=${(c.item as LineMessagingChannelView).isActive
+                        ? "Deactivate"
+                        : "Activate"}
                       ?disabled=${isPending}
                       @click=${() => this.#emit("hierarchy-toggle", { item: c.item })}
                     >
@@ -641,7 +705,7 @@ export class LineAccountHierarchy extends LitElement {
                     >
                       +
                     </button>`}
-                ${c.item.channelType === "messaging"
+                ${isMessaging
                   ? html`<button
                       class="node-btn"
                       type="button"
@@ -680,9 +744,10 @@ export class LineAccountHierarchy extends LitElement {
             >
               <line-account-detail-panel
                 .item=${c.item}
-                .currentTab=${"channel"}
+                .currentTab=${channelTypeTab}
                 .providers=${this.providers}
-                .channels=${this.channels}
+                .messagingChannels=${this.messagingChannels}
+                .loginChannels=${this.loginChannels}
                 .liffApps=${this.liffApps}
                 .pendingItemIds=${this.pendingItemIds}
                 .messages=${this.messages}
@@ -770,7 +835,8 @@ export class LineAccountHierarchy extends LitElement {
                 .item=${l}
                 .currentTab=${"liff"}
                 .providers=${this.providers}
-                .channels=${this.channels}
+                .messagingChannels=${this.messagingChannels}
+                .loginChannels=${this.loginChannels}
                 .liffApps=${this.liffApps}
                 .pendingItemIds=${this.pendingItemIds}
                 .messages=${this.messages}

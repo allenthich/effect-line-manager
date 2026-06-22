@@ -3,7 +3,8 @@ export interface LineAccountManagementMessages {
   readonly title: string;
   readonly description: string;
   readonly providersTab: string;
-  readonly channelsTab: string;
+  readonly messagingChannelsTab: string;
+  readonly loginChannelsTab: string;
   readonly liffAppsTab: string;
 
   // Providers
@@ -14,13 +15,8 @@ export interface LineAccountManagementMessages {
   readonly providerNameLabel: string;
   readonly providerNameHint: string;
 
-  // Channels
-  readonly addChannel: string;
-  readonly createChannelHeading: string;
-  readonly editChannelHeading: string;
-  readonly deleteChannelHeading: string;
+  // Shared channel labels (apply to both messaging and login channels)
   readonly channelProviderLabel: string;
-  readonly channelTypeLabel: string;
   readonly channelNameLabel: string;
   readonly channelNameHint: string;
   readonly channelIdLabel: string;
@@ -28,10 +24,22 @@ export interface LineAccountManagementMessages {
   readonly channelSecretLabel: string;
   readonly channelSecretCreateHint: string;
   readonly channelSecretEditHint: string;
-  readonly channelAccessTokenLabel: string;
-  readonly channelAccessTokenCreateHint: string;
-  readonly channelAccessTokenEditHint: string;
-  readonly channelStatusLabel: string;
+
+  // Messaging channels
+  readonly addMessagingChannel: string;
+  readonly createMessagingChannelHeading: string;
+  readonly editMessagingChannelHeading: string;
+  readonly deleteMessagingChannelHeading: string;
+  readonly messagingChannelAccessTokenLabel: string;
+  readonly messagingChannelAccessTokenCreateHint: string;
+  readonly messagingChannelAccessTokenEditHint: string;
+  readonly messagingChannelStatusLabel: string;
+
+  // Login channels
+  readonly addLoginChannel: string;
+  readonly createLoginChannelHeading: string;
+  readonly editLoginChannelHeading: string;
+  readonly deleteLoginChannelHeading: string;
 
   // LIFF Apps
   readonly addLiffApp: string;
@@ -54,7 +62,8 @@ export interface LineAccountManagementMessages {
   readonly inactiveStatus: string;
   readonly loading: string;
   readonly emptyProviders: string;
-  readonly emptyChannels: string;
+  readonly emptyMessagingChannels: string;
+  readonly emptyLoginChannels: string;
   readonly emptyLiffApps: string;
   readonly adapterMissingDescription: string;
   readonly retry: string;
@@ -73,10 +82,10 @@ export interface LineAccountManagementMessages {
 /** Default English i18n messages for LINE account management UI components. */
 export const defaultLineAccountManagementMessages: LineAccountManagementMessages = {
   title: "LINE Configuration",
-  description:
-    "Manage LINE Providers, Channels (Messaging API / LINE Login), and LIFF applications.",
+  description: "Manage LINE Providers, Messaging Channels, Login Channels, and LIFF applications.",
   providersTab: "Providers",
-  channelsTab: "Channels",
+  messagingChannelsTab: "Messaging Channels",
+  loginChannelsTab: "Login Channels",
   liffAppsTab: "LIFF Apps",
 
   // Providers
@@ -87,13 +96,8 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   providerNameLabel: "Provider name",
   providerNameHint: "A name to identify the LINE Provider.",
 
-  // Channels
-  addChannel: "Add Channel",
-  createChannelHeading: "Add LINE Channel",
-  editChannelHeading: "Edit LINE Channel",
-  deleteChannelHeading: "Delete LINE Channel",
+  // Shared channel labels
   channelProviderLabel: "Provider",
-  channelTypeLabel: "Channel Type",
   channelNameLabel: "Channel name",
   channelNameHint: "A name to identify the LINE Channel.",
   channelIdLabel: "Channel ID",
@@ -101,10 +105,22 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   channelSecretLabel: "Channel secret",
   channelSecretCreateHint: "Enter the LINE Channel secret.",
   channelSecretEditHint: "Leave blank to keep the current channel secret.",
-  channelAccessTokenLabel: "Channel access token",
-  channelAccessTokenCreateHint: "Enter the Messaging API channel access token.",
-  channelAccessTokenEditHint: "Leave blank to keep the current access token.",
-  channelStatusLabel: "Channel active",
+
+  // Messaging channels
+  addMessagingChannel: "Add Messaging Channel",
+  createMessagingChannelHeading: "Add LINE Messaging Channel",
+  editMessagingChannelHeading: "Edit LINE Messaging Channel",
+  deleteMessagingChannelHeading: "Delete LINE Messaging Channel",
+  messagingChannelAccessTokenLabel: "Channel access token",
+  messagingChannelAccessTokenCreateHint: "Enter the Messaging API channel access token.",
+  messagingChannelAccessTokenEditHint: "Leave blank to keep the current access token.",
+  messagingChannelStatusLabel: "Channel active",
+
+  // Login channels
+  addLoginChannel: "Add Login Channel",
+  createLoginChannelHeading: "Add LINE Login Channel",
+  editLoginChannelHeading: "Edit LINE Login Channel",
+  deleteLoginChannelHeading: "Delete LINE Login Channel",
 
   // LIFF Apps
   addLiffApp: "Add LIFF App",
@@ -127,8 +143,9 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   inactiveStatus: "Inactive",
   loading: "Loading content...",
   emptyProviders: "No LINE Providers found. Add a provider to get started.",
-  emptyChannels: "No LINE Channels found under this provider.",
-  emptyLiffApps: "No LIFF applications found under this channel.",
+  emptyMessagingChannels: "No LINE Messaging Channels found under this provider.",
+  emptyLoginChannels: "No LINE Login Channels found under this provider.",
+  emptyLiffApps: "No LIFF applications found under this login channel.",
   adapterMissingDescription:
     "Assign a LINE provider management adapter to load and change configuration.",
   retry: "Retry",

@@ -4,7 +4,8 @@ import {
   defineLineAccountManagementElements,
   type LineAccountManagement,
   type ProviderView,
-  type ChannelView,
+  type LineMessagingChannelView,
+  type LineLoginChannelView,
   type LiffAppView,
 } from "../src/web/index.ts";
 import { LineLoginChannelId } from "../src/shared/domain.ts";
@@ -22,7 +23,7 @@ const seedProviders: ProviderView[] = [
   },
 ];
 
-const seedChannels: ChannelView[] = [
+const seedMessagingChannels: LineMessagingChannelView[] = [
   {
     id: "demo-channel-1",
     providerId: "demo-provider-1",
@@ -41,6 +42,9 @@ const seedChannels: ChannelView[] = [
     createdAt,
     updatedAt,
   },
+];
+
+const seedLoginChannels: LineLoginChannelView[] = [
   {
     id: "demo-channel-2",
     providerId: "demo-provider-1",
@@ -75,22 +79,32 @@ const status = document.querySelector<HTMLElement>("#demo-status");
 
 if (page === null) throw new Error("Missing line-account-management demo element");
 
-page.adapter = createInMemoryLineAccountAdapter(seedProviders, seedChannels, seedLiffApps);
+page.adapter = createInMemoryLineAccountAdapter(
+  seedProviders,
+  seedMessagingChannels,
+  seedLoginChannels,
+  seedLiffApps,
+);
 
 const announce = (message: string): void => {
   if (status !== null) status.textContent = message;
 };
 
+const displayName = (item: any, type: string): string => {
+  if (type === "provider" || type === "messagingChannel" || type === "loginChannel") {
+    return item.name as string;
+  }
+  return item.liffId as string;
+};
+
 page.addEventListener("line-account-created", (event) => {
   const { item, type } = (event as CustomEvent<{ item: any; type: string }>).detail;
-  const name = type === "provider" || type === "channel" ? item.name : item.liffId;
-  announce(`Created ${type}: ${name}.`);
+  announce(`Created ${type}: ${displayName(item, type)}.`);
 });
 
 page.addEventListener("line-account-updated", (event) => {
   const { item, type } = (event as CustomEvent<{ item: any; type: string }>).detail;
-  const name = type === "provider" || type === "channel" ? item.name : item.liffId;
-  announce(`Updated ${type}: ${name}.`);
+  announce(`Updated ${type}: ${displayName(item, type)}.`);
 });
 
 page.addEventListener("line-account-deleted", (event) => {

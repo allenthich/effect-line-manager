@@ -5,7 +5,8 @@ import type { LineAccountManagementMessages } from "./messages.ts";
 import { LineLoginChannelId } from "../shared/domain.ts";
 import type {
   ProviderView,
-  ChannelView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
   LiffAppView,
   LineAccountFormMode,
   LineAccountFormType,
@@ -16,12 +17,13 @@ interface FormValues {
   // Provider
   providerName: string;
 
-  // Channel
+  // Messaging + Login shared
   channelProviderId: string;
-  channelType: "messaging" | "login";
   channelName: string;
   channelId: string;
   channelSecret: string;
+
+  // Messaging-only fields
   channelAccessToken: string;
   channelBotUserId: string;
   channelBotBasicId: string;
@@ -52,7 +54,7 @@ export class LineAccountForm extends LitElement {
     mode: { type: String, reflect: true },
     item: { attribute: false },
     providers: { attribute: false },
-    channels: { attribute: false },
+    loginChannels: { attribute: false },
     messages: { attribute: false },
     submitting: { type: Boolean, reflect: true },
     error: { type: String },
@@ -256,9 +258,14 @@ export class LineAccountForm extends LitElement {
 
   declare type: LineAccountFormType;
   declare mode: LineAccountFormMode;
-  declare item: ProviderView | ChannelView | LiffAppView | undefined;
+  declare item:
+    | ProviderView
+    | LineMessagingChannelView
+    | LineLoginChannelView
+    | LiffAppView
+    | undefined;
   declare providers: ProviderView[];
-  declare channels: ChannelView[];
+  declare loginChannels: LineLoginChannelView[];
   declare messages: LineAccountManagementMessages;
   declare submitting: boolean;
   declare error: string | undefined;
@@ -277,7 +284,7 @@ export class LineAccountForm extends LitElement {
     this.mode = "create";
     this.item = undefined;
     this.providers = [];
-    this.channels = [];
+    this.loginChannels = [];
     this.submitting = false;
     this.error = undefined;
     this.showChannelSecret = false;
@@ -302,7 +309,7 @@ export class LineAccountForm extends LitElement {
       changedProperties.has("mode") ||
       changedProperties.has("item") ||
       changedProperties.has("providers") ||
-      changedProperties.has("channels") ||
+      changedProperties.has("loginChannels") ||
       changedProperties.has("selectedProviderId") ||
       changedProperties.has("selectedChannelId")
     ) {
@@ -329,9 +336,11 @@ export class LineAccountForm extends LitElement {
           : ""}
         ${this.type === "provider"
           ? this.#renderProviderFields()
-          : this.type === "channel"
-            ? this.#renderChannelFields()
-            : this.#renderLiffFields()}
+          : this.type === "messagingChannel"
+            ? this.#renderMessagingChannelFields()
+            : this.type === "loginChannel"
+              ? this.#renderLoginChannelFields()
+              : this.#renderLiffFields()}
       </form>
     `;
   }
@@ -351,52 +360,34 @@ export class LineAccountForm extends LitElement {
     `;
   }
 
-  #renderChannelFields() {
+  #renderMessagingChannelFields() {
     const editing = this.mode === "edit";
     return html`
       <fieldset>
         <legend>
-          ${editing ? this.messages.editChannelHeading : this.messages.createChannelHeading}
+          ${editing
+            ? this.messages.editMessagingChannelHeading
+            : this.messages.createMessagingChannelHeading}
         </legend>
 
-        <div class="grid-2col">
-          <div class="field" part="field">
-            <label for="channelProviderId">${this.messages.channelProviderLabel}*</label>
-            <select
-              id="channelProviderId"
-              name="channelProviderId"
-              .value=${this.#values.channelProviderId}
-              ?disabled=${this.submitting ||
-              editing ||
-              (this.selectedProviderId !== undefined && this.selectedProviderId !== "")}
-              @change=${this.#handleSelectChange}
-            >
-              ${this.providers.map(
-                (p) =>
-                  html`<option value=${p.id} ?selected=${p.id === this.#values.channelProviderId}>
-                    ${p.name}
-                  </option>`,
-              )}
-            </select>
-          </div>
-
-          <div class="field" part="field">
-            <label for="channelType">${this.messages.channelTypeLabel}*</label>
-            <select
-              id="channelType"
-              name="channelType"
-              .value=${this.#values.channelType}
-              ?disabled=${this.submitting || editing}
-              @change=${this.#handleSelectChange}
-            >
-              <option value="messaging" ?selected=${this.#values.channelType === "messaging"}>
-                Messaging API
-              </option>
-              <option value="login" ?selected=${this.#values.channelType === "login"}>
-                LINE Login
-              </option>
-            </select>
-          </div>
+        <div class="field" part="field">
+          <label for="channelProviderId">${this.messages.channelProviderLabel}*</label>
+          <select
+            id="channelProviderId"
+            name="channelProviderId"
+            .value=${this.#values.channelProviderId}
+            ?disabled=${this.submitting ||
+            editing ||
+            (this.selectedProviderId !== undefined && this.selectedProviderId !== "")}
+            @change=${this.#handleSelectChange}
+          >
+            ${this.providers.map(
+              (p) =>
+                html`<option value=${p.id} ?selected=${p.id === this.#values.channelProviderId}>
+                  ${p.name}
+                </option>`,
+            )}
+          </select>
         </div>
 
         <div class="grid-2col">
@@ -413,7 +404,7 @@ export class LineAccountForm extends LitElement {
             "text",
             true,
             this.messages.channelIdHint,
-            editing, // In edit mode, don't allow modifying ID
+            editing,
           )}
         </div>
 
@@ -424,89 +415,142 @@ export class LineAccountForm extends LitElement {
           !editing,
           editing ? this.messages.channelSecretEditHint : this.messages.channelSecretCreateHint,
         )}
-        ${this.#values.channelType === "messaging"
-          ? this.#renderInputField(
-              "channelAccessToken",
-              this.messages.channelAccessTokenLabel,
-              "password",
-              !editing,
-              editing
-                ? this.messages.channelAccessTokenEditHint
-                : this.messages.channelAccessTokenCreateHint,
-            )
-          : ""}
-        ${this.#values.channelType === "messaging"
-          ? html`
-              <fieldset style="margin-top: 0.5rem;">
-                <legend>Bot Profile (synced from LINE)</legend>
-                <div class="grid-2col">
-                  ${this.#renderInputField(
-                    "channelBotUserId",
-                    "Bot User ID",
-                    "text",
-                    false,
-                    undefined,
-                    false,
-                    "Uxxxxxxxxxx",
-                  )}
-                  ${this.#renderInputField(
-                    "channelBotBasicId",
-                    "Bot Basic ID",
-                    "text",
-                    false,
-                    undefined,
-                    false,
-                    "@your_basic_id",
-                  )}
-                  ${this.#renderInputField(
-                    "channelBotDisplayName",
-                    "Bot Display Name",
-                    "text",
-                    false,
-                    undefined,
-                    false,
-                    "Example name",
-                  )}
-                  ${this.#renderInputField(
-                    "channelBotPictureUrl",
-                    "Bot Picture URL",
-                    "text",
-                    false,
-                    undefined,
-                    false,
-                    "https://profile.line-scdn.net/...",
-                  )}
-                </div>
-                <div class="grid-2col" style="margin-top: 0.5rem;">
-                  ${this.#renderInputField(
-                    "channelAddFriendUrl",
-                    "Add Friend URL",
-                    "text",
-                    false,
-                    undefined,
-                    false,
-                    "https://lin.ee/your-line-id",
-                  )}
-                  ${this.#renderInputField(
-                    "channelAddFriendQrCodeUrl",
-                    "Add Friend QR Code",
-                    "text",
-                    false,
-                    undefined,
-                    false,
-                    "https://qr-official.line.me/gs/your-qr-code.png",
-                  )}
-                </div>
-              </fieldset>
-            `
-          : ""}
+        ${this.#renderInputField(
+          "channelAccessToken",
+          this.messages.messagingChannelAccessTokenLabel,
+          "password",
+          !editing,
+          editing
+            ? this.messages.messagingChannelAccessTokenEditHint
+            : this.messages.messagingChannelAccessTokenCreateHint,
+        )}
+
+        <fieldset style="margin-top: 0.5rem;">
+          <legend>Bot Profile (synced from LINE)</legend>
+          <div class="grid-2col">
+            ${this.#renderInputField(
+              "channelBotUserId",
+              "Bot User ID",
+              "text",
+              false,
+              undefined,
+              false,
+              "Uxxxxxxxxxx",
+            )}
+            ${this.#renderInputField(
+              "channelBotBasicId",
+              "Bot Basic ID",
+              "text",
+              false,
+              undefined,
+              false,
+              "@your_basic_id",
+            )}
+            ${this.#renderInputField(
+              "channelBotDisplayName",
+              "Bot Display Name",
+              "text",
+              false,
+              undefined,
+              false,
+              "Example name",
+            )}
+            ${this.#renderInputField(
+              "channelBotPictureUrl",
+              "Bot Picture URL",
+              "text",
+              false,
+              undefined,
+              false,
+              "https://profile.line-scdn.net/...",
+            )}
+          </div>
+          <div class="grid-2col" style="margin-top: 0.5rem;">
+            ${this.#renderInputField(
+              "channelAddFriendUrl",
+              "Add Friend URL",
+              "text",
+              false,
+              undefined,
+              false,
+              "https://lin.ee/your-line-id",
+            )}
+            ${this.#renderInputField(
+              "channelAddFriendQrCodeUrl",
+              "Add Friend QR Code",
+              "text",
+              false,
+              undefined,
+              false,
+              "https://qr-official.line.me/gs/your-qr-code.png",
+            )}
+          </div>
+        </fieldset>
+      </fieldset>
+    `;
+  }
+
+  #renderLoginChannelFields() {
+    const editing = this.mode === "edit";
+    return html`
+      <fieldset>
+        <legend>
+          ${editing
+            ? this.messages.editLoginChannelHeading
+            : this.messages.createLoginChannelHeading}
+        </legend>
+
+        <div class="field" part="field">
+          <label for="channelProviderId">${this.messages.channelProviderLabel}*</label>
+          <select
+            id="channelProviderId"
+            name="channelProviderId"
+            .value=${this.#values.channelProviderId}
+            ?disabled=${this.submitting ||
+            editing ||
+            (this.selectedProviderId !== undefined && this.selectedProviderId !== "")}
+            @change=${this.#handleSelectChange}
+          >
+            ${this.providers.map(
+              (p) =>
+                html`<option value=${p.id} ?selected=${p.id === this.#values.channelProviderId}>
+                  ${p.name}
+                </option>`,
+            )}
+          </select>
+        </div>
+
+        <div class="grid-2col">
+          ${this.#renderInputField(
+            "channelName",
+            this.messages.channelNameLabel,
+            "text",
+            true,
+            this.messages.channelNameHint,
+          )}
+          ${this.#renderInputField(
+            "channelId",
+            this.messages.channelIdLabel,
+            "text",
+            true,
+            this.messages.channelIdHint,
+            editing,
+          )}
+        </div>
+
+        ${this.#renderInputField(
+          "channelSecret",
+          this.messages.channelSecretLabel,
+          "password",
+          !editing,
+          editing ? this.messages.channelSecretEditHint : this.messages.channelSecretCreateHint,
+        )}
       </fieldset>
     `;
   }
 
   #renderLiffFields() {
     const editing = this.mode === "edit";
-    const loginChannels = this.channels.filter((c) => c.channelType === "login");
 
     return html`
       <fieldset>
@@ -526,7 +570,7 @@ export class LineAccountForm extends LitElement {
               (this.selectedChannelId !== undefined && this.selectedChannelId !== "")}
               @change=${this.#handleSelectChange}
             >
-              ${loginChannels.map(
+              ${this.loginChannels.map(
                 (c) =>
                   html`<option value=${c.id} ?selected=${c.id === this.#values.liffLoginChannelId}>
                     ${c.name} (${c.channelId})
@@ -705,7 +749,6 @@ export class LineAccountForm extends LitElement {
 
     let providerName = "";
     let channelProviderId = "";
-    let channelType: "messaging" | "login" = "messaging";
     let channelName = "";
     let channelId = "";
     let channelSecret = "";
@@ -726,22 +769,25 @@ export class LineAccountForm extends LitElement {
       if (type === "provider") {
         const provider = item as ProviderView;
         providerName = provider.name;
-      } else if (type === "channel") {
-        const channel = item as ChannelView;
+      } else if (type === "messagingChannel") {
+        const channel = item as LineMessagingChannelView;
         channelProviderId = channel.providerId;
-        channelType = channel.channelType;
         channelName = channel.name;
         channelId = channel.channelId;
         channelSecret = channel.channelSecret ?? "";
-        if (channel.channelType === "messaging") {
-          channelAccessToken = channel.channelAccessToken ?? "";
-          channelBotUserId = channel.botUserId ?? "";
-          channelBotBasicId = channel.botBasicId ?? "";
-          channelBotDisplayName = channel.botDisplayName ?? "";
-          channelBotPictureUrl = channel.botPictureUrl ?? "";
-          channelAddFriendUrl = channel.addFriendUrl ?? "";
-          channelAddFriendQrCodeUrl = channel.addFriendQrCodeUrl ?? "";
-        }
+        channelAccessToken = channel.channelAccessToken ?? "";
+        channelBotUserId = channel.botUserId ?? "";
+        channelBotBasicId = channel.botBasicId ?? "";
+        channelBotDisplayName = channel.botDisplayName ?? "";
+        channelBotPictureUrl = channel.botPictureUrl ?? "";
+        channelAddFriendUrl = channel.addFriendUrl ?? "";
+        channelAddFriendQrCodeUrl = channel.addFriendQrCodeUrl ?? "";
+      } else if (type === "loginChannel") {
+        const channel = item as LineLoginChannelView;
+        channelProviderId = channel.providerId;
+        channelName = channel.name;
+        channelId = channel.channelId;
+        channelSecret = channel.channelSecret ?? "";
       } else if (type === "liff") {
         const liff = item as LiffAppView;
         liffLoginChannelId = liff.loginChannelId;
@@ -756,18 +802,19 @@ export class LineAccountForm extends LitElement {
       } else if (this.providers.length > 0) {
         channelProviderId = this.providers[0].id;
       }
-      const loginChannels = this.channels.filter((c) => c.channelType === "login");
-      if (this.selectedChannelId && loginChannels.some((c) => c.id === this.selectedChannelId)) {
+      if (
+        this.selectedChannelId &&
+        this.loginChannels.some((c) => c.id === this.selectedChannelId)
+      ) {
         liffLoginChannelId = this.selectedChannelId;
-      } else if (loginChannels.length > 0) {
-        liffLoginChannelId = loginChannels[0].id;
+      } else if (this.loginChannels.length > 0) {
+        liffLoginChannelId = this.loginChannels[0].id;
       }
     }
 
     return {
       providerName,
       channelProviderId,
-      channelType,
       channelName,
       channelId,
       channelSecret,
@@ -823,37 +870,27 @@ export class LineAccountForm extends LitElement {
             ? { name: this.#values.providerName.trim() }
             : { name: this.#values.providerName.trim() },
       };
-    } else if (this.type === "channel") {
+    } else if (this.type === "messagingChannel") {
       if (this.mode === "create") {
         detail = {
-          type: "channel",
+          type: "messagingChannel",
           mode: "create",
-          input:
-            this.#values.channelType === "messaging"
-              ? {
-                  channelType: "messaging",
-                  providerId: this.#values.channelProviderId.trim(),
-                  name: this.#values.channelName.trim(),
-                  channelId: this.#values.channelId.trim(),
-                  channelSecret: this.#values.channelSecret.trim(),
-                  channelAccessToken: this.#values.channelAccessToken.trim(),
-                  botDisplayName: trimOptional(this.#values.channelBotDisplayName) ?? null,
-                  botUserId: trimOptional(this.#values.channelBotUserId) ?? null,
-                  botBasicId: trimOptional(this.#values.channelBotBasicId) ?? null,
-                  botPictureUrl: trimOptional(this.#values.channelBotPictureUrl) ?? null,
-                  addFriendUrl: trimOptional(this.#values.channelAddFriendUrl) ?? null,
-                  addFriendQrCodeUrl: trimOptional(this.#values.channelAddFriendQrCodeUrl) ?? null,
-                }
-              : {
-                  channelType: "login",
-                  providerId: this.#values.channelProviderId.trim(),
-                  name: this.#values.channelName.trim(),
-                  channelId: this.#values.channelId.trim(),
-                  channelSecret: this.#values.channelSecret.trim(),
-                },
+          input: {
+            providerId: this.#values.channelProviderId.trim(),
+            name: this.#values.channelName.trim(),
+            channelId: this.#values.channelId.trim(),
+            channelSecret: this.#values.channelSecret.trim(),
+            channelAccessToken: this.#values.channelAccessToken.trim(),
+            botDisplayName: trimOptional(this.#values.channelBotDisplayName) ?? null,
+            botUserId: trimOptional(this.#values.channelBotUserId) ?? null,
+            botBasicId: trimOptional(this.#values.channelBotBasicId) ?? null,
+            botPictureUrl: trimOptional(this.#values.channelBotPictureUrl) ?? null,
+            addFriendUrl: trimOptional(this.#values.channelAddFriendUrl) ?? null,
+            addFriendQrCodeUrl: trimOptional(this.#values.channelAddFriendQrCodeUrl) ?? null,
+          },
         };
       } else {
-        const channel = this.item as ChannelView;
+        const channel = this.item as LineMessagingChannelView;
         const input: any = {};
         if (this.#values.channelName.trim() !== channel.name) {
           input.name = this.#values.channelName.trim();
@@ -865,38 +902,67 @@ export class LineAccountForm extends LitElement {
         if (secret !== "" && secret !== (channel.channelSecret ?? "")) {
           input.channelSecret = secret;
         }
-        if (channel.channelType === "messaging") {
-          const token = this.#values.channelAccessToken.trim();
-          if (token !== "" && token !== (channel.channelAccessToken ?? "")) {
-            input.channelAccessToken = token;
-          }
-          const botDisplayName = this.#values.channelBotDisplayName.trim();
-          if (botDisplayName !== (channel.botDisplayName ?? "")) {
-            input.botDisplayName = botDisplayName || null;
-          }
-          const botUserId = this.#values.channelBotUserId.trim();
-          if (botUserId !== (channel.botUserId ?? "")) {
-            input.botUserId = botUserId || null;
-          }
-          const botBasicId = this.#values.channelBotBasicId.trim();
-          if (botBasicId !== (channel.botBasicId ?? "")) {
-            input.botBasicId = botBasicId || null;
-          }
-          const botPictureUrl = this.#values.channelBotPictureUrl.trim();
-          if (botPictureUrl !== (channel.botPictureUrl ?? "")) {
-            input.botPictureUrl = botPictureUrl || null;
-          }
-          const addFriendUrl = this.#values.channelAddFriendUrl.trim();
-          if (addFriendUrl !== (channel.addFriendUrl ?? "")) {
-            input.addFriendUrl = addFriendUrl || null;
-          }
-          const addFriendQrCodeUrl = this.#values.channelAddFriendQrCodeUrl.trim();
-          if (addFriendQrCodeUrl !== (channel.addFriendQrCodeUrl ?? "")) {
-            input.addFriendQrCodeUrl = addFriendQrCodeUrl || null;
-          }
+        const token = this.#values.channelAccessToken.trim();
+        if (token !== "" && token !== (channel.channelAccessToken ?? "")) {
+          input.channelAccessToken = token;
+        }
+        const botDisplayName = this.#values.channelBotDisplayName.trim();
+        if (botDisplayName !== (channel.botDisplayName ?? "")) {
+          input.botDisplayName = botDisplayName || null;
+        }
+        const botUserId = this.#values.channelBotUserId.trim();
+        if (botUserId !== (channel.botUserId ?? "")) {
+          input.botUserId = botUserId || null;
+        }
+        const botBasicId = this.#values.channelBotBasicId.trim();
+        if (botBasicId !== (channel.botBasicId ?? "")) {
+          input.botBasicId = botBasicId || null;
+        }
+        const botPictureUrl = this.#values.channelBotPictureUrl.trim();
+        if (botPictureUrl !== (channel.botPictureUrl ?? "")) {
+          input.botPictureUrl = botPictureUrl || null;
+        }
+        const addFriendUrl = this.#values.channelAddFriendUrl.trim();
+        if (addFriendUrl !== (channel.addFriendUrl ?? "")) {
+          input.addFriendUrl = addFriendUrl || null;
+        }
+        const addFriendQrCodeUrl = this.#values.channelAddFriendQrCodeUrl.trim();
+        if (addFriendQrCodeUrl !== (channel.addFriendQrCodeUrl ?? "")) {
+          input.addFriendQrCodeUrl = addFriendQrCodeUrl || null;
         }
         detail = {
-          type: "channel",
+          type: "messagingChannel",
+          mode: "edit",
+          input,
+        };
+      }
+    } else if (this.type === "loginChannel") {
+      if (this.mode === "create") {
+        detail = {
+          type: "loginChannel",
+          mode: "create",
+          input: {
+            providerId: this.#values.channelProviderId.trim(),
+            name: this.#values.channelName.trim(),
+            channelId: this.#values.channelId.trim(),
+            channelSecret: this.#values.channelSecret.trim(),
+          },
+        };
+      } else {
+        const channel = this.item as LineLoginChannelView;
+        const input: any = {};
+        if (this.#values.channelName.trim() !== channel.name) {
+          input.name = this.#values.channelName.trim();
+        }
+        if (this.#values.channelId.trim() !== channel.channelId) {
+          input.channelId = this.#values.channelId.trim();
+        }
+        const secret = this.#values.channelSecret.trim();
+        if (secret !== "" && secret !== (channel.channelSecret ?? "")) {
+          input.channelSecret = secret;
+        }
+        detail = {
+          type: "loginChannel",
           mode: "edit",
           input,
         };
@@ -958,13 +1024,15 @@ export class LineAccountForm extends LitElement {
     const required: (keyof FormValues)[] = [];
     if (this.type === "provider") {
       required.push("providerName");
-    } else if (this.type === "channel") {
+    } else if (this.type === "messagingChannel") {
+      required.push("channelProviderId", "channelName", "channelId");
+      if (this.mode === "create") {
+        required.push("channelSecret", "channelAccessToken");
+      }
+    } else if (this.type === "loginChannel") {
       required.push("channelProviderId", "channelName", "channelId");
       if (this.mode === "create") {
         required.push("channelSecret");
-        if (this.#values.channelType === "messaging") {
-          required.push("channelAccessToken");
-        }
       }
     } else if (this.type === "liff") {
       required.push("liffLoginChannelId", "liffId", "liffViewUrl");
