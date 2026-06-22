@@ -18,7 +18,7 @@ const makeRepository = (
     createProvider: () => Effect.die("unused"),
     updateProvider: () => Effect.die("unused"),
     findProviderById: () => Effect.die("unused"),
-    listProviders: Effect.die("unused"),
+    listProviders: () => Effect.die("unused"),
     deleteProvider: () => Effect.void,
     ...overrides,
   }) as any;

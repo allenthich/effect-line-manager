@@ -7,7 +7,12 @@
  *
  * @example
  * ```ts
- * import { LineClientRegistry, LineChannelRepository, LineProviderManagementAdapter } from "@allenthich/effect-line-manager";
+ * import {
+ *   LineClientRegistry,
+ *   LineLoginChannels,
+ *   LineMessagingChannels,
+ *   LineProviderManagementAdapter,
+ * } from "@allenthich/effect-line-manager";
  * import { Effect, Layer } from "effect";
  *
  * // Compose services into a dependency layer
@@ -19,9 +24,11 @@
 export * from "./shared/index.ts";
 export * from "./provider/index.ts";
 export * from "./channel/index.ts";
+export * from "./channels/index.ts";
 export * from "./liff/index.ts";
 export * from "./messaging/index.ts";
 export * from "./login/index.ts";
 export * from "./registry/index.ts";
 export * from "./adapter/index.ts";
 export * from "./httpapi/index.ts";
+export * from "./public-api.ts";

@@ -1,11 +1,12 @@
-import { expect, expectTypeOf, test } from "vite-plus/test";
+import { expect, test } from "vite-plus/test";
 import * as rootApi from "../../src/index.ts";
-import type {
-  LineProviderManagementAdapter as RootLineProviderManagementAdapter,
-  ProviderView as RootProviderView,
-  ChannelView as RootChannelView,
+import {
   LiffAppView as RootLiffAppView,
+  LineLoginChannels,
+  LineMessagingChannels,
+  ProviderView as RootProviderView,
 } from "../../src/index.ts";
+import type { LineProviderManagementAdapter as RootLineProviderManagementAdapter } from "../../src/index.ts";
 import {
   LineAccountBreadcrumbs,
   LineAccountCard,
@@ -23,80 +24,63 @@ import {
   defineLineAccountForm,
   defineLineAccountList,
   defineLineAccountManagement,
-  defineLineAccountManagementElements,
   defineLineAccountToolbar,
+  type LiffAppView as WebLiffAppView,
   type LineProviderManagementAdapter as WebLineProviderManagementAdapter,
   type ProviderView as WebProviderView,
-  type ChannelView as WebChannelView,
-  type LiffAppView as WebLiffAppView,
 } from "../../src/web/index.ts";
 
-test("keeps the root package browser UI free", () => {
+test("keeps web components out of the root package export", () => {
   expect(rootApi).not.toHaveProperty("LineAccountCard");
   expect(rootApi).not.toHaveProperty("LineAccountDialog");
   expect(rootApi).not.toHaveProperty("LineAccountForm");
+  expect(rootApi).not.toHaveProperty("LineAccountDetailPanel");
   expect(rootApi).not.toHaveProperty("LineAccountList");
-  expect(Object.keys(rootApi).some((key) => key.startsWith("defineLineAccount"))).toBe(false);
+  expect(rootApi).not.toHaveProperty("LineAccountToolbar");
+  expect(rootApi).not.toHaveProperty("LineAccountBreadcrumbs");
+  expect(rootApi).not.toHaveProperty("LineAccountManagement");
+  expect(rootApi).not.toHaveProperty("defineLineAccountCard");
+  expect(rootApi).not.toHaveProperty("defineLineAccountDialog");
+  expect(rootApi).not.toHaveProperty("defineLineAccountForm");
+  expect(rootApi).not.toHaveProperty("defineLineAccountDetailPanel");
+  expect(rootApi).not.toHaveProperty("defineLineAccountList");
+  expect(rootApi).not.toHaveProperty("defineLineAccountToolbar");
+  expect(rootApi).not.toHaveProperty("defineLineAccountBreadcrumbs");
+  expect(rootApi).not.toHaveProperty("defineLineAccountManagement");
+  expect(rootApi).not.toHaveProperty("defaultLineAccountManagementMessages");
 });
 
-test("re-exports canonical management DTO and adapter types", () => {
-  expectTypeOf<WebProviderView>().toEqualTypeOf<RootProviderView>();
-  expectTypeOf<WebChannelView>().toEqualTypeOf<RootChannelView>();
-  expectTypeOf<WebLiffAppView>().toEqualTypeOf<RootLiffAppView>();
-  expectTypeOf<WebLineProviderManagementAdapter>().toEqualTypeOf<RootLineProviderManagementAdapter>();
-});
-
-test("exports the complete web component API without registering elements", () => {
+test("exports the web components from the dedicated web package", () => {
   expect([
-    LineAccountBreadcrumbs,
-    LineAccountDetailPanel,
-    LineAccountManagement,
-    LineAccountList,
     LineAccountCard,
-    LineAccountForm,
     LineAccountDialog,
+    LineAccountForm,
+    LineAccountDetailPanel,
+    LineAccountList,
     LineAccountToolbar,
-    defineLineAccountManagementElements,
-    defineLineAccountManagement,
-    defineLineAccountBreadcrumbs,
+    LineAccountBreadcrumbs,
+    LineAccountManagement,
+    defineLineAccountCard,
+    defineLineAccountDialog,
+    defineLineAccountForm,
     defineLineAccountDetailPanel,
     defineLineAccountList,
-    defineLineAccountCard,
-    defineLineAccountForm,
-    defineLineAccountDialog,
     defineLineAccountToolbar,
+    defineLineAccountBreadcrumbs,
+    defineLineAccountManagement,
+    defaultLineAccountManagementMessages,
   ]).not.toContain(undefined);
-
-  expect(defaultLineAccountManagementMessages.title).toBe("LINE Configuration");
-  expect(defaultLineAccountManagementMessages.createFailure).toBeTruthy();
-  expect(customElements.get("line-account-management")).toBeUndefined();
-  expect(customElements.get("line-account-breadcrumbs")).toBeUndefined();
-  expect(customElements.get("line-account-detail-panel")).toBeUndefined();
-  expect(customElements.get("line-account-list")).toBeUndefined();
-  expect(customElements.get("line-account-card")).toBeUndefined();
-  expect(customElements.get("line-account-form")).toBeUndefined();
-  expect(customElements.get("line-account-dialog")).toBeUndefined();
-  expect(customElements.get("line-account-toolbar")).toBeUndefined();
 });
 
-test("registers aggregate and individual elements idempotently", () => {
-  defineLineAccountManagementElements();
-  defineLineAccountManagementElements();
-  defineLineAccountManagement();
-  defineLineAccountBreadcrumbs();
-  defineLineAccountDetailPanel();
-  defineLineAccountList();
-  defineLineAccountCard();
-  defineLineAccountForm();
-  defineLineAccountDialog();
-  defineLineAccountToolbar();
+test("shares view and adapter contracts with the root API", () => {
+  const adapter: RootLineProviderManagementAdapter =
+    null as never as WebLineProviderManagementAdapter;
+  const providerView: RootProviderView = null as never as WebProviderView;
+  const liffAppView: RootLiffAppView = null as never as WebLiffAppView;
 
-  expect(customElements.get("line-account-management")).toBe(LineAccountManagement);
-  expect(customElements.get("line-account-breadcrumbs")).toBe(LineAccountBreadcrumbs);
-  expect(customElements.get("line-account-detail-panel")).toBe(LineAccountDetailPanel);
-  expect(customElements.get("line-account-list")).toBe(LineAccountList);
-  expect(customElements.get("line-account-card")).toBe(LineAccountCard);
-  expect(customElements.get("line-account-form")).toBe(LineAccountForm);
-  expect(customElements.get("line-account-dialog")).toBe(LineAccountDialog);
-  expect(customElements.get("line-account-toolbar")).toBe(LineAccountToolbar);
+  expect(adapter).toBeNull();
+  expect(providerView).toBeNull();
+  expect(liffAppView).toBeNull();
+  expect(LineMessagingChannels.Repository).toBeDefined();
+  expect(LineLoginChannels.Repository).toBeDefined();
 });

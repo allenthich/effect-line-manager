@@ -16,7 +16,7 @@ test("provides isolated in-memory CRUD behavior for the demo page", async () => 
     data: [seed],
     pagination: {
       page: 1,
-      pageSize: 1,
+      pageSize: 20,
       totalItems: 1,
       totalPages: 1,
     },
@@ -43,7 +43,7 @@ test("provides isolated in-memory CRUD behavior for the demo page", async () => 
     data: [updated],
     pagination: {
       page: 1,
-      pageSize: 1,
+      pageSize: 20,
       totalItems: 1,
       totalPages: 1,
     },

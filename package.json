@@ -24,6 +24,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
+    "dev:consumer": "node scripts/sync-dev-package.mjs && vp pack --watch",
     "dev:demo": "vp dev demo",
     "test": "vp test",
     "check": "vp check && vpx tsgo --noEmit",
@@ -32,9 +33,6 @@
     "changeset": "changeset",
     "version": "changeset version && node scripts/sync-jsr.js",
     "release": "vp pack && vpx jsr publish --allow-slow-types"
-  },
-  "dependencies": {
-    "effect": "4.0.0-beta.78"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
@@ -45,6 +43,7 @@
     "@types/node": "^25.6.2",
     "@typescript/native-preview": "7.0.0-dev.20260509.2",
     "bumpp": "^11.1.0",
+    "effect": "4.0.0-beta.78",
     "express": "^4.22.2",
     "express5": "npm:express@^5.2.1",
     "happy-dom": "^20.10.2",
@@ -54,6 +53,7 @@
     "vite-plus": "catalog:"
   },
   "peerDependencies": {
+    "effect": "4.0.0-beta.78",
     "lit": "^3.3.3"
   },
   "peerDependenciesMeta": {

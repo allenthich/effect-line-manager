@@ -1,6 +1,6 @@
 import { Schema } from "effect";
-import { LineChannelRecordId } from "../channel/domain.ts";
-import { NonEmptyTrimmedString, Pagination } from "../shared/domain.ts";
+import { LineLoginChannelId } from "../channel/domain.ts";
+import { NonEmptyTrimmedString, Pagination, PageQuery } from "../shared/domain.ts";
 
 /** Branded type for a LINE LIFF application ID. */
 export const LineLiffId = NonEmptyTrimmedString.pipe(
@@ -10,16 +10,16 @@ export const LineLiffId = NonEmptyTrimmedString.pipe(
 export type LineLiffId = typeof LineLiffId.Type;
 
 /** Branded type for a LINE LIFF record ID (internal identifier). */
-export const LineLiffRecordId = NonEmptyTrimmedString.pipe(
-  Schema.brand("effect-line-manager/LineLiffRecordId"),
+export const LineLiffUid = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineLiffUid"),
 );
-/** {@link LineLiffRecordId} type alias. */
-export type LineLiffRecordId = typeof LineLiffRecordId.Type;
+/** {@link LineLiffUid} type alias. */
+export type LineLiffUid = typeof LineLiffUid.Type;
 
 /** LIFF App — belongs to a Login Channel. */
 export class LineLiffApp extends Schema.Class<LineLiffApp>("LineLiffApp")({
-  id: LineLiffRecordId,
-  loginChannelId: LineChannelRecordId,
+  id: LineLiffUid,
+  loginChannelId: LineLoginChannelId,
   liffId: LineLiffId,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
@@ -34,7 +34,7 @@ export class LineLiffApp extends Schema.Class<LineLiffApp>("LineLiffApp")({
 export class CreateLiffAppRecordInput extends Schema.Class<CreateLiffAppRecordInput>(
   "CreateLiffAppRecordInput",
 )({
-  loginChannelId: LineChannelRecordId,
+  loginChannelId: LineLoginChannelId,
   liffId: LineLiffId,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
@@ -59,7 +59,7 @@ export class UpdateLiffAppRecordInput extends Schema.Class<UpdateLiffAppRecordIn
 
 /** Input schema for creating a LIFF app via the management API. */
 export const CreateLiffAppInput = Schema.Struct({
-  loginChannelId: NonEmptyTrimmedString,
+  loginChannelId: LineLoginChannelId,
   liffId: NonEmptyTrimmedString,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
@@ -84,10 +84,18 @@ export const UpdateLiffAppInput = Schema.Struct({
 /** {@link UpdateLiffAppInput} type alias. */
 export type UpdateLiffAppInput = typeof UpdateLiffAppInput.Type;
 
+/** Query parameters for listing LIFF apps — pagination plus optional channel filter. */
+export const ListLiffAppsQuery = Schema.Struct({
+  ...PageQuery.fields,
+  channelId: Schema.optional(LineLoginChannelId),
+});
+/** {@link ListLiffAppsQuery} type alias. */
+export type ListLiffAppsQuery = typeof ListLiffAppsQuery.Type;
+
 /** Public view schema for a LIFF application. */
 export const LiffAppView = Schema.Struct({
   id: NonEmptyTrimmedString,
-  loginChannelId: NonEmptyTrimmedString,
+  loginChannelId: LineLoginChannelId,
   liffId: NonEmptyTrimmedString,
   view: Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),

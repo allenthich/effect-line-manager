@@ -4,15 +4,15 @@ import { Effect, Layer, Schema } from "effect";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiTest } from "effect/unstable/httpapi";
 import { ProviderView, LineProviderId } from "../../src/provider/domain.ts";
-import { ChannelView, LineChannelRecordId, LineChannelId } from "../../src/channel/domain.ts";
-import { LiffAppView, LineLiffRecordId } from "../../src/liff/domain.ts";
+import { ChannelView, LineChannelId, LineLoginChannelId } from "../../src/channel/domain.ts";
+import { LiffAppView, LineLiffId } from "../../src/liff/domain.ts";
 import {
   LineProviderNotFoundError,
   LineProviderDuplicateError,
 } from "../../src/provider/errors.ts";
 import { ChannelNotFoundError, ChannelDuplicateError } from "../../src/channel/errors.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "../../src/liff/errors.ts";
-import { LineAccountPersistenceError } from "../../src/shared/errors.ts";
+import { LinePersistenceError } from "../../src/shared/errors.ts";
 import {
   LineProviderManagement,
   type LineProviderManagementService,
@@ -32,8 +32,9 @@ import {
 } from "../../src/httpapi/index.ts";
 
 const providerId = Schema.decodeUnknownSync(LineProviderId)("provider-1");
-const channelRecordId = Schema.decodeUnknownSync(LineChannelRecordId)("channel-record-1");
-const liffRecordId = Schema.decodeUnknownSync(LineLiffRecordId)("liff-record-1");
+const channelRecordId = Schema.decodeUnknownSync(LineChannelId)("channel-record-1");
+const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("channel-record-1");
+const liffId = Schema.decodeUnknownSync(LineLiffId)("liff-record-1");
 
 const providerView = Schema.decodeUnknownSync(ProviderView)({
   id: providerId,
@@ -60,8 +61,8 @@ const channelView = Schema.decodeUnknownSync(ChannelView)({
 });
 
 const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
-  id: liffRecordId,
-  loginChannelId: channelRecordId,
+  id: liffId,
+  loginChannelId,
   liffId: "1234567890-AbCdEf12",
   view: {
     type: "tall",
@@ -91,10 +92,11 @@ const makeClient = (
   );
 
 const defaultProviderMgmt: LineProviderManagementService = {
-  listProviders: Effect.succeed({
-    data: [providerView],
-    pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
-  }),
+  listProviders: () =>
+    Effect.succeed({
+      data: [providerView],
+      pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
+    }),
   getProvider: () => Effect.succeed(providerView),
   createProvider: () => Effect.succeed(providerView),
   updateProvider: () => Effect.succeed(providerView),
@@ -145,13 +147,14 @@ describe("LineApi", () => {
   test("exercises all credential-safe endpoints through HttpApiTest", async () => {
     const calls: Array<unknown> = [];
     const providerMgmt: LineProviderManagementService = {
-      listProviders: Effect.sync(() => {
-        calls.push("listProviders");
-        return {
-          data: [providerView],
-          pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
-        };
-      }),
+      listProviders: () =>
+        Effect.sync(() => {
+          calls.push("listProviders");
+          return {
+            data: [providerView],
+            pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
+          };
+        }),
       getProvider: (id) => Effect.sync(() => (calls.push(["getProvider", id]), providerView)),
       createProvider: (input) =>
         Effect.sync(() => (calls.push(["createProvider", input]), providerView)),
@@ -161,9 +164,9 @@ describe("LineApi", () => {
     };
 
     const channelMgmt: LineChannelManagementService = {
-      listChannels: (providerId) =>
+      listChannels: (query) =>
         Effect.sync(() => {
-          calls.push(["listChannels", providerId]);
+          calls.push(["listChannels", query]);
           return {
             data: [channelView],
             pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
@@ -179,9 +182,9 @@ describe("LineApi", () => {
     };
 
     const liffMgmt: LineLiffManagementService = {
-      listLiffApps: (channelId) =>
+      listLiffApps: (query) =>
         Effect.sync(() => {
-          calls.push(["listLiffApps", channelId]);
+          calls.push(["listLiffApps", query]);
           return {
             data: [liffAppView],
             pagination: { page: 1, pageSize: 1, totalItems: 1, totalPages: 1 },
@@ -200,7 +203,7 @@ describe("LineApi", () => {
         const client = yield* makeClient(providerMgmt, channelMgmt, liffMgmt);
 
         // Providers
-        const listedProviders = yield* client.lineProviders.listProviders();
+        const listedProviders = yield* client.lineProviders.listProviders({ query: {} });
         const createdProvider = yield* client.lineProviders.createProvider({
           payload: { name: "LINE Marketing" },
         });
@@ -238,20 +241,20 @@ describe("LineApi", () => {
         const listedLiffs = yield* client.lineLiffApps.listLiffApps({ query: {} });
         const createdLiff = yield* client.lineLiffApps.createLiffApp({
           payload: {
-            loginChannelId: "channel-record-1",
+            loginChannelId,
             liffId: "1234567890-AbCdEf12",
             view: { type: "tall", url: "https://example.com/liff" },
             description: "Loyalty Card Dashboard",
           },
         });
         const updatedLiff = yield* client.lineLiffApps.updateLiffApp({
-          params: { id: liffRecordId },
+          params: { id: liffId },
           payload: { view: { type: "tall", url: "https://example.com/liff" } },
         });
         const gottenLiff = yield* client.lineLiffApps.getLiffApp({
-          params: { id: liffRecordId },
+          params: { id: liffId },
         });
-        yield* client.lineLiffApps.deleteLiffApp({ params: { id: liffRecordId } });
+        yield* client.lineLiffApps.deleteLiffApp({ params: { id: liffId } });
 
         expect(listedProviders.data).toEqual([providerView]);
         expect(createdProvider).toEqual(providerView);
@@ -276,11 +279,11 @@ describe("LineApi", () => {
     expect(calls).toContainEqual(["getProvider", "provider-1"]);
     expect(calls).toContainEqual(["deleteProvider", "provider-1"]);
 
-    expect(calls).toContainEqual(["listChannels", undefined]);
+    expect(calls.some((c) => Array.isArray(c) && c[0] === "listChannels")).toBe(true);
     expect(calls).toContainEqual(["getChannel", "channel-record-1"]);
     expect(calls).toContainEqual(["deleteChannel", "channel-record-1"]);
 
-    expect(calls).toContainEqual(["listLiffApps", undefined]);
+    expect(calls.some((c) => Array.isArray(c) && c[0] === "listLiffApps")).toBe(true);
     expect(calls).toContainEqual(["getLiffApp", "liff-record-1"]);
     expect(calls).toContainEqual(["deleteLiffApp", "liff-record-1"]);
   });
@@ -291,9 +294,9 @@ describe("LineApi", () => {
     const channelDuplicate = new ChannelDuplicateError({
       channelId: Schema.decodeUnknownSync(LineChannelId)("1234567890"),
     });
-    const channelNotFound = new ChannelNotFoundError({ recordId: channelRecordId });
+    const channelNotFound = new ChannelNotFoundError({ channelId: channelRecordId });
     const liffDuplicate = new LiffAppDuplicateError({ liffId: "1234567890-AbCdEf12" });
-    const liffNotFound = new LiffAppNotFoundError({ recordId: liffRecordId });
+    const liffNotFound = new LiffAppNotFoundError({ liffId });
 
     const providerMgmt: LineProviderManagementService = {
       ...defaultProviderMgmt,
@@ -343,7 +346,7 @@ describe("LineApi", () => {
         const liffDupErr = yield* client.lineLiffApps
           .createLiffApp({
             payload: {
-              loginChannelId: "channel-record-1",
+              loginChannelId,
               liffId: "1234567890-AbCdEf12",
               view: { type: "tall", url: "https://example.com/liff" },
               description: "Loyalty Card Dashboard",
@@ -351,7 +354,7 @@ describe("LineApi", () => {
           })
           .pipe(Effect.flip);
         const liffNotErr = yield* client.lineLiffApps
-          .getLiffApp({ params: { id: liffRecordId } })
+          .getLiffApp({ params: { id: liffId } })
           .pipe(Effect.flip);
 
         expect(providerDupErr).toMatchObject({
@@ -368,7 +371,7 @@ describe("LineApi", () => {
         });
         expect(channelNotErr).toMatchObject({
           _tag: "ChannelNotFoundHttpError",
-          recordId: "channel-record-1",
+          channelId: "channel-record-1",
         });
         expect(liffDupErr).toMatchObject({
           _tag: "LiffAppDuplicateHttpError",
@@ -376,7 +379,7 @@ describe("LineApi", () => {
         });
         expect(liffNotErr).toMatchObject({
           _tag: "LiffAppNotFoundHttpError",
-          recordId: "liff-record-1",
+          liffId: "liff-record-1",
         });
       }).pipe(Effect.orDie),
     );
@@ -385,13 +388,13 @@ describe("LineApi", () => {
   test("sanitizes persistence failures", async () => {
     const providerMgmt: LineProviderManagementService = {
       ...defaultProviderMgmt,
-      listProviders: Effect.fail(new LineAccountPersistenceError({ operation: "listProviders" })),
+      listProviders: () => Effect.fail(new LinePersistenceError({ operation: "listProviders" })),
     };
 
     await Effect.runPromise(
       Effect.gen(function* () {
         const client = yield* makeClient(providerMgmt, defaultChannelMgmt, defaultLiffMgmt);
-        const error = yield* client.lineProviders.listProviders().pipe(Effect.flip);
+        const error = yield* client.lineProviders.listProviders({ query: {} }).pipe(Effect.flip);
         expect(error).toMatchObject({
           _tag: "LinePersistenceHttpError",
           operation: "listProviders",

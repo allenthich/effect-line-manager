@@ -1,13 +1,6 @@
 import { Schema } from "effect";
 import { LineProviderId } from "../provider/domain.ts";
-import { NonEmptyTrimmedString, LineCredential, Pagination } from "../shared/domain.ts";
-
-/** Branded type for the database record ID of a LINE channel. */
-export const LineChannelRecordId = NonEmptyTrimmedString.pipe(
-  Schema.brand("effect-line-manager/LineChannelRecordId"),
-);
-/** {@link LineChannelRecordId} type alias. */
-export type LineChannelRecordId = typeof LineChannelRecordId.Type;
+import { NonEmptyTrimmedString, LineCredential, Pagination, PageQuery } from "../shared/domain.ts";
 
 /** Branded type for the LINE Messaging API channel ID. */
 export const LineChannelId = NonEmptyTrimmedString.pipe(
@@ -15,6 +8,13 @@ export const LineChannelId = NonEmptyTrimmedString.pipe(
 );
 /** {@link LineChannelId} type alias. */
 export type LineChannelId = typeof LineChannelId.Type;
+
+/** Branded type for the LINE Messaging API channel ID. */
+export const LineMessagingChannelId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineMessagingChannelId"),
+);
+/** {@link LineMessagingChannelId} type alias. */
+export type LineMessagingChannelId = typeof LineMessagingChannelId.Type;
 
 /** Branded type for the LINE Login channel ID. */
 export const LineLoginChannelId = NonEmptyTrimmedString.pipe(
@@ -26,10 +26,10 @@ export type LineLoginChannelId = typeof LineLoginChannelId.Type;
 /** Messaging API Channel (used for bot messaging). */
 export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingChannel")({
   channelType: Schema.Literal("messaging"),
-  id: LineChannelRecordId,
+  id: LineChannelId,
   providerId: LineProviderId,
   name: NonEmptyTrimmedString,
-  channelId: LineChannelId,
+  channelId: LineMessagingChannelId,
   channelSecret: LineCredential,
   channelAccessToken: LineCredential,
   // Auto-synced bot profile metadata
@@ -45,7 +45,7 @@ export class MessagingChannel extends Schema.Class<MessagingChannel>("MessagingC
 /** LINE Login Channel (used for social login / OAuth). */
 export class LoginChannel extends Schema.Class<LoginChannel>("LoginChannel")({
   channelType: Schema.Literal("login"),
-  id: LineChannelRecordId,
+  id: LineChannelId,
   providerId: LineProviderId,
   name: NonEmptyTrimmedString,
   channelId: LineLoginChannelId,
@@ -59,34 +59,25 @@ export const LineChannel = Schema.Union([MessagingChannel, LoginChannel]);
 /** {@link LineChannel} type alias. */
 export type LineChannel = typeof LineChannel.Type;
 
-/** Input type for creating a channel record in the repository layer. */
-export const CreateChannelRecordInput = Schema.Union([
-  Schema.Struct({
-    channelType: Schema.Literal("messaging"),
-    providerId: LineProviderId,
-    name: NonEmptyTrimmedString,
-    channelId: NonEmptyTrimmedString,
-    channelSecret: LineCredential,
-    channelAccessToken: LineCredential,
-    displayName: Schema.optional(Schema.NullOr(Schema.String)),
-    botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-    basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
-    pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
-  }),
-  Schema.Struct({
-    channelType: Schema.Literal("login"),
-    providerId: LineProviderId,
-    name: NonEmptyTrimmedString,
-    channelId: NonEmptyTrimmedString,
-    channelSecret: LineCredential,
-  }),
-] as const);
-/** {@link CreateChannelRecordInput} type alias. */
-export type CreateChannelRecordInput = typeof CreateChannelRecordInput.Type;
+/** Input type for creating a messaging channel record in the repository layer. */
+export const CreateMessagingChannelInput = Schema.Struct({
+  channelType: Schema.Literal("messaging"),
+  providerId: LineProviderId,
+  name: NonEmptyTrimmedString,
+  channelId: NonEmptyTrimmedString,
+  channelSecret: LineCredential,
+  channelAccessToken: LineCredential,
+  displayName: Schema.optional(Schema.NullOr(Schema.String)),
+  botUserId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
+  pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+});
+/** {@link CreateMessagingChannelInput} type alias. */
+export type CreateMessagingChannelInput = typeof CreateMessagingChannelInput.Type;
 
-/** Input type for updating a channel record in the repository layer. */
-export class UpdateChannelRecordInput extends Schema.Class<UpdateChannelRecordInput>(
-  "UpdateChannelRecordInput",
+/** Input type for updating a messaging channel record in the repository layer. */
+export class UpdateMessagingChannelInput extends Schema.Class<UpdateMessagingChannelInput>(
+  "UpdateMessagingChannelInput",
 )({
   name: Schema.optional(NonEmptyTrimmedString),
   channelId: Schema.optional(NonEmptyTrimmedString),
@@ -97,6 +88,26 @@ export class UpdateChannelRecordInput extends Schema.Class<UpdateChannelRecordIn
   basicId: Schema.optional(Schema.NullOr(NonEmptyTrimmedString)),
   displayName: Schema.optional(Schema.NullOr(Schema.String)),
   pictureUrl: Schema.optional(Schema.NullOr(Schema.String)),
+}) {}
+
+/** Input type for creating a login channel record in the repository layer. */
+export const CreateLoginChannelInput = Schema.Struct({
+  channelType: Schema.Literal("login"),
+  providerId: LineProviderId,
+  name: NonEmptyTrimmedString,
+  channelId: NonEmptyTrimmedString,
+  channelSecret: LineCredential,
+});
+/** {@link CreateLoginChannelInput} type alias. */
+export type CreateLoginChannelInput = typeof CreateLoginChannelInput.Type;
+
+/** Input type for updating a login channel record in the repository layer. */
+export class UpdateLoginChannelInput extends Schema.Class<UpdateLoginChannelInput>(
+  "UpdateLoginChannelInput",
+)({
+  name: Schema.optional(NonEmptyTrimmedString),
+  channelId: Schema.optional(NonEmptyTrimmedString),
+  channelSecret: Schema.optional(LineCredential),
 }) {}
 
 /** Input type for creating a channel through the management service. */
@@ -138,6 +149,14 @@ export const UpdateChannelInput = Schema.Struct({
 });
 /** {@link UpdateChannelInput} type alias. */
 export type UpdateChannelInput = typeof UpdateChannelInput.Type;
+
+/** Query parameters for listing channels — pagination plus optional provider filter. */
+export const ListChannelsQuery = Schema.Struct({
+  ...PageQuery.fields,
+  providerId: Schema.optional(NonEmptyTrimmedString),
+});
+/** {@link ListChannelsQuery} type alias. */
+export type ListChannelsQuery = typeof ListChannelsQuery.Type;
 
 /** Public-facing view of a Messaging API channel. */
 export const MessagingChannelView = Schema.Struct({

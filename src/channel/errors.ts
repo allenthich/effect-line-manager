@@ -1,11 +1,11 @@
 import { Schema } from "effect";
-import { LineChannelId, LineChannelRecordId } from "./domain.ts";
+import { LineChannelId } from "./domain.ts";
 
-/** Error raised when a LINE channel is not found by its record ID. */
+/** Error raised when a LINE channel is not found by its channel ID. */
 export class ChannelNotFoundError extends Schema.TaggedErrorClass<ChannelNotFoundError>()(
   "ChannelNotFoundError",
   {
-    recordId: LineChannelRecordId,
+    channelId: LineChannelId,
   },
 ) {}
 

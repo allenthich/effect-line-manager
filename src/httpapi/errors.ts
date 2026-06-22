@@ -60,7 +60,7 @@ export class ProviderDuplicateHttpError extends Schema.TaggedErrorClass<Provider
 export class ChannelNotFoundHttpError extends Schema.TaggedErrorClass<ChannelNotFoundHttpError>()(
   "ChannelNotFoundHttpError",
   {
-    recordId: Schema.String,
+    channelId: Schema.String,
   },
   { httpApiStatus: 404 },
 ) {}
@@ -79,7 +79,7 @@ export class ChannelDuplicateHttpError extends Schema.TaggedErrorClass<ChannelDu
 export class LiffAppNotFoundHttpError extends Schema.TaggedErrorClass<LiffAppNotFoundHttpError>()(
   "LiffAppNotFoundHttpError",
   {
-    recordId: Schema.String,
+    liffId: Schema.String,
   },
   { httpApiStatus: 404 },
 ) {}

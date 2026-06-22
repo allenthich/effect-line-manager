@@ -1,11 +1,11 @@
 import { Schema } from "effect";
-import { LineLiffRecordId } from "./domain.ts";
+import { LineLiffId } from "./domain.ts";
 
-/** Error raised when a LIFF app is not found by record ID. */
+/** Error raised when a LIFF app is not found by LIFF ID. */
 export class LiffAppNotFoundError extends Schema.TaggedErrorClass<LiffAppNotFoundError>()(
   "LiffAppNotFoundError",
   {
-    recordId: LineLiffRecordId,
+    liffId: LineLiffId,
   },
 ) {}
 
@@ -21,6 +21,6 @@ export class LiffAppDuplicateError extends Schema.TaggedErrorClass<LiffAppDuplic
 export class LiffLoginConfigMissingError extends Schema.TaggedErrorClass<LiffLoginConfigMissingError>()(
   "LiffLoginConfigMissingError",
   {
-    recordId: LineLiffRecordId,
+    liffId: LineLiffId,
   },
 ) {}

@@ -1,43 +1,49 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import { LineChannelRecordId } from "../channel/domain.ts";
+import { LineChannelId, LineLoginChannelId } from "../channel/domain.ts";
 import { ChannelNotFoundError } from "../channel/errors.ts";
-import { LineChannelRepository } from "../channel/repository.ts";
+import { LineLoginChannelRepository } from "../channels/repository.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "../provider/repository.ts";
 import {
   type CreateLiffAppInput,
   type UpdateLiffAppInput,
   type LineLiffApp,
-  LineLiffRecordId,
   LineLiffId,
   type LiffAppView,
   LiffAppListPage,
+  type ListLiffAppsQuery,
 } from "./domain.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "./errors.ts";
-import { LineAccountPersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
+import {
+  normalizePageQuery,
+  paginate,
+  type NormalizedPageQuery,
+  type PageResult,
+} from "../shared/domain.ts";
 import { LineLiffRepository } from "./repository.ts";
 
 /** Management service interface for LIFF application operations. */
 export interface LineLiffManagementService {
   readonly listLiffApps: (
-    channelId: LineChannelRecordId | undefined,
-  ) => Effect.Effect<LiffAppListPage, LineAccountPersistenceError>;
+    query: ListLiffAppsQuery,
+  ) => Effect.Effect<LiffAppListPage, LinePersistenceError>;
   readonly getLiffApp: (
-    id: LineLiffRecordId,
-  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LineAccountPersistenceError>;
+    id: LineLiffId,
+  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LinePersistenceError>;
   readonly createLiffApp: (
     input: CreateLiffAppInput,
   ) => Effect.Effect<
     LiffAppView,
-    LiffAppDuplicateError | ChannelNotFoundError | LineAccountPersistenceError
+    LiffAppDuplicateError | ChannelNotFoundError | LinePersistenceError
   >;
   readonly updateLiffApp: (
-    id: LineLiffRecordId,
+    id: LineLiffId,
     input: UpdateLiffAppInput,
-  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LineAccountPersistenceError>;
+  ) => Effect.Effect<LiffAppView, LiffAppNotFoundError | LinePersistenceError>;
   readonly deleteLiffApp: (
-    id: LineLiffRecordId,
-  ) => Effect.Effect<void, LiffAppNotFoundError | LineAccountPersistenceError>;
+    id: LineLiffId,
+  ) => Effect.Effect<void, LiffAppNotFoundError | LinePersistenceError>;
 }
 
 /** Effect context tag for the LIFF management service. */
@@ -61,19 +67,17 @@ export const toLiffAppView = (app: LineLiffApp): LiffAppView => ({
   updatedAt: app.updatedAt,
 });
 
-/** Converts a list of LIFF app entities to a paginated list page. */
-export const toLiffAppListPage = (apps: ReadonlyArray<LineLiffApp>): LiffAppListPage => ({
-  data: apps.map(toLiffAppView),
-  pagination: {
-    page: 1,
-    pageSize: apps.length,
-    totalItems: apps.length,
-    totalPages: apps.length === 0 ? 0 : 1,
-  },
+/** Converts a paginated page of LIFF app entities to a list page of views. */
+export const toLiffAppListPage = (page: PageResult<LineLiffApp>): LiffAppListPage => ({
+  data: page.data.map(toLiffAppView),
+  pagination: page.pagination,
 });
 
-const toCreateLiffAppRecordInput = (input: CreateLiffAppInput) => ({
-  loginChannelId: Schema.decodeUnknownSync(LineChannelRecordId)(input.loginChannelId),
+const toCreateLiffAppRecordInput = (
+  input: CreateLiffAppInput,
+  resolvedLoginChannelId: LineLoginChannelId,
+) => ({
+  loginChannelId: resolvedLoginChannelId,
   liffId: Schema.decodeUnknownSync(LineLiffId)(input.liffId),
   view: input.view,
   ...(input.description === undefined ? {} : { description: input.description }),
@@ -89,46 +93,56 @@ const toUpdateLiffAppRecordInput = (input: UpdateLiffAppInput) => ({
 
 const persistenceFailure = (error: LineRepositoryError) =>
   Effect.logError("LINE LIFF repository operation failed", error).pipe(
-    Effect.andThen(Effect.fail(new LineAccountPersistenceError({ operation: error.operation }))),
+    Effect.andThen(Effect.fail(new LinePersistenceError({ operation: error.operation }))),
   );
+
+const decodeSharedLineChannelId = Schema.decodeUnknownSync(LineChannelId);
 
 /** Creates the implementation for the LIFF management service. */
 export const makeLineLiffManagement = Effect.gen(function* () {
   const repository = yield* LineLiffRepository;
-  const channelRepository = yield* LineChannelRepository;
+  const loginRepository = yield* LineLoginChannelRepository;
   const providerRepository = yield* LineProviderRepository;
   const registry = yield* LineClientRegistry;
 
-  const listAllLiffApps = () =>
+  const listAllLiffApps = (query: NormalizedPageQuery) =>
     Effect.gen(function* () {
-      const providers = yield* providerRepository.listProviders;
-      const allChannels = yield* Effect.all(
-        providers.map((p) => channelRepository.listChannelsByProvider(p.id)),
+      // Page through every provider and its login channels without pagination,
+      // so we can re-paginate the combined LIFF list. A real backend should
+      // expose a single `listAllLiffApps(query)` repository method.
+      const unboundedQuery: NormalizedPageQuery = { page: 1, pageSize: 100 };
+      const providers = yield* providerRepository.listProviders(unboundedQuery);
+      const loginChannelPages = yield* Effect.all(
+        providers.data.map((p) => loginRepository.listByProvider(p.id, unboundedQuery)),
+        { concurrency: "unbounded" },
       );
-      const flatChannels = allChannels.flat();
+      const loginChannels = loginChannelPages.flatMap((p) => p.data);
       const liffArrays = yield* Effect.all(
-        flatChannels.map((c) => repository.listLiffAppsByChannel(c.id)),
+        loginChannels.map((c) => repository.listLiffAppsByChannel(c.channelId, unboundedQuery)),
+        { concurrency: "unbounded" },
       );
-      return liffArrays.flat();
+      const allApps = liffArrays.flatMap((p) => p.data);
+      return paginate(allApps, query);
     });
 
   return LineLiffManagement.of({
-    listLiffApps: Effect.fn("LineLiffManagement.listLiffApps")(
-      (channelId: LineChannelRecordId | undefined) =>
-        (channelId !== undefined
-          ? repository.listLiffAppsByChannel(channelId)
-          : listAllLiffApps()
-        ).pipe(
-          Effect.catchTag("LineRepositoryError", persistenceFailure),
-          Effect.map(toLiffAppListPage),
-        ),
-    ),
+    listLiffApps: Effect.fn("LineLiffManagement.listLiffApps")((query: ListLiffAppsQuery) => {
+      const normalized = normalizePageQuery(query);
+      return (
+        query.channelId !== undefined
+          ? repository.listLiffAppsByChannel(query.channelId, normalized)
+          : listAllLiffApps(normalized)
+      ).pipe(
+        Effect.catchTag("LineRepositoryError", persistenceFailure),
+        Effect.map(toLiffAppListPage),
+      );
+    }),
 
-    getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffRecordId) =>
+    getLiffApp: Effect.fn("LineLiffManagement.getLiffApp")((id: LineLiffId) =>
       Effect.gen(function* () {
-        const option = yield* repository.findLiffAppById(id);
+        const option = yield* repository.findLiffAppByLiffId(id);
         if (Option.isNone(option)) {
-          return yield* new LiffAppNotFoundError({ recordId: id });
+          return yield* new LiffAppNotFoundError({ liffId: id });
         }
         return toLiffAppView(option.value);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
@@ -136,22 +150,25 @@ export const makeLineLiffManagement = Effect.gen(function* () {
 
     createLiffApp: Effect.fn("LineLiffManagement.createLiffApp")((input: CreateLiffAppInput) =>
       Effect.gen(function* () {
-        const loginChannelId = Schema.decodeUnknownSync(LineChannelRecordId)(input.loginChannelId);
-        const optionChannel = yield* channelRepository.findChannelById(loginChannelId);
-        if (Option.isNone(optionChannel)) {
-          return yield* new ChannelNotFoundError({ recordId: loginChannelId });
+        const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)(input.loginChannelId);
+        const parentChannel = yield* loginRepository.findByLineChannelId(loginChannelId);
+        if (Option.isNone(parentChannel)) {
+          return yield* new ChannelNotFoundError({
+            channelId: decodeSharedLineChannelId(loginChannelId),
+          });
         }
-        if (optionChannel.value.channelType !== "login") {
-          return yield* new ChannelNotFoundError({ recordId: loginChannelId });
-        }
-        const record = yield* repository.createLiffApp(toCreateLiffAppRecordInput(input));
-        yield* registry.invalidateLiff(record.id);
+        // The login repository only returns LoginChannel records, so the
+        // previous `channelType !== "login"` runtime check is a no-op here.
+        const record = yield* repository.createLiffApp(
+          toCreateLiffAppRecordInput(input, loginChannelId),
+        );
+        yield* registry.invalidateLiff(record.liffId);
         return toLiffAppView(record);
       }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
     updateLiffApp: Effect.fn("LineLiffManagement.updateLiffApp")(
-      (id: LineLiffRecordId, input: UpdateLiffAppInput) =>
+      (id: LineLiffId, input: UpdateLiffAppInput) =>
         Effect.gen(function* () {
           const record = yield* repository.updateLiffApp(id, toUpdateLiffAppRecordInput(input));
           yield* registry.invalidateLiff(id);
@@ -159,7 +176,7 @@ export const makeLineLiffManagement = Effect.gen(function* () {
         }).pipe(Effect.catchTag("LineRepositoryError", persistenceFailure)),
     ),
 
-    deleteLiffApp: Effect.fn("LineLiffManagement.deleteLiffApp")((id: LineLiffRecordId) =>
+    deleteLiffApp: Effect.fn("LineLiffManagement.deleteLiffApp")((id: LineLiffId) =>
       Effect.gen(function* () {
         yield* repository.deleteLiffApp(id);
         yield* registry.invalidateLiff(id);

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { NonEmptyTrimmedString, Pagination } from "../shared/domain.ts";
+import { NonEmptyTrimmedString, Pagination, PageQuery } from "../shared/domain.ts";
 
 /** Branded type for the LINE provider ID. */
 export const LineProviderId = NonEmptyTrimmedString.pipe(
@@ -61,3 +61,6 @@ export const ProviderListPage = Schema.Struct({
 });
 /** {@link ProviderListPage} type alias. */
 export type ProviderListPage = typeof ProviderListPage.Type;
+
+/** Re-exported {@link PageQuery} for provider list operations. */
+export { PageQuery as ListProvidersQuery };

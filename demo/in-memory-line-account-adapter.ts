@@ -4,6 +4,9 @@ import type {
   ChannelView,
   LiffAppView,
 } from "../src/web/index.ts";
+import { paginate, normalizePageQuery, type PageQuery } from "../src/shared/domain.ts";
+import type { ListChannelsQuery } from "../src/channel/domain.ts";
+import type { ListLiffAppsQuery } from "../src/liff/domain.ts";
 
 export const createInMemoryLineAccountAdapter = (
   initialProviders: ProviderView[] = [],
@@ -20,16 +23,11 @@ export const createInMemoryLineAccountAdapter = (
 
   const copy = <T>(obj: T): T => ({ ...obj });
 
+  const paginateViews = <A>(items: A[], query?: PageQuery) =>
+    paginate(items, normalizePageQuery(query ?? {}));
+
   return {
-    listProviders: async () => ({
-      data: providers.map(copy),
-      pagination: {
-        page: 1,
-        pageSize: providers.length,
-        totalItems: providers.length,
-        totalPages: providers.length === 0 ? 0 : 1,
-      },
-    }),
+    listProviders: async (query) => paginateViews(providers, query),
     createProvider: async (input) => {
       const now = new Date();
       const provider: ProviderView = {
@@ -58,28 +56,20 @@ export const createInMemoryLineAccountAdapter = (
       channels = channels.filter((c) => c.providerId !== id);
       for (const channel of channelsToDelete) {
         if (channel.channelType === "login") {
-          liffApps = liffApps.filter((l) => l.loginChannelId !== channel.id);
+          liffApps = liffApps.filter((l) => l.loginChannelId !== channel.channelId);
         }
       }
     },
 
-    listChannels: async (providerId) => {
+    listChannels: async (query?: ListChannelsQuery) => {
       let filtered = channels;
-      if (providerId) {
-        filtered = filtered.filter((c) => c.providerId === providerId);
+      if (query?.providerId) {
+        filtered = filtered.filter((c) => c.providerId === query.providerId);
       }
-      return {
-        data: filtered.map(copy),
-        pagination: {
-          page: 1,
-          pageSize: filtered.length,
-          totalItems: filtered.length,
-          totalPages: filtered.length === 0 ? 0 : 1,
-        },
-      };
+      return paginateViews(filtered.map(copy), query);
     },
     getChannel: async (id) => {
-      const channel = channels.find((c) => c.id === id);
+      const channel = channels.find((c) => c.channelId === id);
       if (!channel) throw new Error(`Channel not found: ${id}`);
       return copy(channel);
     },
@@ -94,13 +84,13 @@ export const createInMemoryLineAccountAdapter = (
           channelType: "messaging",
           name: input.name,
           channelId: input.channelId,
-          channelSecret: "channel-secret",
-          channelAccessToken: "channel-token",
+          channelSecret: input.channelSecret,
+          channelAccessToken: input.channelAccessToken,
           isActive: true,
-          basicId: `@demo-${input.name.toLowerCase().replace(/\s+/g, "-")}`,
-          displayName: input.name,
-          botUserId: `U${Math.random().toString().slice(2, 12)}`,
-          pictureUrl: null,
+          displayName: input.displayName ?? null,
+          botUserId: input.botUserId ?? null,
+          basicId: input.basicId ?? null,
+          pictureUrl: input.pictureUrl ?? null,
           createdAt: now,
           updatedAt: now,
         };
@@ -111,7 +101,7 @@ export const createInMemoryLineAccountAdapter = (
           channelType: "login",
           name: input.name,
           channelId: input.channelId,
-          channelSecret: "channel-secret",
+          channelSecret: input.channelSecret,
           createdAt: now,
           updatedAt: now,
         };
@@ -120,49 +110,50 @@ export const createInMemoryLineAccountAdapter = (
       return copy(channel);
     },
     updateChannel: async (id, input) => {
-      const index = channels.findIndex((c) => c.id === id);
+      const index = channels.findIndex((c) => c.channelId === id);
       if (index === -1) throw new Error(`Channel not found: ${id}`);
       const current = channels[index];
-      const updated: ChannelView =
-        current.channelType === "messaging"
-          ? {
-              ...current,
-              name: input.name ?? current.name,
-              channelId: input.channelId ?? current.channelId,
-              isActive: input.isActive ?? current.isActive,
-              updatedAt: new Date(),
-            }
-          : {
-              ...current,
-              name: input.name ?? current.name,
-              channelId: input.channelId ?? current.channelId,
-              updatedAt: new Date(),
-            };
+      let updated: ChannelView;
+      if (current.channelType === "messaging") {
+        updated = {
+          ...current,
+          name: input.name ?? current.name,
+          channelId: input.channelId ?? current.channelId,
+          channelSecret: input.channelSecret ?? current.channelSecret,
+          channelAccessToken: input.channelAccessToken ?? current.channelAccessToken,
+          isActive: input.isActive ?? current.isActive,
+          displayName: input.displayName !== undefined ? input.displayName : current.displayName,
+          botUserId: input.botUserId !== undefined ? input.botUserId : current.botUserId,
+          basicId: input.basicId !== undefined ? input.basicId : current.basicId,
+          pictureUrl: input.pictureUrl !== undefined ? input.pictureUrl : current.pictureUrl,
+          updatedAt: new Date(),
+        };
+      } else {
+        updated = {
+          ...current,
+          name: input.name ?? current.name,
+          channelId: input.channelId ?? current.channelId,
+          channelSecret: input.channelSecret ?? current.channelSecret,
+          updatedAt: new Date(),
+        };
+      }
       channels[index] = updated;
       return copy(updated);
     },
     deleteChannel: async (id) => {
-      channels = channels.filter((c) => c.id !== id);
+      channels = channels.filter((c) => c.channelId !== id);
       liffApps = liffApps.filter((l) => l.loginChannelId !== id);
     },
 
-    listLiffApps: async (channelId) => {
+    listLiffApps: async (query?: ListLiffAppsQuery) => {
       let filtered = liffApps;
-      if (channelId) {
-        filtered = filtered.filter((l) => l.loginChannelId === channelId);
+      if (query?.channelId) {
+        filtered = filtered.filter((l) => l.loginChannelId === query.channelId);
       }
-      return {
-        data: filtered.map(copy),
-        pagination: {
-          page: 1,
-          pageSize: filtered.length,
-          totalItems: filtered.length,
-          totalPages: filtered.length === 0 ? 0 : 1,
-        },
-      };
+      return paginateViews(filtered.map(copy), query);
     },
     getLiffApp: async (id) => {
-      const liff = liffApps.find((l) => l.id === id);
+      const liff = liffApps.find((l) => l.liffId === id);
       if (!liff) throw new Error(`LIFF App not found: ${id}`);
       return copy(liff);
     },
@@ -184,7 +175,7 @@ export const createInMemoryLineAccountAdapter = (
       return copy(liff);
     },
     updateLiffApp: async (id, input) => {
-      const index = liffApps.findIndex((l) => l.id === id);
+      const index = liffApps.findIndex((l) => l.liffId === id);
       if (index === -1) throw new Error(`LIFF App not found: ${id}`);
       const current = liffApps[index];
       const updated: LiffAppView = {
@@ -198,7 +189,7 @@ export const createInMemoryLineAccountAdapter = (
       return copy(updated);
     },
     deleteLiffApp: async (id) => {
-      liffApps = liffApps.filter((l) => l.id !== id);
+      liffApps = liffApps.filter((l) => l.liffId !== id);
     },
   };
 };

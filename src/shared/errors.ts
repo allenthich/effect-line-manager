@@ -8,18 +8,23 @@ export const LineRepositoryOperation = Schema.Literals([
   "findProviderById",
   "listProviders",
   "deleteProvider",
-  // Channels
-  "createChannel",
-  "updateChannel",
-  "findChannelById",
-  "findChannelByMessagingId",
-  "findChannelByBotUserId",
-  "listChannelsByProvider",
-  "deleteChannel",
+  // Messaging channels
+  "createMessagingChannel",
+  "updateMessagingChannel",
+  "findMessagingChannelByLineChannelId",
+  "findMessagingChannelByBotUserId",
+  "listMessagingChannelsByProvider",
+  "deleteMessagingChannel",
+  // Login channels
+  "createLoginChannel",
+  "updateLoginChannel",
+  "findLoginChannelByLineChannelId",
+  "listLoginChannelsByProvider",
+  "deleteLoginChannel",
   // LIFF Apps
   "createLiffApp",
   "updateLiffApp",
-  "findLiffAppById",
+  "findLiffAppByLiffId",
   "listLiffAppsByChannel",
   "deleteLiffApp",
 ]);
@@ -36,9 +41,9 @@ export class LineRepositoryError extends Schema.TaggedErrorClass<LineRepositoryE
   },
 ) {}
 
-/** Error raised by the management layer when a persistence operation fails. */
-export class LineAccountPersistenceError extends Schema.TaggedErrorClass<LineAccountPersistenceError>()(
-  "LineAccountPersistenceError",
+/** Error raised by higher-level services when a persistence operation fails. */
+export class LinePersistenceError extends Schema.TaggedErrorClass<LinePersistenceError>()(
+  "LinePersistenceError",
   {
     operation: LineRepositoryOperation,
   },

@@ -1,4 +1,3 @@
-import { Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 import {
   LineProviderId,
@@ -6,20 +5,23 @@ import {
   ProviderListPage,
   CreateProviderInput,
   UpdateProviderInput,
+  ListProvidersQuery,
 } from "../provider/domain.ts";
 import {
-  LineChannelRecordId,
+  LineChannelId,
   ChannelView,
   ChannelListPage,
   CreateChannelInput,
   UpdateChannelInput,
+  ListChannelsQuery,
 } from "../channel/domain.ts";
 import {
-  LineLiffRecordId,
+  LineLiffId,
   LiffAppView,
   LiffAppListPage,
   CreateLiffAppInput,
   UpdateLiffAppInput,
+  ListLiffAppsQuery,
 } from "../liff/domain.ts";
 import {
   ChannelDuplicateHttpError,
@@ -40,20 +42,10 @@ const CreatedLiffAppView = LiffAppView.pipe(HttpApiSchema.status(201));
 
 //#endregion
 
-//#region Query parameter schemas
-
-const ProviderIdQuery = Schema.Struct({
-  providerId: Schema.optional(LineProviderId),
-});
-const ChannelIdQuery = Schema.Struct({
-  channelId: Schema.optional(LineChannelRecordId),
-});
-
-//#endregion
-
 //#region Providers group
 
 const listProviders = HttpApiEndpoint.get("listProviders", "/line-providers", {
+  query: ListProvidersQuery,
   success: ProviderListPage,
   error: LinePersistenceHttpError,
 });
@@ -96,13 +88,13 @@ const providersGroup = HttpApiGroup.make("lineProviders").add(
 //#region Channels group
 
 const listChannels = HttpApiEndpoint.get("listChannels", "/line-channels", {
-  query: ProviderIdQuery,
+  query: ListChannelsQuery,
   success: ChannelListPage,
   error: LinePersistenceHttpError,
 });
 
 const getChannel = HttpApiEndpoint.get("getChannel", "/line-channels/:id", {
-  params: { id: LineChannelRecordId },
+  params: { id: LineChannelId },
   success: ChannelView,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 });
@@ -114,14 +106,14 @@ const createChannel = HttpApiEndpoint.post("createChannel", "/line-channels", {
 }).middleware(LineValidationMiddleware);
 
 const updateChannel = HttpApiEndpoint.patch("updateChannel", "/line-channels/:id", {
-  params: { id: LineChannelRecordId },
+  params: { id: LineChannelId },
   payload: UpdateChannelInput,
   success: ChannelView,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 }).middleware(LineValidationMiddleware);
 
 const deleteChannel = HttpApiEndpoint.delete("deleteChannel", "/line-channels/:id", {
-  params: { id: LineChannelRecordId },
+  params: { id: LineChannelId },
   success: HttpApiSchema.NoContent,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 });
@@ -139,13 +131,13 @@ const channelsGroup = HttpApiGroup.make("lineChannels").add(
 //#region LIFF Apps group
 
 const listLiffApps = HttpApiEndpoint.get("listLiffApps", "/line-liff-apps", {
-  query: ChannelIdQuery,
+  query: ListLiffAppsQuery,
   success: LiffAppListPage,
   error: LinePersistenceHttpError,
 });
 
 const getLiffApp = HttpApiEndpoint.get("getLiffApp", "/line-liff-apps/:id", {
-  params: { id: LineLiffRecordId },
+  params: { id: LineLiffId },
   success: LiffAppView,
   error: [LiffAppNotFoundHttpError, LinePersistenceHttpError],
 });
@@ -157,14 +149,14 @@ const createLiffApp = HttpApiEndpoint.post("createLiffApp", "/line-liff-apps", {
 }).middleware(LineValidationMiddleware);
 
 const updateLiffApp = HttpApiEndpoint.patch("updateLiffApp", "/line-liff-apps/:id", {
-  params: { id: LineLiffRecordId },
+  params: { id: LineLiffId },
   payload: UpdateLiffAppInput,
   success: LiffAppView,
   error: [LiffAppNotFoundHttpError, LinePersistenceHttpError],
 }).middleware(LineValidationMiddleware);
 
 const deleteLiffApp = HttpApiEndpoint.delete("deleteLiffApp", "/line-liff-apps/:id", {
-  params: { id: LineLiffRecordId },
+  params: { id: LineLiffId },
   success: HttpApiSchema.NoContent,
   error: [LiffAppNotFoundHttpError, LinePersistenceHttpError],
 });
