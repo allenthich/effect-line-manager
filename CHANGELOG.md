@@ -1,5 +1,11 @@
 # effect-line-manager
 
+## 0.1.2
+
+### Patch Changes
+
+- 5ea0120: Moved GitHub release handling to changeset action
+
 ## 0.1.1
 
 ### Patch Changes
