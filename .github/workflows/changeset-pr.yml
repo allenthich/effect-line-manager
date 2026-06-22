@@ -34,19 +34,8 @@ jobs:
         with:
           version: vp run version
           publish: vp run release
+          createGithubReleases: true
           commit: "chore: version packages"
           title: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release
-        if: steps.changesets.outputs.published == 'true'
-        run: |
-          VERSION="v$(node -p "require('./package.json').version")"
-          if ! git rev-parse "$VERSION" >/dev/null 2>&1; then
-            git tag "$VERSION"
-            git push origin "$VERSION"
-          fi
-          gh release create "$VERSION" --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
