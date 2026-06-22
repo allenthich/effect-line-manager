@@ -11,7 +11,13 @@ import {
   type LiffAppView,
   type LineProviderManagementAdapter,
 } from "../../src/web/index.ts";
-import { LineLoginChannelId } from "../../src/channel/domain.ts";
+import { LineLoginChannelId } from "../../src/shared/domain.ts";
+import {
+  isLineMessagingChannelView,
+  isLineLoginChannelView,
+  type LineMessagingChannelView,
+  type LineLoginChannelView,
+} from "../../src/channels/management-domain.ts";
 
 const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("0987654321");
 
@@ -168,6 +174,102 @@ const makeAdapter = (
     deleteChannel: async (id) => {
       channels = channels.filter((x) => x.channelId !== id);
     },
+
+    // Aggregate-specific channel methods: delegate to the shared in-memory store.
+    listMessagingChannels: async (query) => {
+      const filtered = channels
+        .filter(isLineMessagingChannelView)
+        .filter((c) => (query?.providerId ? c.providerId === query.providerId : true));
+      return {
+        data: filtered,
+        pagination: {
+          page: 1,
+          pageSize: filtered.length,
+          totalItems: filtered.length,
+          totalPages: 1,
+        },
+      };
+    },
+    getMessagingChannel: async (id) => {
+      const c = channels.find(
+        (x): x is LineMessagingChannelView => x.channelId === id && isLineMessagingChannelView(x),
+      );
+      if (!c) throw new Error("not found");
+      return c;
+    },
+    createMessagingChannel: async (input) => {
+      const c: LineMessagingChannelView = {
+        ...mockChannel,
+        name: input.name,
+        channelId: input.channelId,
+        providerId: input.providerId,
+        id: `channel-${channels.length + 1}`,
+      };
+      channels.push(c);
+      return c;
+    },
+    updateMessagingChannel: async (id, input) => {
+      const c = channels.find(
+        (x): x is LineMessagingChannelView => x.channelId === id && isLineMessagingChannelView(x),
+      );
+      if (!c) throw new Error("not found");
+      const updated: LineMessagingChannelView = {
+        ...c,
+        name: input.name ?? c.name,
+        isActive: input.isActive ?? c.isActive,
+      };
+      channels = channels.map((x) => (x.channelId === id ? updated : x));
+      return updated;
+    },
+    deleteMessagingChannel: async (id) => {
+      channels = channels.filter((x) => !(x.channelId === id && x.channelType === "messaging"));
+    },
+
+    listLoginChannels: async (query) => {
+      const filtered = channels
+        .filter(isLineLoginChannelView)
+        .filter((c) => (query?.providerId ? c.providerId === query.providerId : true));
+      return {
+        data: filtered,
+        pagination: {
+          page: 1,
+          pageSize: filtered.length,
+          totalItems: filtered.length,
+          totalPages: 1,
+        },
+      };
+    },
+    getLoginChannel: async (id) => {
+      const c = channels.find(
+        (x): x is LineLoginChannelView => x.channelId === id && isLineLoginChannelView(x),
+      );
+      if (!c) throw new Error("not found");
+      return c;
+    },
+    createLoginChannel: async (input) => {
+      const c: LineLoginChannelView = {
+        ...mockChannelLogin,
+        name: input.name,
+        channelId: input.channelId,
+        providerId: input.providerId,
+        id: `channel-${channels.length + 1}`,
+      };
+      channels.push(c);
+      return c;
+    },
+    updateLoginChannel: async (id, input) => {
+      const c = channels.find(
+        (x): x is LineLoginChannelView => x.channelId === id && isLineLoginChannelView(x),
+      );
+      if (!c) throw new Error("not found");
+      const updated: LineLoginChannelView = { ...c, name: input.name ?? c.name };
+      channels = channels.map((x) => (x.channelId === id ? updated : x));
+      return updated;
+    },
+    deleteLoginChannel: async (id) => {
+      channels = channels.filter((x) => !(x.channelId === id && x.channelType === "login"));
+    },
+
     listLiffApps: async () => ({
       data: liffApps,
       pagination: {

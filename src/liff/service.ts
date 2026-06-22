@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import { LineChannelId, LineLoginChannelId } from "../channel/domain.ts";
-import { ChannelNotFoundError } from "../channel/errors.ts";
+import { LineChannelId, LineLoginChannelId } from "../shared/domain.ts";
+import { ChannelNotFoundError } from "../shared/errors.ts";
 import { LineLoginChannelRepository } from "../channels/repository.ts";
 import { LineClientRegistry } from "../registry/index.ts";
 import { LineProviderRepository } from "../provider/repository.ts";

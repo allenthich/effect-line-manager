@@ -2,7 +2,7 @@ import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
 import type { LineAccountManagementMessages } from "./messages.ts";
-import { LineLoginChannelId } from "../channel/domain.ts";
+import { LineLoginChannelId } from "../shared/domain.ts";
 import type {
   ProviderView,
   ChannelView,

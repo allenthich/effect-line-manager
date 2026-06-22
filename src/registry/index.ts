@@ -26,10 +26,10 @@ import {
 } from "../messaging/client.ts";
 import { makeLineLoginClient, type LineLoginClient } from "../login/client.ts";
 import { makeLineLiffClient, type LineLiffClient } from "../liff/client.ts";
-import { LineChannelId, type MessagingChannel, type LoginChannel } from "../channel/domain.ts";
+import { LineChannelId, type MessagingChannel, type LoginChannel } from "../channels/domain.ts";
 import { LineMessagingChannelId, LineLoginChannelId } from "../channels/domain.ts";
 import { LineLiffId, type LineLiffApp } from "../liff/domain.ts";
-import { ChannelNotFoundError } from "../channel/errors.ts";
+import { ChannelNotFoundError } from "../shared/errors.ts";
 import { MessagingChannelNotFoundError } from "../channels/errors.ts";
 import { LiffAppNotFoundError, LiffLoginConfigMissingError } from "../liff/errors.ts";
 import { LineRepositoryError } from "../shared/errors.ts";

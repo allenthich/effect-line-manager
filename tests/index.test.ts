@@ -54,26 +54,29 @@ test("exports the stable LINE manager API", () => {
   ]).not.toContain(undefined);
 });
 
-test("root exports do not leak generic channel management internals not required by consumers", () => {
-  // These symbols are intentionally private. Consumers provide domain
-  // repository implementations and consume LineChannelManagement (the service
-  // via LineApiLayer); those plus their input/error types are tested
-  // separately as exported.
-  const leakedSymbols = ["LineChannelManagementService", "makeLineChannelManagement"].filter(
-    (name) => name in RootModule,
-  );
+test("root exports do not leak the deleted generic LineChannelManagement surface", () => {
+  // The generic `LineChannelManagement` service has been split into
+  // `LineMessagingChannelManagement` + `LineLoginChannelManagement`. The
+  // generic constructor types and helpers must not appear in the root.
+  const leakedSymbols = [
+    "LineChannelManagement",
+    "LineChannelManagementService",
+    "makeLineChannelManagement",
+  ].filter((name) => name in RootModule);
 
   expect(leakedSymbols).toEqual([]);
 });
 
-test("root exports do not leak generic channel domain module not required by consumers", () => {
-  // Management-service API shapes (public ChannelView, CreateChannelInput, etc.)
-  // are kept private; consumers go through LineChannelManagement / the HTTP API.
+test("root exports do not leak generic management-shim DTOs from the deleted channel module", () => {
+  // Management-service DTOs (`ChannelView`, `ChannelListPage`) live in
+  // `src/channels/management-domain.ts` and are now exported via that module.
+  // The legacy shim-only DTOs (`CreateChannelInput`, `UpdateChannelInput`,
+  // `ListChannelsQuery`) live in `src/adapter/compat.ts` and are reachable
+  // via the adapter subpath — not the root export.
   const leaked = [
     "CreateChannelInput",
     "UpdateChannelInput",
-    "ChannelView",
-    "ChannelListPage",
+    "ListChannelsQuery",
     "toChannelView",
     "toChannelListPage",
   ].filter((name) => name in RootModule);
@@ -81,8 +84,27 @@ test("root exports do not leak generic channel domain module not required by con
   expect(leaked).toEqual([]);
 });
 
-test("root exports persistence boundary and channel management symbols for headless consumers", () => {
-  expect("LineChannelManagement" in RootModule).toBe(true);
+test("root exports the aggregate-specific channel management services", () => {
+  expect("LineMessagingChannelManagement" in RootModule).toBe(true);
+  expect("LineLoginChannelManagement" in RootModule).toBe(true);
+});
+
+test("root exports the aggregate-specific management-layer DTOs and views", () => {
+  expect("CreateLineMessagingChannelInput" in RootModule).toBe(true);
+  expect("UpdateLineMessagingChannelInput" in RootModule).toBe(true);
+  expect("CreateLineLoginChannelInput" in RootModule).toBe(true);
+  expect("UpdateLineLoginChannelInput" in RootModule).toBe(true);
+  expect("ListLineMessagingChannelsQuery" in RootModule).toBe(true);
+  expect("ListLineLoginChannelsQuery" in RootModule).toBe(true);
+  expect("LineMessagingChannelView" in RootModule).toBe(true);
+  expect("LineLoginChannelView" in RootModule).toBe(true);
+  expect("LineMessagingChannelListPage" in RootModule).toBe(true);
+  expect("LineLoginChannelListPage" in RootModule).toBe(true);
+  expect("ChannelView" in RootModule).toBe(true);
+  expect("ChannelListPage" in RootModule).toBe(true);
+});
+
+test("root exports persistence boundary and brands for headless consumers", () => {
   expect("LineChannelId" in RootModule).toBe(true);
   expect("LineChannel" in RootModule).toBe(true);
   expect("CreateMessagingChannelInput" in RootModule).toBe(true);

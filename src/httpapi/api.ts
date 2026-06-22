@@ -7,14 +7,19 @@ import {
   UpdateProviderInput,
   ListProvidersQuery,
 } from "../provider/domain.ts";
+import { LineChannelId } from "../shared/domain.ts";
 import {
-  LineChannelId,
-  ChannelView,
-  ChannelListPage,
-  CreateChannelInput,
-  UpdateChannelInput,
-  ListChannelsQuery,
-} from "../channel/domain.ts";
+  CreateLineMessagingChannelInput,
+  UpdateLineMessagingChannelInput,
+  CreateLineLoginChannelInput,
+  UpdateLineLoginChannelInput,
+  ListLineMessagingChannelsQuery,
+  ListLineLoginChannelsQuery,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LineMessagingChannelListPage,
+  LineLoginChannelListPage,
+} from "../channels/management-domain.ts";
 import {
   LineLiffId,
   LiffAppView,
@@ -37,7 +42,8 @@ import {
 //#region Status-code annotated schemas
 
 const CreatedProviderView = ProviderView.pipe(HttpApiSchema.status(201));
-const CreatedChannelView = ChannelView.pipe(HttpApiSchema.status(201));
+const CreatedLineMessagingChannelView = LineMessagingChannelView.pipe(HttpApiSchema.status(201));
+const CreatedLineLoginChannelView = LineLoginChannelView.pipe(HttpApiSchema.status(201));
 const CreatedLiffAppView = LiffAppView.pipe(HttpApiSchema.status(201));
 
 //#endregion
@@ -85,45 +91,112 @@ const providersGroup = HttpApiGroup.make("lineProviders").add(
 
 //#endregion
 
-//#region Channels group
+//#region Messaging Channels group
 
-const listChannels = HttpApiEndpoint.get("listChannels", "/line-channels", {
-  query: ListChannelsQuery,
-  success: ChannelListPage,
+const listMessagingChannels = HttpApiEndpoint.get(
+  "listMessagingChannels",
+  "/line-messaging-channels",
+  {
+    query: ListLineMessagingChannelsQuery,
+    success: LineMessagingChannelListPage,
+    error: LinePersistenceHttpError,
+  },
+);
+
+const getMessagingChannel = HttpApiEndpoint.get(
+  "getMessagingChannel",
+  "/line-messaging-channels/:id",
+  {
+    params: { id: LineChannelId },
+    success: LineMessagingChannelView,
+    error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
+  },
+);
+
+const createMessagingChannel = HttpApiEndpoint.post(
+  "createMessagingChannel",
+  "/line-messaging-channels",
+  {
+    payload: CreateLineMessagingChannelInput,
+    success: CreatedLineMessagingChannelView,
+    error: [ChannelDuplicateHttpError, LinePersistenceHttpError],
+  },
+).middleware(LineValidationMiddleware);
+
+const updateMessagingChannel = HttpApiEndpoint.patch(
+  "updateMessagingChannel",
+  "/line-messaging-channels/:id",
+  {
+    params: { id: LineChannelId },
+    payload: UpdateLineMessagingChannelInput,
+    success: LineMessagingChannelView,
+    error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
+  },
+).middleware(LineValidationMiddleware);
+
+const deleteMessagingChannel = HttpApiEndpoint.delete(
+  "deleteMessagingChannel",
+  "/line-messaging-channels/:id",
+  {
+    params: { id: LineChannelId },
+    success: HttpApiSchema.NoContent,
+    error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
+  },
+);
+
+const messagingChannelsGroup = HttpApiGroup.make("lineMessagingChannels").add(
+  listMessagingChannels,
+  getMessagingChannel,
+  createMessagingChannel,
+  updateMessagingChannel,
+  deleteMessagingChannel,
+);
+
+//#endregion
+
+//#region Login Channels group
+
+const listLoginChannels = HttpApiEndpoint.get("listLoginChannels", "/line-login-channels", {
+  query: ListLineLoginChannelsQuery,
+  success: LineLoginChannelListPage,
   error: LinePersistenceHttpError,
 });
 
-const getChannel = HttpApiEndpoint.get("getChannel", "/line-channels/:id", {
+const getLoginChannel = HttpApiEndpoint.get("getLoginChannel", "/line-login-channels/:id", {
   params: { id: LineChannelId },
-  success: ChannelView,
+  success: LineLoginChannelView,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 });
 
-const createChannel = HttpApiEndpoint.post("createChannel", "/line-channels", {
-  payload: CreateChannelInput,
-  success: CreatedChannelView,
+const createLoginChannel = HttpApiEndpoint.post("createLoginChannel", "/line-login-channels", {
+  payload: CreateLineLoginChannelInput,
+  success: CreatedLineLoginChannelView,
   error: [ChannelDuplicateHttpError, LinePersistenceHttpError],
 }).middleware(LineValidationMiddleware);
 
-const updateChannel = HttpApiEndpoint.patch("updateChannel", "/line-channels/:id", {
+const updateLoginChannel = HttpApiEndpoint.patch("updateLoginChannel", "/line-login-channels/:id", {
   params: { id: LineChannelId },
-  payload: UpdateChannelInput,
-  success: ChannelView,
+  payload: UpdateLineLoginChannelInput,
+  success: LineLoginChannelView,
   error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
 }).middleware(LineValidationMiddleware);
 
-const deleteChannel = HttpApiEndpoint.delete("deleteChannel", "/line-channels/:id", {
-  params: { id: LineChannelId },
-  success: HttpApiSchema.NoContent,
-  error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
-});
+const deleteLoginChannel = HttpApiEndpoint.delete(
+  "deleteLoginChannel",
+  "/line-login-channels/:id",
+  {
+    params: { id: LineChannelId },
+    success: HttpApiSchema.NoContent,
+    error: [ChannelNotFoundHttpError, LinePersistenceHttpError],
+  },
+);
 
-const channelsGroup = HttpApiGroup.make("lineChannels").add(
-  listChannels,
-  getChannel,
-  createChannel,
-  updateChannel,
-  deleteChannel,
+const loginChannelsGroup = HttpApiGroup.make("lineLoginChannels").add(
+  listLoginChannels,
+  getLoginChannel,
+  createLoginChannel,
+  updateLoginChannel,
+  deleteLoginChannel,
 );
 
 //#endregion
@@ -174,6 +247,11 @@ const liffAppsGroup = HttpApiGroup.make("lineLiffApps").add(
 //#region Top-level API
 
 /** Top-level HTTP API definition for LINE account management endpoints. */
-export const LineApi = HttpApi.make("LineApi").add(providersGroup, channelsGroup, liffAppsGroup);
+export const LineApi = HttpApi.make("LineApi").add(
+  providersGroup,
+  messagingChannelsGroup,
+  loginChannelsGroup,
+  liffAppsGroup,
+);
 
 //#endregion

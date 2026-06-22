@@ -10,11 +10,11 @@ import type {
   MessagingChannel,
   UpdateMessagingChannelInput,
   UpdateLoginChannelInput,
-} from "../channel/domain.ts";
-import type { ChannelDuplicateError } from "../channel/errors.ts";
+} from "./domain.ts";
+import type { ChannelDuplicateError } from "../shared/errors.ts";
 import type { LoginChannelNotFoundError, MessagingChannelNotFoundError } from "./errors.ts";
 import type { LineRepositoryError } from "../shared/errors.ts";
-import type { LineBotUserId } from "./domain.ts";
+import type { LineBotUserId } from "../shared/domain.ts";
 
 export interface LineMessagingChannelRepositoryService {
   readonly create: (

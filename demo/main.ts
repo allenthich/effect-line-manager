@@ -7,7 +7,7 @@ import {
   type ChannelView,
   type LiffAppView,
 } from "../src/web/index.ts";
-import { LineLoginChannelId } from "../src/channel/domain.ts";
+import { LineLoginChannelId } from "../src/shared/domain.ts";
 
 const createdAt = new Date("2026-06-01T00:00:00.000Z");
 const updatedAt = new Date("2026-06-10T00:00:00.000Z");

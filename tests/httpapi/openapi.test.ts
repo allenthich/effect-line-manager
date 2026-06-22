@@ -7,10 +7,12 @@ describe("LINE account OpenAPI", () => {
 
     expect(Object.keys(paths).sort()).toEqual(
       [
-        "/line-channels",
-        "/line-channels/{id}",
         "/line-liff-apps",
         "/line-liff-apps/{id}",
+        "/line-login-channels",
+        "/line-login-channels/{id}",
+        "/line-messaging-channels",
+        "/line-messaging-channels/{id}",
         "/line-providers",
         "/line-providers/{id}",
       ].sort(),

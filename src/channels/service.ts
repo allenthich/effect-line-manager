@@ -6,7 +6,7 @@ import type { LineLoginClient } from "../login/client.ts";
 import { LineLoginChannelId, LineMessagingChannelId, type LineLoginChannel } from "./domain.ts";
 import { LineLoginChannelRepository, LineMessagingChannelRepository } from "./repository.ts";
 import { MessagingChannelNotFoundError, LoginChannelNotFoundError } from "./errors.ts";
-import { LineChannelId } from "../channel/domain.ts";
+import { LineChannelId } from "../shared/domain.ts";
 
 export interface LineMessagingChannelServiceApi {
   readonly getClientByLineChannelId: (

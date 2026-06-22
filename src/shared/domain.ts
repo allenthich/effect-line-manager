@@ -6,6 +6,41 @@ export const NonEmptyTrimmedString = Schema.Trimmed.check(Schema.isNonEmpty());
 /** A redacted LINE API credential (e.g., channel secret, access token). */
 export const LineCredential = Schema.Redacted(NonEmptyTrimmedString);
 
+/**
+ * Branded type for the shared LINE channel ID.
+ *
+ * Used by HTTP `:id` params and webhook ingest where the aggregate
+ * (messaging vs login) is not yet known. Convert to the per-aggregate
+ * brand ({@link LineMessagingChannelId} / {@link LineLoginChannelId})
+ * inside the handler that resolves the channel.
+ */
+export const LineChannelId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineChannelId"),
+);
+/** {@link LineChannelId} type alias. */
+export type LineChannelId = typeof LineChannelId.Type;
+
+/** Branded type for the LINE Messaging API channel ID. */
+export const LineMessagingChannelId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineMessagingChannelId"),
+);
+/** {@link LineMessagingChannelId} type alias. */
+export type LineMessagingChannelId = typeof LineMessagingChannelId.Type;
+
+/** Branded type for the LINE Login channel ID. */
+export const LineLoginChannelId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineLoginChannelId"),
+);
+/** {@link LineLoginChannelId} type alias. */
+export type LineLoginChannelId = typeof LineLoginChannelId.Type;
+
+/** Branded type for the LINE bot user ID (auto-synced from bot profile). */
+export const LineBotUserId = NonEmptyTrimmedString.pipe(
+  Schema.brand("effect-line-manager/LineBotUserId"),
+);
+/** {@link LineBotUserId} type alias. */
+export type LineBotUserId = typeof LineBotUserId.Type;
+
 /** Standard pagination metadata returned by list endpoints. */
 export const Pagination = Schema.Struct({
   page: Schema.Int,
