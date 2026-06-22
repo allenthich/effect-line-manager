@@ -1,6 +1,6 @@
 {
   "name": "@allenthich/effect-line-manager",
-  "version": "0.1.2",
+  "version": "0.1.1",
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
