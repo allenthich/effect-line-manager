@@ -1,5 +1,11 @@
 # effect-line-manager
 
+## 0.2.0
+
+### Minor Changes
+
+- bc6bbe3: Refactored LINE channel into dedicated login and messaging APIs
+
 ## 0.1.2
 
 ### Patch Changes
