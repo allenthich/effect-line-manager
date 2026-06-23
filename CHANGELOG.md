@@ -1,5 +1,11 @@
 # effect-line-manager
 
+## 0.2.2
+
+### Patch Changes
+
+- b261872: Fixed uuid passed instead of login channelId
+
 ## 0.2.1
 
 ### Patch Changes
