@@ -572,7 +572,10 @@ export class LineAccountForm extends LitElement {
             >
               ${this.loginChannels.map(
                 (c) =>
-                  html`<option value=${c.id} ?selected=${c.id === this.#values.liffLoginChannelId}>
+                  html`<option
+                    value=${c.channelId}
+                    ?selected=${c.channelId === this.#values.liffLoginChannelId}
+                  >
                     ${c.name} (${c.channelId})
                   </option>`,
               )}
@@ -804,11 +807,11 @@ export class LineAccountForm extends LitElement {
       }
       if (
         this.selectedChannelId &&
-        this.loginChannels.some((c) => c.id === this.selectedChannelId)
+        this.loginChannels.some((c) => c.channelId === this.selectedChannelId)
       ) {
         liffLoginChannelId = this.selectedChannelId;
       } else if (this.loginChannels.length > 0) {
-        liffLoginChannelId = this.loginChannels[0].id;
+        liffLoginChannelId = this.loginChannels[0].channelId;
       }
     }
 
