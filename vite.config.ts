@@ -11,6 +11,7 @@ export default defineConfig({
     entry: [
       "src/index.ts",
       "src/web/index.ts",
+      "src/web/developers-console/index.ts",
       "src/httpapi/index.ts",
       "src/messaging/index.ts",
       "src/login/index.ts",

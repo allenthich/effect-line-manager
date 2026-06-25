@@ -16,6 +16,7 @@
     "./messaging": "./dist/messaging/index.mjs",
     "./registry": "./dist/registry/index.mjs",
     "./web": "./dist/web/index.mjs",
+    "./web/developers-console": "./dist/web/developers-console/index.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {

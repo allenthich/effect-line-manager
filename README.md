@@ -116,6 +116,32 @@ const adapter = makeLineProviderManagementAdapter(client);
 consume `LineProviderManagementAdapter` and are intentionally separate from the
 headless package surface.
 
+### Developers Console wrapper
+
+`effect-line-manager/web/developers-console` adds a read-only custom element
+that wraps the [LINE Developers Console](https://developers.line.biz/console/)
+itself, rendering providers → channels → LIFF apps as one expandable hierarchy
+via a cookie / proxy adapter. It is meant to be hosted where the developer
+session cookie is in scope (a Manifest V3 browser extension with
+`host_permissions` for `developers.line.biz` is the recommended shape; a
+same-origin backend proxy also works).
+
+```ts
+import {
+  defineLineDevelopersConsoleElements,
+  createLineConsoleAdapter,
+} from "effect-line-manager/web/developers-console";
+
+defineLineDevelopersConsoleElements();
+
+const consoleEl = document.querySelector("line-developers-console")!;
+consoleEl.adapter = createLineConsoleAdapter({
+  // baseUrl points at a same-origin proxy by default; the real console base
+  // is used when the component runs inside the console origin (e.g. extension).
+  cookie: process.env.LINE_DEV_COOKIE, // optional in extension contexts
+});
+```
+
 ## Development
 
 ```bash

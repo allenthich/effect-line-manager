@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="en" data-theme="emerald">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LINE Developers Console Wrapper — Diagnosis & Plan</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css" />
+    <style>
+      :root {
+        --line-primary: #10b981;
+        --line-primary-hover: #059669;
+        --line-ink: #0f172a;
+        --line-muted: #64748b;
+        --line-soft: #f1f5f9;
+        --line-messaging: #3b82f6;
+        --line-login: #8b5cf6;
+        --line-liff: #f59e0b;
+        --line-border: #e2e8f0;
+      }
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        background:
+          radial-gradient(circle at 12% 0%, rgb(16 185 129 / 12%), transparent 30rem), #f1f5f9;
+      }
+      .brand-mark {
+        display: grid;
+        width: 2.5rem;
+        height: 2.5rem;
+        place-items: center;
+        border-radius: 0.75rem;
+        background: var(--line-primary);
+        color: #fff;
+        font-weight: 800;
+      }
+      .demo-card {
+        background: #fff;
+        border: 1px solid var(--line-border);
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+      }
+      /* Tree node mock styling to match the actual web component look */
+      .node {
+        border: 1px solid var(--line-border);
+        border-radius: 0.75rem;
+        background: #fff;
+      }
+      .node.selected {
+        border-color: var(--line-primary);
+        box-shadow: 0 0 0 2px rgb(16 185 129 / 0.15);
+      }
+      .node-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        cursor: pointer;
+      }
+      .avatar {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .av-provider {
+        background: linear-gradient(135deg, #10b981, #059669);
+      }
+      .av-messaging {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      }
+      .av-login {
+        background: linear-gradient(135deg, #8b5cf6, #5b21b6);
+      }
+      .av-liff {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.65rem;
+        font-weight: 600;
+      }
+      .pill-type {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+      }
+      .pill-active {
+        background: #ecfdf5;
+        color: #047a36;
+        border: 1px solid #a3f0c2;
+      }
+      .pill-messaging {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+      }
+      .pill-login {
+        background: #f5f3ff;
+        color: #5b21b6;
+        border: 1px solid #ddd6fe;
+      }
+      .pill-liff {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+      }
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.375rem 1rem;
+        font-size: 0.7rem;
+      }
+      .meta-grid > div {
+        min-width: 0;
+      }
+      .meta-grid dt {
+        color: var(--line-muted);
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+      .meta-grid dd {
+        margin: 0;
+        font-weight: 600;
+        word-break: break-word;
+      }
+      .head-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+        flex-wrap: wrap;
+      }
+      .head-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .head-sub {
+        font-size: 0.72rem;
+        color: var(--line-muted);
+      }
+      .head-pills {
+        display: inline-flex;
+        gap: 0.25rem;
+        align-items: center;
+        margin-left: auto;
+      }
+      .chevron {
+        width: 1rem;
+        height: 1rem;
+        color: var(--line-muted);
+        transition: transform 0.2s;
+      }
+      button.node-header {
+        background: none;
+        border: 0;
+        width: 100%;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+        border-radius: inherit;
+      }
+      button.node-header:hover {
+        background-color: #f1f5f9;
+      }
+      button.node-header:focus-visible {
+        outline: 2px solid var(--line-primary);
+        outline-offset: -2px;
+      }
+      @media (max-width: 640px) {
+        .meta-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .chevron.open {
+        transform: rotate(90deg);
+      }
+      /* Variant switcher */
+      .variant-tabs {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+      }
+      .variant-tabs .vt {
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+      .variant-panel {
+        padding-top: 0.5rem;
+      }
+      .variant-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--line-muted);
+        margin-bottom: 0.5rem;
+      }
+      /* Variant B: IDE tree viewer */
+      .tree-viewer {
+        font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, monospace;
+        font-size: 0.72rem;
+      }
+      .tv-row {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        white-space: nowrap;
+      }
+      .tv-row:hover {
+        background: #f1f5f9;
+      }
+      .tv-row.sel {
+        background: #ecfdf5;
+      }
+      .tv-toggle {
+        width: 0.85rem;
+        color: #94a3b8;
+        flex-shrink: 0;
+        text-align: center;
+      }
+      .tv-icon {
+        width: 0.85rem;
+        flex-shrink: 0;
+        border-radius: 0.2rem;
+      }
+      .tv-name {
+        font-weight: 600;
+      }
+      .tv-type {
+        font-size: 0.62rem;
+        padding: 0 0.25rem;
+        border-radius: 0.2rem;
+        font-weight: 700;
+      }
+      .tv-id {
+        color: #94a3b8;
+      }
+      .tv-status {
+        margin-left: auto;
+        font-size: 0.62rem;
+        padding: 0 0.3rem;
+        border-radius: 0.2rem;
+        font-weight: 700;
+      }
+      .tv-children {
+        margin-left: 0.7rem;
+        padding-left: 0.7rem;
+        border-left: 1px solid #e2e8f0;
+      }
+      .tv-fields {
+        margin-left: 2.4rem;
+        padding: 0.25rem 0;
+        color: #475569;
+        line-height: 1.5;
+      }
+      .tv-fields .k {
+        color: #94a3b8;
+      }
+      .tv-fields .v {
+        color: #0f172a;
+        font-weight: 600;
+      }
+      .tv-fields .secret {
+        color: #b45309;
+      }
+      /* Variant C: master-detail split */
+      .split {
+        display: grid;
+        grid-template-columns: 18rem minmax(0, 1fr);
+        gap: 0.75rem;
+      }
+      @media (max-width: 768px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+      .split-list {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 0.75rem;
+        padding: 0.5rem;
+      }
+      .split-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+      }
+      .split-item:hover {
+        background: #eef2f7;
+      }
+      .split-item.sel {
+        background: #ecfdf5;
+        border: 1px solid #a3f0c2;
+      }
+      .detail-panel {
+        border: 1px solid var(--line-border);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        background: #fff;
+      }
+      /* Theme B1 — modern */
+      .tv-modern .tv-row {
+        padding: 0.3rem 0.5rem;
+        border-radius: 0.5rem;
+      }
+      .tv-modern .tv-row.sel {
+        background: #ecfdf5;
+        box-shadow: inset 3px 0 0 #10b981;
+      }
+      .tv-modern .tv-children {
+        border-color: #e2e8f0;
+      }
+      .tv-modern .type-chip {
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 0 0.4rem;
+        border-radius: 0.4rem;
+      }
+      /* Theme B2 — simple */
+      .tv-simple {
+        color: #334155;
+      }
+      .tv-simple .tv-row {
+        padding: 0.15rem 0.25rem;
+        border-radius: 0;
+        gap: 0.4rem;
+        white-space: nowrap;
+      }
+      .tv-simple .tv-row:hover {
+        background: #f1f5f9;
+      }
+      .tv-simple .tv-row.sel {
+        background: #fff;
+        font-weight: 700;
+        box-shadow: inset 2px 0 0 #64748b;
+      }
+      .tv-simple .tv-children {
+        border-color: #e5e7eb;
+      }
+      .tv-simple .tv-toggle {
+        color: #9ca3af;
+      }
+      .tv-simple .mk {
+        color: #9ca3af;
+      }
+      .tv-simple .tv-fields {
+        color: #64748b;
+      }
+      /* Theme B3 — intuitive */
+      .tv-intuitive {
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 0.78rem;
+      }
+      .tv-intuitive .tv-row {
+        padding: 0.45rem 0.5rem;
+        border-radius: 0.6rem;
+        gap: 0.45rem;
+      }
+      .tv-intuitive .tv-row:hover {
+        background: #f8fafc;
+      }
+      .tv-intuitive .tv-row.sel {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+      }
+      .tv-intuitive .tv-node {
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 0.35rem;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 0.6rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .tv-intuitive .ic-prv {
+        background: #10b981;
+      }
+      .tv-intuitive .ic-msg {
+        background: #3b82f6;
+      }
+      .tv-intuitive .ic-lgn {
+        background: #8b5cf6;
+      }
+      .tv-intuitive .ic-liff {
+        background: #f59e0b;
+      }
+      .tv-intuitive .tv-children {
+        border-color: #e2e8f0;
+      }
+      .tv-intuitive .badge-s {
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 0.05rem 0.4rem;
+        border-radius: 9999px;
+      }
+      .tv-intuitive .tv-fields {
+        margin-left: 2.6rem;
+        background: #f8fafc;
+        border-radius: 0.4rem;
+        padding: 0.4rem 0.6rem;
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-base-content">
+    <main class="w-full max-w-6xl mx-auto px-4 py-8">
+      <!-- Header -->
+      <header class="flex items-center gap-3 mb-6">
+        <span class="brand-mark">L</span>
+        <div>
+          <h1 class="text-xl font-bold">LINE Developers Console Wrapper</h1>
+          <p class="text-sm text-base-content/60">
+            Diagnosis of the current console + proposed unified hierarchy view
+            (cookie-authenticated, read-only).
+          </p>
+        </div>
+      </header>
+
+      <!-- Diagnosis: how I got here -->
+      <section class="mb-6 demo-card p-5">
+        <h2 class="card-title mb-3">1. Diagnosis — current console experience</h2>
+        <p class="text-sm text-base-content/70 mb-3">
+          Navigated <code class="kbd kbd-sm">developers.line.biz/console/</code> via Chrome
+          DevTools. Without a live session it redirects to the LINE Business ID login (<code
+            class="kbd kbd-sm"
+            >account.line.biz/login</code
+          >). The signed-in experience is structured as follows (per official docs + project domain
+          model):
+        </p>
+        <ol class="list-decimal list-inside text-sm space-y-2 text-base-content/80">
+          <li>
+            <b>Providers</b> — top-level page. Each row is a provider (id, name, certified flag,
+            region). Click a provider to drill in.
+          </li>
+          <li>
+            <b>Provider page → Channels tab</b> — list of channels under the provider, tagged by
+            type: <span class="pill pill-messaging">Messaging API</span>
+            <span class="pill pill-login">LINE Login</span>
+            <span class="pill pill-type">LINE MINI App</span>
+            <span class="pill pill-type">Blockchain Service</span>
+          </li>
+          <li>
+            <b>Channel page → multiple tabs</b>:
+            <span class="badge badge-soft badge-sm">Basic settings</span>
+            <span class="badge badge-soft badge-sm">Messaging settings</span>
+            <span class="badge badge-soft badge-sm">LINE Login settings</span>
+            <span class="badge badge-soft badge-sm">LIFF</span>
+            — credentials, webhook, callback URLs, status spread across tabs.
+          </li>
+          <li>
+            <b>LIFF apps</b> — nested under the LIFF tab of a LINE Login channel: liffId, view {type
+            (compact/tall/full), url}, description.
+          </li>
+        </ol>
+        <div class="alert alert-warning mt-4 alert-soft">
+          <span class="text-sm">
+            <b>Pain point:</b> viewing one provider + one channel + one tab costs 3+ page
+            navigations and tab switches. Credentials and status are never visible at the same time.
+            There is no single at-a-glance view of the whole hierarchy.
+          </span>
+        </div>
+      </section>
+
+      <!-- 2. Proposed hierarchy mockup -->
+      <section class="mb-6" aria-labelledby="sec-hierarchy">
+        <h2 id="sec-hierarchy" class="text-lg font-bold mb-2 px-1">
+          2. Proposed — unified expandable hierarchy list
+        </h2>
+        <p class="text-sm text-base-content/70 mb-4 px-1">
+          One row per hierarchy level, behind a search + refresh toolbar. Expand a provider →
+          provider info + nested channels (each channel type is a distinct badge). Expand a channel
+          → channel info at a glance + nested LIFF apps. Secrets are masked by default with
+          clickable reveal &amp; copy. Status uses an icon alongside color, never color alone.
+          Reuses the look of this project's existing
+          <code class="kbd kbd-sm">line-account-hierarchy</code> component.
+          <b>Three variants below</b> — A dense card tree, B an IDE-style tree viewer, and C a
+          master–detail split. Headers are reordered so the
+          <b>type badge sits right after the name</b>, with the id and status trailing; the details
+          block no longer repeats the name.
+        </p>
+
+        <!-- Toolbar -->
+        <div class="demo-card p-3 mb-3 flex flex-wrap items-center gap-2" role="search">
+          <div class="join flex-1 min-w-[12rem]">
+            <span class="join-item btn btn-sm btn-ghost pointer-events-none">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
+            <input
+              type="search"
+              class="join-item input input-sm input-bordered flex-1"
+              placeholder="Filter by provider, channel id, or LIFF id…"
+              aria-label="Filter hierarchy"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-base-content/50" id="row-count" aria-live="polite"
+              >2 providers · 3 channels · 1 LIFF</span
+            >
+            <button class="btn btn-sm btn-outline" aria-label="Refresh from console">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path
+                  d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                ></path>
+              </svg>
+              Refresh
+            </button>
+            <button class="btn btn-sm" aria-label="Collapse all" title="Collapse all">
+              Collapse all
+            </button>
+          </div>
+        </div>
+
+        <!-- Variant A: dense list rows (header reordered: name → type → id, status right) -->
+        <div class="variant-panel">
+          <p class="variant-label">Variant A — Dense list rows (card tree)</p>
+          <div class="demo-card p-3 space-y-2" role="tree" aria-label="Hierarchy — dense list">
+            <!-- Provider (expanded) -->
+            <div class="node selected" role="treeitem" aria-expanded="true" aria-selected="true">
+              <button class="node-header w-full text-left" aria-controls="va-p1">
+                <svg
+                  class="chevron open"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span class="avatar av-provider" aria-hidden="true">B</span>
+                <div class="head-row">
+                  <span class="head-name">Beverage Manufacturer A</span>
+                  <span class="pill pill-type">Provider</span>
+                  <span class="head-sub">1234567890 · jp</span>
+                  <div class="head-pills"><span class="pill pill-type">3 channels</span></div>
+                </div>
+              </button>
+              <div id="va-p1" class="px-6 pb-4 space-y-3" style="border-top: 1px solid #f0f3f9">
+                <dl class="meta-grid mt-3">
+                  <div>
+                    <dt>Provider ID</dt>
+                    <dd>1234567890</dd>
+                  </div>
+                  <div>
+                    <dt>Region</dt>
+                    <dd>jp</dd>
+                  </div>
+                  <div>
+                    <dt>Certified</dt>
+                    <dd>No</dd>
+                  </div>
+                  <div>
+                    <dt>Created</dt>
+                    <dd>2026-06-01</dd>
+                  </div>
+                </dl>
+
+                <!-- Messaging channel (expanded) -->
+                <div
+                  class="node selected"
+                  role="treeitem"
+                  aria-expanded="true"
+                  aria-selected="true"
+                >
+                  <button class="node-header w-full text-left">
+                    <span class="w-4"></span>
+                    <span class="avatar av-messaging" aria-hidden="true">B</span>
+                    <div class="head-row">
+                      <span class="head-name">Brown Coffee</span>
+                      <span class="pill pill-messaging">Messaging API</span>
+                      <span class="head-sub">2001043291</span>
+                      <div class="head-pills">
+                        <span class="pill pill-active" title="Active"
+                          ><svg
+                            viewBox="0 0 24 24"
+                            width="10"
+                            height="10"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                          >
+                            <polyline points="20 6 9 17 4 12"></polyline></svg
+                          >Active</span
+                        >
+                      </div>
+                    </div>
+                  </button>
+                  <div class="px-6 pb-4" style="border-top: 1px solid #f0f3f9">
+                    <dl class="meta-grid mt-3">
+                      <div>
+                        <dt>Channel ID</dt>
+                        <dd>2001043291</dd>
+                      </div>
+                      <div>
+                        <dt>Bot Basic ID</dt>
+                        <dd>@brown-coffee</dd>
+                      </div>
+                      <div>
+                        <dt>Bot User ID</dt>
+                        <dd>U1234567890abcdef</dd>
+                      </div>
+                      <div>
+                        <dt>Webhook URL</dt>
+                        <dd>https://example.com/webhook</dd>
+                      </div>
+                      <div>
+                        <dt>Channel Secret</dt>
+                        <dd>
+                          <span aria-hidden="true">••••••••</span>
+                          <button class="btn btn-xs btn-ghost">Reveal</button
+                          ><button class="btn btn-xs btn-ghost">Copy</button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Access Token</dt>
+                        <dd>
+                          <span aria-hidden="true">••••••••</span>
+                          <button class="btn btn-xs btn-ghost">Reveal</button
+                          ><button class="btn btn-xs btn-ghost">Copy</button>
+                        </dd>
+                      </div>
+                    </dl>
+                    <a
+                      class="link link-hover text-xs"
+                      href="https://developers.line.biz/console/provider/1234567890/channel/2001043291"
+                      target="_blank"
+                      rel="noopener"
+                      >Open in console ↗</a
+                    >
+                  </div>
+                </div>
+
+                <!-- Login channel (expanded) -->
+                <div
+                  class="node selected"
+                  role="treeitem"
+                  aria-expanded="true"
+                  aria-selected="true"
+                >
+                  <button class="node-header w-full text-left">
+                    <svg
+                      class="chevron open"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                    <span class="avatar av-login" aria-hidden="true">B</span>
+                    <div class="head-row">
+                      <span class="head-name">Brown Coffee</span>
+                      <span class="pill pill-login">LINE Login</span>
+                      <span class="head-sub">2001043310</span>
+                      <div class="head-pills">
+                        <span class="pill pill-login" title="Published"
+                          ><svg
+                            viewBox="0 0 24 24"
+                            width="10"
+                            height="10"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                          >
+                            <polyline points="20 6 9 17 4 12"></polyline></svg
+                          >Published</span
+                        >
+                      </div>
+                    </div>
+                  </button>
+                  <div class="px-6 pb-4 space-y-2" style="border-top: 1px solid #f0f3f9">
+                    <dl class="meta-grid mt-3">
+                      <div>
+                        <dt>Channel ID</dt>
+                        <dd>2001043310</dd>
+                      </div>
+                      <div>
+                        <dt>Status</dt>
+                        <dd>Published</dd>
+                      </div>
+                      <div>
+                        <dt>Channel Secret</dt>
+                        <dd>
+                          <span aria-hidden="true">••••••••</span>
+                          <button class="btn btn-xs btn-ghost">Reveal</button
+                          ><button class="btn btn-xs btn-ghost">Copy</button>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>LIFF apps</dt>
+                        <dd>1</dd>
+                      </div>
+                      <div>
+                        <dt>Callback URL</dt>
+                        <dd>https://example.com/callback</dd>
+                      </div>
+                    </dl>
+                    <div class="node" role="treeitem" aria-expanded="false">
+                      <button class="node-header w-full text-left">
+                        <span class="w-4"></span>
+                        <span class="avatar av-liff" aria-hidden="true">L</span>
+                        <div class="head-row">
+                          <span class="head-name">2001043310-AbCdEf12</span>
+                          <span class="pill pill-liff">LIFF</span>
+                          <span class="pill pill-type">TALL</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Collapsed provider -->
+            <div class="node" role="treeitem" aria-expanded="false">
+              <button class="node-header w-full text-left">
+                <svg
+                  class="chevron"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span class="avatar av-provider" aria-hidden="true">C</span>
+                <div class="head-row">
+                  <span class="head-name">Cony Tea</span>
+                  <span class="pill pill-type">Provider</span>
+                  <span class="head-sub">9876543210</span>
+                  <div class="head-pills"><span class="pill pill-type">1 channel</span></div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variant B: IDE tree viewer — 3 stylistic themes -->
+        <div class="variant-panel mt-4">
+          <p class="variant-label">Variant B — IDE tree viewer · three stylistic themes</p>
+
+          <!-- B1 modern -->
+          <div class="demo-card p-3 tree-viewer tv-modern mb-3">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="pill pill-active">B1 · Modern</span
+              ><span class="text-xs text-base-content/50"
+                >sleek, color-coded chips, inset accent on selected</span
+              >
+            </div>
+            <div class="tv-row sel">
+              <span class="tv-toggle">▾</span><span>📁</span
+              ><span class="tv-name">Beverage Manufacturer A</span
+              ><span class="type-chip" style="background: #ecfdf5; color: #047a36">Provider</span
+              ><span class="tv-id">1234567890 · jp</span
+              ><span
+                class="tv-status"
+                style="background: #f1f5f9; color: #475569; border-radius: 0.4rem"
+                >3 channels</span
+              >
+            </div>
+            <div class="tv-children">
+              <div class="tv-fields">
+                <span class="k">providerId:</span> <span class="v">1234567890</span> ·
+                <span class="k">region:</span> <span class="v">jp</span> ·
+                <span class="k">certified:</span> <span class="v">No</span> ·
+                <span class="k">created:</span> <span class="v">2026-06-01</span>
+              </div>
+              <div class="tv-row sel">
+                <span class="tv-toggle">▾</span><span>💬</span
+                ><span class="tv-name">Brown Coffee</span
+                ><span class="type-chip" style="background: #eff6ff; color: #1d4ed8"
+                  >Messaging API</span
+                ><span class="tv-id">2001043291</span
+                ><span class="tv-status" style="background: #dcfce7; color: #166534">● Active</span>
+              </div>
+              <div class="tv-children">
+                <div class="tv-fields">
+                  <div>
+                    <span class="k">botBasicId:</span> <span class="v">@brown-coffee</span> ·
+                    <span class="k">webhookUrl:</span>
+                    <span class="v">https://example.com/webhook</span>
+                  </div>
+                  <div>
+                    <span class="k">channelSecret:</span>
+                    <span class="secret">••••••••</span> [reveal] [copy] ·
+                    <span class="k">accessToken:</span>
+                    <span class="secret">••••••••</span> [reveal] [copy]
+                  </div>
+                </div>
+              </div>
+              <div class="tv-row">
+                <span class="tv-toggle">▾</span><span>🔐</span
+                ><span class="tv-name">Brown Coffee</span
+                ><span class="type-chip" style="background: #f5f3ff; color: #5b21b6"
+                  >LINE Login</span
+                ><span class="tv-id">2001043310</span
+                ><span class="tv-status" style="background: #ede9fe; color: #5b21b6"
+                  >● Published</span
+                >
+              </div>
+              <div class="tv-children">
+                <div class="tv-fields">
+                  <span class="k">channelSecret:</span>
+                  <span class="secret">••••••••</span> [reveal] ·
+                  <span class="k">callbackUrl:</span>
+                  <span class="v">https://example.com/callback</span> ·
+                  <span class="k">liffApps:</span> <span class="v">1</span>
+                </div>
+                <div class="tv-row">
+                  <span class="tv-toggle">▸</span><span>📱</span
+                  ><span class="tv-name">2001043310-AbCdEf12</span
+                  ><span class="type-chip" style="background: #fffbeb; color: #b45309">LIFF</span
+                  ><span class="tv-id">TALL</span>
+                </div>
+              </div>
+            </div>
+            <div class="tv-row">
+              <span class="tv-toggle">▸</span><span>📁</span><span class="tv-name">Cony Tea</span
+              ><span class="type-chip" style="background: #ecfdf5; color: #047a36">Provider</span
+              ><span class="tv-id">9876543210</span
+              ><span
+                class="tv-status"
+                style="background: #f1f5f9; color: #475569; border-radius: 0.4rem"
+                >1 channel</span
+              >
+            </div>
+          </div>
+
+          <!-- B2 simple -->
+          <div class="demo-card p-3 tree-viewer tv-simple mb-3" style="border-color: #e5e7eb">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="pill pill-type">B2 · Simple</span
+              ><span class="text-xs text-base-content/50"
+                >monochrome, square connectors, minimal</span
+              >
+            </div>
+            <div class="tv-row sel">
+              <span class="tv-toggle">▸</span><span class="mk">▸</span>
+              <span class="tv-name">Beverage Manufacturer A</span
+              ><span class="tv-id">1234567890</span
+              ><span class="tv-status mk" style="background: none; color: #9ca3af">3ch</span>
+            </div>
+            <div class="tv-children">
+              <div class="tv-fields">
+                id=1234567890 · region=jp · certified=false · created=2026-06-01
+              </div>
+              <div class="tv-row sel">
+                <span class="tv-toggle">▸</span><span class="mk">└</span>
+                <span class="tv-name">Brown Coffee</span
+                ><span class="tv-type" style="background: #f1f5f9; color: #64748b">MSG</span
+                ><span class="tv-id">2001043291</span
+                ><span class="tv-status mk" style="background: none; color: #9ca3af">active</span>
+              </div>
+              <div class="tv-children">
+                <div class="tv-fields">
+                  botBasicId=@brown-coffee · webhookUrl=https://example.com/webhook
+                </div>
+                <div class="tv-fields">
+                  channelSecret=•••••••• [reveal] · accessToken=•••••••• [reveal]
+                </div>
+              </div>
+              <div class="tv-row">
+                <span class="tv-toggle">▸</span><span class="mk">└</span>
+                <span class="tv-name">Brown Coffee</span
+                ><span class="tv-type" style="background: #f1f5f9; color: #64748b">LGN</span
+                ><span class="tv-id">2001043310</span
+                ><span class="tv-status mk" style="background: none; color: #9ca3af"
+                  >published</span
+                >
+              </div>
+              <div class="tv-children">
+                <div class="tv-fields">
+                  channelSecret=•••••••• [reveal] · callbackUrl=https://example.com/callback ·
+                  liffApps=1
+                </div>
+                <div class="tv-row">
+                  <span class="mk">└</span> <span class="tv-name">2001043310-AbCdEf12</span
+                  ><span class="tv-type" style="background: #f1f5f9; color: #64748b">LIFF</span
+                  ><span class="tv-id">tall</span>
+                </div>
+              </div>
+            </div>
+            <div class="tv-row">
+              <span class="tv-toggle">▸</span><span class="mk">▸</span>
+              <span class="tv-name">Cony Tea</span><span class="tv-id">9876543210</span
+              ><span class="tv-status mk" style="background: none; color: #9ca3af">1ch</span>
+            </div>
+          </div>
+
+          <!-- B3 intuitive -->
+          <div class="demo-card p-3 tree-viewer tv-intuitive mb-3">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="pill pill-liff">B3 · Intuitive</span
+              ><span class="text-xs text-base-content/50"
+                >icon-coded, friendly, bigger hit targets, panelled fields</span
+              >
+            </div>
+            <div class="tv-row sel">
+              <span class="tv-toggle">▾</span><span class="tv-node ic-prv">B</span
+              ><span class="tv-name">Beverage Manufacturer A</span
+              ><span class="badge-s" style="background: #ecfdf5; color: #047a36">Provider</span
+              ><span class="tv-id">jp · 3 channels</span>
+            </div>
+            <div class="tv-children">
+              <div class="tv-fields">
+                Provider ID <b>1234567890</b> · Region <b>jp</b> · Certified <b>No</b> · Created
+                <b>2026-06-01</b>
+              </div>
+              <div class="tv-row sel">
+                <span class="tv-toggle">▾</span><span class="tv-node ic-msg">M</span
+                ><span class="tv-name">Brown Coffee</span
+                ><span class="badge-s" style="background: #eff6ff; color: #1d4ed8"
+                  >Messaging API</span
+                ><span class="tv-id">2001043291</span
+                ><span
+                  class="badge-s"
+                  style="background: #dcfce7; color: #166534; margin-left: auto"
+                  >● Active</span
+                >
+              </div>
+              <div class="tv-children">
+                <div class="tv-fields">
+                  Bot @<b>brown-coffee</b> · Webhook <b>https://example.com/webhook</b><br />Secret
+                  <span class="secret">••••••••</span> [Reveal][Copy] · Token
+                  <span class="secret">••••••••</span> [Reveal][Copy]
+                </div>
+              </div>
+              <div class="tv-row">
+                <span class="tv-toggle">▾</span><span class="tv-node ic-lgn">L</span
+                ><span class="tv-name">Brown Coffee</span
+                ><span class="badge-s" style="background: #f5f3ff; color: #5b21b6">LINE Login</span
+                ><span class="tv-id">2001043310</span
+                ><span
+                  class="badge-s"
+                  style="background: #ede9fe; color: #5b21b6; margin-left: auto"
+                  >● Published</span
+                >
+              </div>
+              <div class="tv-children">
+                <div class="tv-fields">
+                  Secret <span class="secret">••••••••</span> [Reveal] · Callback
+                  <b>https://example.com/callback</b> · LIFF apps <b>1</b>
+                </div>
+                <div class="tv-row">
+                  <span class="tv-toggle">▸</span><span class="tv-node ic-liff">L</span
+                  ><span class="tv-name">2001043310-AbCdEf12</span
+                  ><span class="badge-s" style="background: #fffbeb; color: #b45309">LIFF</span
+                  ><span class="badge-s" style="background: #f1f5f9; color: #64748b">Tall</span>
+                </div>
+              </div>
+            </div>
+            <div class="tv-row">
+              <span class="tv-toggle">▸</span><span class="tv-node ic-prv">C</span
+              ><span class="tv-name">Cony Tea</span
+              ><span class="badge-s" style="background: #ecfdf5; color: #047a36">Provider</span
+              ><span class="tv-id">9876543210 · 1 channel</span>
+            </div>
+          </div>
+        </div>
+        <!-- Variant C: master-detail split -->
+        <div class="variant-panel mt-4">
+          <p class="variant-label">Variant C — Master–detail split (left list · right details)</p>
+          <div class="demo-card p-3">
+            <div class="split">
+              <!-- left list -->
+              <div class="split-list space-y-1" role="tree" aria-label="Hierarchy — split list">
+                <div class="split-item">
+                  <svg
+                    class="chevron open"
+                    viewBox="0 0 24 24"
+                    width="12"
+                    height="12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                  <span
+                    class="avatar av-provider"
+                    style="width: 1.25rem; height: 1.25rem; font-size: 0.6rem"
+                    aria-hidden="true"
+                    >B</span
+                  >
+                  <div class="flex flex-col">
+                    <span class="text-sm font-semibold">Beverage Manufacturer A</span>
+                    <span class="text-[0.65rem] text-base-content/50">Provider · 3 channels</span>
+                  </div>
+                </div>
+                <div class="split-item" style="margin-left: 1rem">
+                  <span class="w-3"></span>
+                  <span
+                    class="avatar av-messaging"
+                    style="width: 1.25rem; height: 1.25rem; font-size: 0.6rem"
+                    aria-hidden="true"
+                    >B</span
+                  >
+                  <div class="flex flex-col">
+                    <span class="text-sm">Brown Coffee</span>
+                    <span class="text-[0.65rem] text-base-content/50"
+                      ><span
+                        class="pill pill-messaging"
+                        style="font-size: 0.55rem; padding: 0 0.3rem"
+                        >Msg</span
+                      >
+                      2001043291</span
+                    >
+                  </div>
+                </div>
+                <div class="split-item sel" style="margin-left: 1rem">
+                  <span class="w-3"></span>
+                  <span
+                    class="avatar av-login"
+                    style="width: 1.25rem; height: 1.25rem; font-size: 0.6rem"
+                    aria-hidden="true"
+                    >B</span
+                  >
+                  <div class="flex flex-col">
+                    <span class="text-sm font-semibold">Brown Coffee</span>
+                    <span class="text-[0.65rem] text-base-content/50"
+                      ><span class="pill pill-login" style="font-size: 0.55rem; padding: 0 0.3rem"
+                        >Login</span
+                      >
+                      2001043310</span
+                    >
+                  </div>
+                </div>
+                <div class="split-item">
+                  <svg
+                    class="chevron"
+                    viewBox="0 0 24 24"
+                    width="12"
+                    height="12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                  <span
+                    class="avatar av-provider"
+                    style="width: 1.25rem; height: 1.25rem; font-size: 0.6rem"
+                    aria-hidden="true"
+                    >C</span
+                  >
+                  <div class="flex flex-col">
+                    <span class="text-sm">Cony Tea</span>
+                    <span class="text-[0.65rem] text-base-content/50">Provider · 1 channel</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- right detail -->
+              <div class="detail-panel">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="avatar av-login" aria-hidden="true">B</span>
+                  <div>
+                    <h4 class="text-base font-bold leading-tight">Brown Coffee</h4>
+                    <span class="text-xs text-base-content/60">LINE Login · 2001043310</span>
+                  </div>
+                  <span class="pill pill-login ml-auto">Published</span>
+                </div>
+                <dl class="meta-grid">
+                  <div>
+                    <dt>Channel ID</dt>
+                    <dd>2001043310</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>Published</dd>
+                  </div>
+                  <div>
+                    <dt>Channel Secret</dt>
+                    <dd>
+                      <span aria-hidden="true">••••••••</span>
+                      <button class="btn btn-xs btn-ghost">Reveal</button
+                      ><button class="btn btn-xs btn-ghost">Copy</button>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Callback URL</dt>
+                    <dd>https://example.com/callback</dd>
+                  </div>
+                </dl>
+                <h5 class="text-xs font-semibold mt-3 mb-1 text-base-content/60">LIFF apps</h5>
+                <div class="node" role="treeitem">
+                  <div class="node-header">
+                    <span class="w-4"></span>
+                    <span class="avatar av-liff" aria-hidden="true">L</span>
+                    <div class="head-row">
+                      <span class="head-name">2001043310-AbCdEf12</span>
+                      <span class="pill pill-liff">LIFF</span>
+                      <span class="pill pill-type">TALL</span>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  class="link link-hover text-xs mt-3 inline-block"
+                  href="https://developers.line.biz/console/provider/1234567890/channel/2001043310"
+                  target="_blank"
+                  rel="noopener"
+                  >Open in console ↗</a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- States -->
+        <h3 class="text-sm font-semibold mt-5 mb-2 px-1 text-base-content/60">States</h3>
+        <div class="grid md:grid-cols-3 gap-3">
+          <!-- Loading -->
+          <div class="demo-card p-3" aria-busy="true" aria-label="Loading hierarchy">
+            <div class="space-y-2">
+              <div class="h-8 bg-base-200 rounded animate-pulse"></div>
+              <div class="h-8 bg-base-200 rounded animate-pulse"></div>
+              <div class="h-8 bg-base-200 rounded animate-pulse w-3/4"></div>
+            </div>
+            <p class="text-xs text-base-content/50 mt-2">
+              Loading skeleton (no spinners for content).
+            </p>
+          </div>
+          <!-- Empty -->
+          <div class="demo-card p-4 text-center" role="status">
+            <svg
+              viewBox="0 0 24 24"
+              width="28"
+              height="28"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              class="mx-auto text-base-content/40"
+              aria-hidden="true"
+            >
+              <path d="M3 7h18M3 12h18M3 17h18"></path>
+            </svg>
+            <h4 class="text-sm font-semibold mt-1">No providers</h4>
+            <p class="text-xs text-base-content/50 mt-0.5">
+              Create a provider in the console, then refresh.
+            </p>
+            <a
+              class="btn btn-xs btn-outline mt-2"
+              href="https://developers.line.biz/console/"
+              target="_blank"
+              rel="noopener"
+              >Open the console</a
+            >
+          </div>
+          <!-- Error -->
+          <div class="demo-card p-4" role="alert">
+            <div class="flex items-center gap-2 text-error">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span class="text-sm font-semibold">Couldn't reach the console</span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1">
+              Check the auth cookie is still valid, then Retry.
+            </p>
+            <button class="btn btn-xs btn-outline btn-error mt-2">Retry</button>
+          </div>
+        </div>
+
+        <!-- Design system note -->
+        <div class="alert alert-info alert-soft mt-4 text-sm">
+          <span
+            >Design system: tokens mirror this project's demo —
+            <code class="kbd kbd-sm">--line-account-primary-color: #10b981</code>, slate surfaces,
+            custom CSS variables. Status conveys meaning with icon + label + color, never color
+            alone. Tree rows are real <code class="kbd kbd-sm">&lt;button&gt;</code> elements with
+            <code class="kbd kbd-sm">aria-expanded</code> /
+            <code class="kbd kbd-sm">aria-selected</code> for keyboard + screen-reader users. The
+            dense meta-grid collapses to 2 columns on narrow widths.</span
+          >
+        </div>
+      </section>
+      <!-- 3. Data model + cookie approach -->
+      <section class="mb-6 demo-card p-5">
+        <h2 class="card-title mb-3">3. Data model & cookie approach</h2>
+        <div class="grid md:grid-cols-2 gap-5">
+          <div>
+            <h3 class="font-semibold mb-2 text-sm">Hierarchy types</h3>
+            <ul class="text-sm space-y-1 text-base-content/80 list-disc list-inside">
+              <li><b>ConsoleProvider</b> — id, name, region, certified, createdAt</li>
+              <li><b>ConsoleChannel</b> — channelId, type, name, status + type-specific fields</li>
+              <li><b>ConsoleLiffApp</b> — liffId, view{type,url}, description</li>
+            </ul>
+            <div class="alert alert-info mt-3 alert-soft">
+              <span class="text-sm">
+                A single
+                <code class="kbd kbd-sm"
+                  >ChannelType = messaging | login | miniApp | blockchain</code
+                >
+                discriminated union tags each channel row — drives the avatar color and which nested
+                info block renders.
+              </span>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-semibold mb-2 text-sm">Cookie-based adapter</h3>
+            <p class="text-sm text-base-content/70 mb-2">
+              A <code class="kbd kbd-sm">LineConsoleAdapter</code> (read-only) injected with a
+              developer-console <code class="kbd kbd-sm">cookie</code> header. Default endpoints hit
+              <code class="kbd kbd-sm">developers.line.biz</code>; the
+              <code class="kbd kbd-sm">fetch</code> and base URL are overridable so a same-origin
+              proxy can sidestep CORS.
+            </p>
+            <ul class="text-sm space-y-1 text-base-content/80 list-disc list-inside">
+              <li><code>listProviders()</code></li>
+              <li><code>listChannels(providerId)</code></li>
+              <li><code>getChannel(channelId)</code></li>
+              <li><code>listLiffApps(channelId)</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Risks & open questions -->
+      <section class="mb-6 demo-card p-5">
+        <h2 class="card-title mb-3">4. Risks & open questions</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="alert alert-success alert-soft text-sm">
+            <div>
+              <b>Recommended deployment: Manifest V3 browser extension.</b>
+              A dedicated standalone page on a non-LINE domain is blocked by cookie scope (httpOnly
+              + SameSite on <code class="kbd kbd-sm">.line.biz</code>) and missing CORS headers. A
+              browser extension with <code class="kbd kbd-sm">host_permissions</code> for
+              <code class="kbd kbd-sm">https://developers.line.biz/*</code> solves both: its
+              background/content fetch is treated as first-party — the existing session cookie is
+              attached automatically and CORS is not enforced.
+              <div class="mt-1">
+                <span class="badge badge-sm badge-success">Extension (MV3)</span>
+                primary target — pass the extension's own <code class="kbd kbd-sm">fetch</code>
+                into the adapter, baseUrl stays the default.
+                <span class="badge badge-sm badge-soft ms-1">Backend proxy</span>
+                fallback for non-extension hosts — adapter points at a proxy
+                <code class="kbd kbd-sm">baseUrl</code>.
+              </div>
+              <div class="mt-1 opacity-80">
+                The web components here are still plain custom elements; an extension just
+                <i>hosts</i> them in a side panel / popup and injects the cookie-authenticated
+                adapter. They remain usable in any page that supplies an adapter.
+              </div>
+            </div>
+          </div>
+          <div class="alert alert-warning alert-soft text-sm">
+            <div>
+              <b>Endpoint stability.</b> The internal console REST API is undocumented and may
+              change. Without a live session I modeled endpoints from the documented console
+              structure; exact paths need to be confirmed against a real signed-in network capture
+              and wired via adapter config.
+            </div>
+          </div>
+          <div class="alert alert-info alert-soft text-sm">
+            <div>
+              <b>Read-only scope.</b> This wrapper focuses on at-a-glance viewing (list + reveal
+              secrets), matching your ask. Create/edit/delete stay in the real console to avoid
+              duplicating mutating, undocumented endpoints.
+            </div>
+          </div>
+          <div class="alert alert-info alert-soft text-sm">
+            <div>
+              <b>Q: secret reveal &amp; copy?</b> Should secrets show on expand (masked by default,
+              click-to-reveal + copy), and should LIFF view-type be editable inline or link out to
+              the console? Default plan: reveal-only, with deep-links back to the console page for
+              edits.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. Implementation plan -->
+      <section class="demo-card p-5">
+        <h2 class="card-title mb-3">5. Implementation location</h2>
+        <p class="text-sm text-base-content/70">
+          To live in <code class="kbd kbd-sm">src/web/developers-console/</code>:
+        </p>
+        <ul class="text-sm space-y-1 text-base-content/80 list-disc list-inside mt-2">
+          <li><code>types.ts</code> — console provider / channel / LIFF view types</li>
+          <li>
+            <code>console-adapter.ts</code> — <code>createLineConsoleAdapter</code> (pluggable fetch
+            + baseUrl; cookie forwarded in extension context)
+          </li>
+          <li><code>line-developers-console.ts</code> — the expandable hierarchy web component</li>
+          <li><code>define.ts</code> + <code>index.ts</code> — registration & public exports</li>
+        </ul>
+        <div class="alert alert-success alert-soft mt-4 text-sm">
+          <span
+            >Matches the existing <code class="kbd kbd-sm">line-account-*</code> Lit + adapter
+            conventions in <code class="kbd kbd-sm">src/web/</code>, reusing the same CSS variables
+            and avatar/pill styling.</span
+          >
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
