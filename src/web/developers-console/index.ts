@@ -10,6 +10,7 @@
  */
 export * from "./define.ts";
 export { LineDevelopersConsole } from "./line-developers-console.ts";
+export type { LineDevelopersConsoleVariant } from "./line-developers-console.ts";
 export { defaultLineDevelopersConsoleMessages } from "./messages.ts";
 export type { LineDevelopersConsoleMessages } from "./messages.ts";
 export { createLineConsoleAdapter, createInMemoryConsoleAdapter } from "./console-adapter.ts";

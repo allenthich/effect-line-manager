@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>Effect LINE Manager — Developers Console Wrapper Demo</title>
+    <title>Effect LINE Manager — Developers Console Wrapper (Tree variant)</title>
     <style>
       :root {
         font-family:
@@ -58,6 +58,7 @@
         --line-account-radius: 1.25rem;
         --line-account-button-radius: 0.75rem;
         --line-account-fieldset-bg: #f8fafc;
+        --line-account-selected-bg: #ecfdf5;
         display: block;
         width: min(100% - 2rem, 72rem);
         margin: 0 auto;
@@ -68,15 +69,21 @@
     <header class="demo-header">
       <span class="demo-mark" aria-hidden="true">L</span>
       <div>
-        <p style="margin: 0"><strong>LINE Developers Console Wrapper</strong></p>
+        <p style="margin: 0"><strong>LINE Developers Console Wrapper — Tree variant</strong></p>
         <p style="margin: 0; color: #64748b; font-size: 0.8125rem">
-          Cookie-authenticated, read-only hierarchy viewer
+          IDE-style tree viewer with guide-line connectors
         </p>
+      </div>
+      <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center">
+        <a href="/index.html" style="font-size: 0.8rem">← List variant</a>
+        <a href="/line-account-management.html" style="font-size: 0.8rem"
+          >Line Account Management demo →</a
+        >
       </div>
     </header>
     <main>
       <line-developers-console id="developers-console"></line-developers-console>
     </main>
-    <script type="module" src="/developers-console.ts"></script>
+    <script type="module" src="/developers-console-tree.ts"></script>
   </body>
 </html>

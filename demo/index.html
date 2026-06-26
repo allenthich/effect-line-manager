@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>Effect LINE Manager Demo</title>
+    <title>Effect LINE Manager — Developers Console Wrapper (List variant)</title>
     <style>
       :root {
         font-family:
@@ -17,40 +17,24 @@
           sans-serif;
         color: #0f172a;
         background: #f8fafc;
-        font-synthesis: none;
       }
-
       * {
         box-sizing: border-box;
       }
-
       body {
-        min-width: 20rem;
         min-height: 100vh;
         margin: 0;
         background:
           radial-gradient(circle at 12% 0%, rgb(16 185 129 / 12%), transparent 30rem), #f1f5f9;
-        transition:
-          background-color 0.3s ease,
-          color 0.3s ease;
       }
-
       .demo-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
+        gap: 0.75rem;
         width: min(100% - 2rem, 72rem);
         margin: 0 auto;
         padding: 2rem 0 1rem 0;
       }
-
-      .demo-brand {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-
       .demo-mark {
         display: grid;
         width: 2.5rem;
@@ -60,266 +44,45 @@
         background: #10b981;
         color: white;
         font-weight: 800;
-        box-shadow: 0 0.5rem 1.25rem rgb(16 185 129 / 22%);
       }
-
-      .demo-title,
-      .demo-subtitle,
-      .demo-status {
-        margin: 0;
-      }
-
-      .demo-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-      }
-
-      .demo-subtitle,
-      .demo-status {
-        color: #64748b;
-        font-size: 0.8125rem;
-      }
-
-      .header-right {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .theme-toggle {
-        min-height: 2.25rem;
-        min-width: 2.25rem;
-        padding: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.8);
-        border: 1px solid #cbd5e1;
-        color: #475569;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-
-      .theme-toggle:hover {
-        background: #ffffff;
-        color: #10b981;
-        border-color: #10b981;
-        transform: rotate(15deg);
-      }
-
-      .theme-toggle svg {
-        width: 1.25rem;
-        height: 1.25rem;
-      }
-
-      body.dark-mode .sun-icon {
-        display: block;
-      }
-      body.dark-mode .moon-icon {
-        display: none;
-      }
-      body:not(.dark-mode) .sun-icon {
-        display: none;
-      }
-      body:not(.dark-mode) .moon-icon {
-        display: block;
-      }
-
-      .demo-status {
-        max-width: 28rem;
-        color: #94a3b8;
-        font-size: 0.75rem;
-        font-weight: 400;
-        padding: 0;
-        background: none;
-        border: none;
-        text-align: right;
-        box-shadow: none;
-      }
-
       main {
         padding-bottom: 4rem;
       }
-
-      line-account-management {
-        --line-account-page-background: rgba(255, 255, 255, 0.4);
+      line-developers-console {
         --line-account-surface-background: #ffffff;
         --line-account-border-color: #cbd5e1;
         --line-account-text-color: #0f172a;
         --line-account-muted-color: #64748b;
+        --line-account-muted-background: #f1f5f9;
         --line-account-primary-color: #10b981;
-        --line-account-primary-hover: #059669;
-        --line-account-selected-bg: #ecfdf5;
-        --line-account-focus-color: rgba(16, 185, 129, 0.15);
         --line-account-radius: 1.25rem;
         --line-account-button-radius: 0.75rem;
-        --line-account-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-        --line-account-shadow-hover:
-          0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
         --line-account-fieldset-bg: #f8fafc;
-        --line-account-backdrop-color: rgba(15, 23, 42, 0.3);
-
         display: block;
         width: min(100% - 2rem, 72rem);
         margin: 0 auto;
-        overflow: hidden;
-        border: 1px solid rgba(203, 213, 225, 0.6);
-        border-radius: 1.5rem;
-        box-shadow: 0 25px 50px -12px rgb(15 23 42 / 8%);
-        backdrop-filter: blur(8px);
-        transition:
-          border-color 0.3s ease,
-          box-shadow 0.3s ease;
-      }
-
-      /* Dark Mode overrides */
-      body.dark-mode {
-        background:
-          radial-gradient(circle at 12% 0%, rgb(16 185 129 / 12%), transparent 30rem), #0f172a;
-        color: #f8fafc;
-      }
-
-      body.dark-mode .demo-brand p {
-        color: #f8fafc;
-      }
-
-      body.dark-mode .demo-subtitle,
-      body.dark-mode .demo-status {
-        color: #94a3b8;
-      }
-
-      body.dark-mode .demo-status {
-        color: #64748b;
-      }
-
-      body.dark-mode .theme-toggle {
-        background: rgba(30, 41, 59, 0.8);
-        border-color: #334155;
-        color: #94a3b8;
-      }
-
-      body.dark-mode .theme-toggle:hover {
-        background: #1e293b;
-        color: #34d399;
-        border-color: #34d399;
-      }
-
-      body.dark-mode line-account-management {
-        --line-account-page-background: rgba(30, 41, 59, 0.5);
-        --line-account-surface-background: #1e293b;
-        --line-account-border-color: #334155;
-        --line-account-text-color: #f8fafc;
-        --line-account-muted-color: #94a3b8;
-        --line-account-muted-background: #334155;
-        --line-account-primary-color: #10b981;
-        --line-account-primary-hover: #34d399;
-        --line-account-selected-bg: rgba(16, 185, 129, 0.1);
-        --line-account-focus-color: rgba(16, 185, 129, 0.4);
-        --line-account-radius: 1.25rem;
-        --line-account-button-radius: 0.75rem;
-        --line-account-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-        --line-account-shadow-hover: 0 20px 25px -5px rgb(0 0 0 / 0.5);
-        --line-account-fieldset-bg: #0f172a;
-        --line-account-backdrop-color: rgba(0, 0, 0, 0.7);
-        --line-account-badge-configured-bg: rgba(16, 185, 129, 0.15);
-        --line-account-badge-configured-color: #34d399;
-        --line-account-badge-configured-border: rgba(16, 185, 129, 0.3);
-        --line-account-badge-unconfigured-bg: #334155;
-        --line-account-badge-unconfigured-color: #94a3b8;
-        --line-account-badge-unconfigured-border: #475569;
-        --line-account-dialog-footer-bg: #0f172a;
-        --line-account-switch-off-bg: #334155;
-        --line-account-danger-background: rgba(239, 68, 68, 0.15);
-        --line-account-danger-color: #f87171;
-
-        border-color: rgba(51, 65, 85, 0.6);
-        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 40%);
-      }
-
-      @media (max-width: 48rem) {
-        .demo-header {
-          align-items: flex-start;
-          flex-direction: column;
-          gap: 1.25rem;
-        }
-
-        .header-right {
-          width: 100%;
-          justify-content: space-between;
-        }
-
-        .demo-status {
-          text-align: left;
-        }
       }
     </style>
   </head>
   <body>
     <header class="demo-header">
-      <div class="demo-brand">
-        <span class="demo-mark" aria-hidden="true">L</span>
-        <div>
-          <p class="demo-title"><strong>Effect LINE Manager</strong></p>
-        </div>
+      <span class="demo-mark" aria-hidden="true">L</span>
+      <div>
+        <p style="margin: 0"><strong>LINE Developers Console Wrapper</strong></p>
+        <p style="margin: 0; color: #64748b; font-size: 0.8125rem">
+          Cookie-authenticated, read-only hierarchy viewer
+        </p>
       </div>
-      <div class="header-right">
-        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
-          <svg
-            class="sun-icon"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-          </svg>
-          <svg
-            class="moon-icon"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-        </button>
-        <p
-          class="demo-status"
-          id="demo-status"
-          role="status"
-          aria-live="polite"
-          style="
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-          "
-        ></p>
+      <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center">
+        <a href="/developers-console-tree.html" style="font-size: 0.8rem">Tree viewer variant →</a>
+        <a href="/line-account-management.html" style="font-size: 0.8rem"
+          >Line Account Management demo →</a
+        >
       </div>
     </header>
     <main>
-      <line-account-management id="line-accounts"></line-account-management>
+      <line-developers-console id="developers-console"></line-developers-console>
     </main>
-    <script type="module" src="/main.ts"></script>
+    <script type="module" src="/developers-console.ts"></script>
   </body>
 </html>

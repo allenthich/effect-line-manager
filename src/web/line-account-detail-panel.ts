@@ -482,11 +482,9 @@ export class LineAccountDetailPanel extends LitElement {
     return html`<div class="details-row">
       <span class="details-label">${label}</span>
       <div class="details-value-wrapper">
-        ${
-          visible
-            ? html`<span class="credential-value">${value}</span>`
-            : html`<span class="credential-obscured">${"\u2022".repeat(12)}</span>`
-        }
+        ${visible
+          ? html`<span class="credential-value">${value}</span>`
+          : html`<span class="credential-obscured">${"\u2022".repeat(12)}</span>`}
         <button class="reveal-btn" type="button" @click=${() => this.#toggleCredential(key)}>
           ${visible ? "Hide" : "Show"}
         </button>
@@ -558,10 +556,9 @@ export class LineAccountDetailPanel extends LitElement {
     const providerChannels = this.#allChannels.filter((c) => c.providerId === provider.id);
 
     return html`
-      ${
-        this.inline
-          ? ""
-          : html`<div class="details-header">
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
             <div class="details-identity">
               <span class="details-initial details-initial-provider">${initial}</span>
               <div class="details-title-group">
@@ -569,8 +566,7 @@ export class LineAccountDetailPanel extends LitElement {
                 <div class="details-basic-id">Provider ID: ${provider.id}</div>
               </div>
             </div>
-          </div>`
-      }
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -591,10 +587,9 @@ export class LineAccountDetailPanel extends LitElement {
             style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
           >
             <span>Channels</span>
-            ${
-              this.readonly
-                ? ""
-                : html`<div style="display: flex; gap: 0.5rem;">
+            ${this.readonly
+              ? ""
+              : html`<div style="display: flex; gap: 0.5rem;">
                   <button
                     class="primary"
                     type="button"
@@ -611,17 +606,15 @@ export class LineAccountDetailPanel extends LitElement {
                   >
                     + Login Channel
                   </button>
-                </div>`
-            }
+                </div>`}
           </div>
-          ${
-            providerChannels.length === 0
-              ? html`<p
+          ${providerChannels.length === 0
+            ? html`<p
                 style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
               >
                 No LINE Channels found under this provider.
               </p>`
-              : html`
+            : html`
                 <table
                   class="details-table"
                   style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
@@ -633,15 +626,13 @@ export class LineAccountDetailPanel extends LitElement {
                       <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Name</th>
                       <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Type</th>
                       <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Status</th>
-                      ${
-                        this.readonly
-                          ? ""
-                          : html`<th
+                      ${this.readonly
+                        ? ""
+                        : html`<th
                             style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
                           >
                             Actions
-                          </th>`
-                      }
+                          </th>`}
                     </tr>
                   </thead>
                   <tbody>
@@ -660,27 +651,22 @@ export class LineAccountDetailPanel extends LitElement {
                             ${c.channelType === "messaging" ? "Messaging API" : "LINE Login"}
                           </td>
                           <td style="padding: 0.5rem 0.25rem;">
-                            ${
-                              c.channelType === "messaging"
-                                ? html`<span
-                                  class="badge ${
-                                    (c as LineMessagingChannelView).isActive
-                                      ? "badge-status"
-                                      : "badge-status-inactive"
-                                  }"
+                            ${c.channelType === "messaging"
+                              ? html`<span
+                                  class="badge ${(c as LineMessagingChannelView).isActive
+                                    ? "badge-status"
+                                    : "badge-status-inactive"}"
                                   style="font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 9999px; font-weight: 600;"
                                 >
-                                  ${
-                                    (c as LineMessagingChannelView).isActive ? "Active" : "Inactive"
-                                  }
+                                  ${(c as LineMessagingChannelView).isActive
+                                    ? "Active"
+                                    : "Inactive"}
                                 </span>`
-                                : "-"
-                            }
+                              : "-"}
                           </td>
-                          ${
-                            this.readonly
-                              ? ""
-                              : html`<td
+                          ${this.readonly
+                            ? ""
+                            : html`<td
                                 style="padding: 0.5rem 0.25rem; text-align: right;"
                                 @click=${(e: Event) => e.stopPropagation()}
                               >
@@ -697,22 +683,19 @@ export class LineAccountDetailPanel extends LitElement {
                                 >
                                   Delete
                                 </button>
-                              </td>`
-                          }
+                              </td>`}
                         </tr>
                       `,
                     )}
                   </tbody>
                 </table>
-              `
-          }
+              `}
         </div>
       </div>
 
-      ${
-        this.readonly
-          ? ""
-          : html`<div class="details-actions">
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
             <button
               class="action-btn"
               type="button"
@@ -729,8 +712,7 @@ export class LineAccountDetailPanel extends LitElement {
             >
               Delete
             </button>
-          </div>`
-      }
+          </div>`}
     `;
   }
 
@@ -739,22 +721,19 @@ export class LineAccountDetailPanel extends LitElement {
     const initial = channel.name.trim().charAt(0).toUpperCase();
 
     return html`
-      ${
-        this.inline
-          ? ""
-          : html`<div class="details-header">
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
             <div class="details-identity">
-              ${
-                channel.botPictureUrl
-                  ? html`<img
+              ${channel.botPictureUrl
+                ? html`<img
                     class="details-avatar"
                     src=${channel.botPictureUrl}
                     alt=${channel.name}
                   />`
-                  : html`<span class="details-initial details-initial-channel-messaging"
+                : html`<span class="details-initial details-initial-channel-messaging"
                     >${initial}</span
-                  >`
-              }
+                  >`}
               <div class="details-title-group">
                 <h2>${channel.name}</h2>
                 <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
@@ -771,8 +750,7 @@ export class LineAccountDetailPanel extends LitElement {
             >
               <span class="switch-thumb"></span>
             </button>
-          </div>`
-      }
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -816,68 +794,53 @@ export class LineAccountDetailPanel extends LitElement {
 
         <div class="details-section">
           <div class="details-section-title">Bot Profile</div>
-          ${
-            channel.botUserId
-              ? html`<div class="details-row">
+          ${channel.botUserId
+            ? html`<div class="details-row">
                 <span class="details-label">Bot User ID</span>
                 <span class="details-value">${channel.botUserId}</span>
               </div>`
-              : ""
-          }
-          ${
-            channel.botBasicId
-              ? html`<div class="details-row">
+            : ""}
+          ${channel.botBasicId
+            ? html`<div class="details-row">
                 <span class="details-label">Bot Basic ID</span>
                 <span class="details-value">${channel.botBasicId}</span>
               </div>`
-              : ""
-          }
-          ${
-            channel.botDisplayName
-              ? html`<div class="details-row">
+            : ""}
+          ${channel.botDisplayName
+            ? html`<div class="details-row">
                 <span class="details-label">Bot Display Name</span>
                 <span class="details-value">${channel.botDisplayName}</span>
               </div>`
-              : ""
-          }
-          ${
-            channel.botPictureUrl
-              ? html`<div class="details-row">
+            : ""}
+          ${channel.botPictureUrl
+            ? html`<div class="details-row">
                 <span class="details-label">Bot Picture URL</span>
                 <span class="details-value">${channel.botPictureUrl}</span>
               </div>`
-              : ""
-          }
+            : ""}
         </div>
-        ${
-          channel.addFriendUrl || channel.addFriendQrCodeUrl
-            ? html`<div class="details-section">
+        ${channel.addFriendUrl || channel.addFriendQrCodeUrl
+          ? html`<div class="details-section">
               <div class="details-section-title">Friend Discovery</div>
-              ${
-                channel.addFriendUrl
-                  ? html`<div class="details-row">
+              ${channel.addFriendUrl
+                ? html`<div class="details-row">
                     <span class="details-label">Add Friend URL</span>
                     <span class="details-value">${channel.addFriendUrl}</span>
                   </div>`
-                  : ""
-              }
-              ${
-                channel.addFriendQrCodeUrl
-                  ? html`<div class="details-row">
+                : ""}
+              ${channel.addFriendQrCodeUrl
+                ? html`<div class="details-row">
                     <span class="details-label">Add Friend QR Code</span>
                     <span class="details-value">${channel.addFriendQrCodeUrl}</span>
                   </div>`
-                  : ""
-              }
+                : ""}
             </div>`
-            : ""
-        }
+          : ""}
       </div>
 
-      ${
-        this.readonly
-          ? ""
-          : html`<div class="details-actions">
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
             <button
               class="action-btn"
               type="button"
@@ -903,8 +866,7 @@ export class LineAccountDetailPanel extends LitElement {
             >
               Delete
             </button>
-          </div>`
-      }
+          </div>`}
     `;
   }
 
@@ -913,10 +875,9 @@ export class LineAccountDetailPanel extends LitElement {
     const initial = channel.name.trim().charAt(0).toUpperCase();
 
     return html`
-      ${
-        this.inline
-          ? ""
-          : html`<div class="details-header">
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
             <div class="details-identity">
               <span class="details-initial details-initial-channel-login">${initial}</span>
               <div class="details-title-group">
@@ -924,8 +885,7 @@ export class LineAccountDetailPanel extends LitElement {
                 <div class="details-basic-id">Channel ID: ${channel.channelId}</div>
               </div>
             </div>
-          </div>`
-      }
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -962,37 +922,33 @@ export class LineAccountDetailPanel extends LitElement {
           )}
         </div>
 
-        ${
-          this.inline
-            ? ""
-            : html`
+        ${this.inline
+          ? ""
+          : html`
               <div class="details-section" style="grid-column: 1 / -1;">
                 <div
                   class="details-section-title"
                   style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line-account-border-color); padding-bottom: 0.5rem; margin-bottom: 0.5rem;"
                 >
                   <span>LIFF Applications</span>
-                  ${
-                    this.readonly
-                      ? ""
-                      : html`<button
+                  ${this.readonly
+                    ? ""
+                    : html`<button
                         class="primary"
                         type="button"
                         style="min-height: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 600;"
                         @click=${() => this.#emitCreateLiff(channel.channelId)}
                       >
                         + Add LIFF App
-                      </button>`
-                  }
+                      </button>`}
                 </div>
-                ${
-                  this.liffApps.filter((l) => l.loginChannelId === channel.channelId).length === 0
-                    ? html`<p
+                ${this.liffApps.filter((l) => l.loginChannelId === channel.channelId).length === 0
+                  ? html`<p
                       style="color: var(--line-account-muted-color); font-size: 0.85rem; padding: 0.5rem 0;"
                     >
                       No LIFF applications found under this channel.
                     </p>`
-                    : html`
+                  : html`
                       <table
                         class="details-table"
                         style="width: 100%; border-collapse: collapse; margin-top: 0.25rem; font-size: 0.85rem;"
@@ -1004,15 +960,13 @@ export class LineAccountDetailPanel extends LitElement {
                             <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
                             <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
                             <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
-                            ${
-                              this.readonly
-                                ? ""
-                                : html`<th
+                            ${this.readonly
+                              ? ""
+                              : html`<th
                                   style="padding: 0.5rem 0.25rem; text-align: right; font-weight: 600;"
                                 >
                                   Actions
-                                </th>`
-                            }
+                                </th>`}
                           </tr>
                         </thead>
                         <tbody>
@@ -1038,10 +992,9 @@ export class LineAccountDetailPanel extends LitElement {
                                   >
                                     ${l.view.url}
                                   </td>
-                                  ${
-                                    this.readonly
-                                      ? ""
-                                      : html`<td
+                                  ${this.readonly
+                                    ? ""
+                                    : html`<td
                                         style="padding: 0.5rem 0.25rem; text-align: right;"
                                         @click=${(e: Event) => e.stopPropagation()}
                                       >
@@ -1058,24 +1011,20 @@ export class LineAccountDetailPanel extends LitElement {
                                         >
                                           Delete
                                         </button>
-                                      </td>`
-                                  }
+                                      </td>`}
                                 </tr>
                               `,
                             )}
                         </tbody>
                       </table>
-                    `
-                }
+                    `}
               </div>
-            `
-        }
+            `}
       </div>
 
-      ${
-        this.readonly
-          ? ""
-          : html`<div class="details-actions">
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
             <button
               class="action-btn"
               type="button"
@@ -1092,8 +1041,7 @@ export class LineAccountDetailPanel extends LitElement {
             >
               Delete
             </button>
-          </div>`
-      }
+          </div>`}
     `;
   }
 
@@ -1101,10 +1049,9 @@ export class LineAccountDetailPanel extends LitElement {
     const isPending = this.pendingItemIds.has(liff.id);
 
     return html`
-      ${
-        this.inline
-          ? ""
-          : html`<div class="details-header">
+      ${this.inline
+        ? ""
+        : html`<div class="details-header">
             <div class="details-identity">
               <span class="details-initial details-initial-liff">L</span>
               <div class="details-title-group">
@@ -1112,8 +1059,7 @@ export class LineAccountDetailPanel extends LitElement {
                 <div class="details-basic-id">Login Channel Record ID: ${liff.loginChannelId}</div>
               </div>
             </div>
-          </div>`
-      }
+          </div>`}
 
       <div class="details-grid">
         <div class="details-section">
@@ -1132,9 +1078,8 @@ export class LineAccountDetailPanel extends LitElement {
           </div>
         </div>
 
-        ${
-          liff.description
-            ? html`
+        ${liff.description
+          ? html`
               <div class="details-section">
                 <div class="details-section-title">Description</div>
                 <div
@@ -1144,14 +1089,12 @@ export class LineAccountDetailPanel extends LitElement {
                 </div>
               </div>
             `
-            : ""
-        }
+          : ""}
       </div>
 
-      ${
-        this.readonly
-          ? ""
-          : html`<div class="details-actions">
+      ${this.readonly
+        ? ""
+        : html`<div class="details-actions">
             <button
               class="action-btn"
               type="button"
@@ -1168,8 +1111,7 @@ export class LineAccountDetailPanel extends LitElement {
             >
               Delete
             </button>
-          </div>`
-      }
+          </div>`}
     `;
   }
 }

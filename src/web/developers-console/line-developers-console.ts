@@ -20,12 +20,16 @@ const channelTypeLabel: Record<ConsoleChannelType, string> = {
   blockchain: "Blockchain Service",
 };
 
+/** Visual layout for the hierarchy surface. */
+export type LineDevelopersConsoleVariant = "list" | "tree";
+
 /** LitElement wrapper around the LINE Developers Console: expandable hierarchy at a glance. */
 export class LineDevelopersConsole extends LitElement {
   static properties = {
     adapter: { attribute: false },
     messages: { attribute: false },
     maskSecrets: { type: Boolean },
+    variant: { type: String },
     searchQuery: { type: String },
     loading: { state: true },
     error: { state: true },
@@ -371,11 +375,157 @@ export class LineDevelopersConsole extends LitElement {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
+
+    /* ---- variant="tree": IDE-style tree viewer ------------------------------- */
+
+    .tv {
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      margin-top: 0.75rem;
+    }
+    .tv-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.5rem;
+      border-radius: 0.5rem;
+      background: none;
+      border: 0;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      width: 100%;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tv-row:hover {
+      background: var(--line-account-muted-background, #f1f5f9);
+    }
+    .tv-row.sel {
+      background: var(--line-account-selected-bg, #ecfdf5);
+      box-shadow: inset 3px 0 0 var(--line-account-primary-color, #10b981);
+    }
+    .tv-row:focus-visible {
+      outline: 2px solid var(--line-account-primary-color, #10b981);
+      outline-offset: -2px;
+    }
+    .tv-toggle {
+      width: 0.85rem;
+      flex-shrink: 0;
+      text-align: center;
+      color: var(--line-account-muted-color, #94a3b8);
+    }
+    .tv-node {
+      width: 1.1rem;
+      height: 1.1rem;
+      border-radius: 0.35rem;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      font-family: var(--line-account-font-family, system-ui, sans-serif);
+    }
+    .tv-node.n-provider {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+    .tv-node.n-messaging {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+    .tv-node.n-login {
+      background: linear-gradient(135deg, #8b5cf6, #5b21b6);
+    }
+    .tv-node.n-liff {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    .tv-name {
+      font-weight: 600;
+    }
+    .tv-type {
+      font-size: 0.62rem;
+      padding: 0.05rem 0.4rem;
+      border-radius: 0.4rem;
+      font-weight: 700;
+      font-family: var(--line-account-font-family, system-ui, sans-serif);
+    }
+    .tv-type.t-provider {
+      background: #ecfdf5;
+      color: #047a36;
+    }
+    .tv-type.t-messaging {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .tv-type.t-login {
+      background: #f5f3ff;
+      color: #5b21b6;
+    }
+    .tv-type.t-liff {
+      background: #fffbeb;
+      color: #b45309;
+    }
+    .tv-id {
+      color: var(--line-account-muted-color, #94a3b8);
+    }
+    .tv-status {
+      margin-left: auto;
+      font-size: 0.62rem;
+      padding: 0.05rem 0.4rem;
+      border-radius: 0.4rem;
+      font-weight: 700;
+      font-family: var(--line-account-font-family, system-ui, sans-serif);
+    }
+    .tv-status.s-active {
+      background: #ecfdf5;
+      color: #047a36;
+    }
+    .tv-status.s-published {
+      background: #f5f3ff;
+      color: #5b21b6;
+    }
+    .tv-status.s-other {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .tv-children {
+      margin-left: 0.85rem;
+      padding-left: 0.85rem;
+      border-left: 1px solid var(--line-account-border-color, #e2e8f0);
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+    .tv-fields {
+      margin-left: 2.6rem;
+      padding: 0.4rem 0.6rem 0.35rem;
+      line-height: 1.6;
+      color: var(--line-account-muted-color, #475569);
+      font-family: var(--line-account-font-family, system-ui, sans-serif);
+      font-size: 0.72rem;
+    }
+    .tv-fields .k {
+      color: var(--line-account-muted-color, #94a3b8);
+    }
+    .tv-fields .v {
+      color: var(--line-account-text-color, #0f172a);
+      font-weight: 600;
+    }
+    .tv-fields .secret {
+      color: #b45309;
+    }
+    .tv-fields .mini-btn {
+      font-family: inherit;
+    }
   `;
 
   declare adapter: LineConsoleAdapter | undefined;
   declare messages: LineDevelopersConsoleMessages;
   declare maskSecrets: boolean;
+  declare variant: LineDevelopersConsoleVariant;
   declare searchQuery: string;
   declare loading: boolean;
   declare error:
@@ -393,6 +543,7 @@ export class LineDevelopersConsole extends LitElement {
     this.adapter = undefined;
     this.messages = defaultLineDevelopersConsoleMessages;
     this.maskSecrets = true;
+    this.variant = "list";
     this.searchQuery = "";
     this.loading = false;
     this.error = undefined;
@@ -610,9 +761,13 @@ export class LineDevelopersConsole extends LitElement {
     const providers = this.#filteredProviders();
     if (providers.length === 0)
       return this.#renderEmpty(this.messages.emptyProviders, this.messages.emptyProvidersHint);
-    return html`<div class="tree" part="tree" role="tree" aria-label=${this.messages.treeLabel}>
-      ${providers.map((provider) => this.#renderProvider(provider))}
-    </div>`;
+    return this.variant === "tree"
+      ? html`<div class="tv" part="tree" role="tree" aria-label=${this.messages.treeLabel}>
+          ${providers.map((provider) => this.#renderTvProvider(provider))}
+        </div>`
+      : html`<div class="tree" part="tree" role="tree" aria-label=${this.messages.treeLabel}>
+          ${providers.map((provider) => this.#renderProvider(provider))}
+        </div>`;
   }
 
   #renderError(): TemplateResult {
@@ -944,6 +1099,200 @@ export class LineDevelopersConsole extends LitElement {
               </div>`
             : ""}
         </dl>
+      </div>
+    </div>`;
+  }
+
+  // ---- variant="tree": IDE tree viewer --------------------------------------
+
+  #renderTvProvider(provider: ConsoleProviderView): TemplateResult {
+    const expanded = this.expandedProviderIds.has(provider.providerId);
+    const channels = this.channelsByProvider.get(provider.providerId) ?? [];
+    const hasChildren = channels.length > 0;
+    return html`<div role="treeitem" aria-expanded=${expanded ? "true" : "false"}>
+      <button
+        class="tv-row ${expanded ? "sel" : ""}"
+        type="button"
+        @click=${() => this.#toggleProvider(provider)}
+      >
+        <span class="tv-toggle">${hasChildren ? (expanded ? "▾" : "▸") : ""}</span>
+        <span class="tv-node n-provider" aria-hidden="true"
+          >${provider.name.charAt(0).toUpperCase()}</span
+        >
+        <span class="tv-name">${provider.name}</span>
+        <span class="tv-type t-provider">Provider</span>
+        <span class="tv-id"
+          >${provider.providerId}${provider.region ? ` · ${provider.region}` : ""}</span
+        >
+        <span class="tv-status ${provider.certified ? "s-active" : "s-other"}">
+          ${provider.certified
+            ? "Certified"
+            : `${channels.length} ${channels.length === 1 ? this.messages.channel : this.messages.channels}`}
+        </span>
+      </button>
+      ${expanded && hasChildren
+        ? html`<div class="tv-children">
+            ${this.#renderTvProviderFields(provider)}
+            ${channels.map((channel) => this.#renderTvChannel(channel))}
+          </div>`
+        : ""}
+    </div>`;
+  }
+
+  #renderTvProviderFields(provider: ConsoleProviderView): TemplateResult {
+    return html`<div class="tv-fields">
+      <span class="k">providerId:</span> <span class="v">${provider.providerId}</span> ·
+      <span class="k">region:</span> <span class="v">${provider.region ?? "—"}</span> ·
+      <span class="k">certified:</span>
+      <span class="v">${provider.certified ? this.messages.yes : this.messages.no}</span>
+      ${provider.createdAt
+        ? html`· <span class="k">created:</span> <span class="v">${provider.createdAt}</span>`
+        : ""}
+    </div>`;
+  }
+
+  #renderTvChannel(channel: ConsoleChannelView): TemplateResult {
+    const expanded = this.expandedChannelIds.has(channel.channelId);
+    const liffApps =
+      channel.type === "login" ? (this.liffByChannel.get(channel.channelId) ?? []) : [];
+    const hasLiff = channel.type === "login" && liffApps.length > 0;
+    const nodeClass =
+      channel.type === "messaging"
+        ? "n-messaging"
+        : channel.type === "login"
+          ? "n-login"
+          : "n-provider";
+    const typeClass =
+      channel.type === "messaging"
+        ? "t-messaging"
+        : channel.type === "login"
+          ? "t-login"
+          : "t-provider";
+    const statusClass =
+      channel.status?.toLowerCase() === "active"
+        ? "s-active"
+        : channel.status?.toLowerCase() === "published"
+          ? "s-published"
+          : "s-other";
+    return html`<div role="treeitem" aria-expanded=${expanded ? "true" : "false"}>
+      <button
+        class="tv-row ${expanded ? "sel" : ""}"
+        type="button"
+        @click=${() => this.#toggleChannel(channel)}
+      >
+        <span class="tv-toggle">${hasLiff ? (expanded ? "▾" : "▸") : ""}</span>
+        <span class="tv-node ${nodeClass}" aria-hidden="true"
+          >${channel.name.charAt(0).toUpperCase()}</span
+        >
+        <span class="tv-name">${channel.name}</span>
+        <span class="tv-type ${typeClass}">${channelTypeLabel[channel.type]}</span>
+        <span class="tv-id">${channel.channelId}</span>
+        ${channel.status
+          ? html`<span class="tv-status ${statusClass}">● ${channel.status}</span>`
+          : html`<span class="tv-status s-other">${this.messages.openConsole} ↗</span>`}
+      </button>
+      ${expanded
+        ? html`<div class="tv-children">
+            ${this.#renderTvChannelFields(channel)}
+            ${hasLiff ? liffApps.map((liff) => this.#renderTvLiff(liff)) : ""}
+          </div>`
+        : ""}
+    </div>`;
+  }
+
+  #renderTvChannelFields(channel: ConsoleChannelView): TemplateResult {
+    const parts: TemplateResult[] = [];
+    if (channel.botBasicId)
+      parts.push(
+        html`<span class="k">botBasicId:</span> <span class="v">${channel.botBasicId}</span>`,
+      );
+    if (channel.botUserId)
+      parts.push(
+        html`<span class="k">botUserId:</span> <span class="v">${channel.botUserId}</span>`,
+      );
+    if (channel.webhookUrl)
+      parts.push(
+        html`<span class="k">webhookUrl:</span> <span class="v">${channel.webhookUrl}</span>`,
+      );
+    if (channel.callbackUrl)
+      parts.push(
+        html`<span class="k">callbackUrl:</span> <span class="v">${channel.callbackUrl}</span>`,
+      );
+    if (channel.channelSecret !== undefined && channel.channelSecret !== null)
+      parts.push(
+        html`<span class="k">channelSecret:</span> ${this.#renderTvSecret(
+            channel.channelId,
+            "channelSecret",
+            channel.channelSecret,
+          )}`,
+      );
+    if (channel.channelAccessToken !== undefined && channel.channelAccessToken !== null)
+      parts.push(
+        html`<span class="k">accessToken:</span> ${this.#renderTvSecret(
+            channel.channelId,
+            "channelAccessToken",
+            channel.channelAccessToken,
+          )}`,
+      );
+    return html`<div class="tv-fields">
+      ${parts.map((p, i) => html`${i > 0 ? " · " : ""}${p}`)}
+    </div>`;
+  }
+
+  #renderTvSecret(channelId: string, field: string, value: string): TemplateResult {
+    const key = this.#revealKey(channelId, field);
+    const revealed = !this.maskSecrets || this.revealedSecrets.has(key);
+    const shown = revealed ? value : MASK;
+    return html`<span class="secret-row">
+      <span class="secret">${shown}</span>
+      ${this.maskSecrets
+        ? html`<button
+            class="mini-btn"
+            type="button"
+            @click=${() => this.#toggleReveal(channelId, field)}
+          >
+            ${revealed ? this.messages.hide : this.messages.reveal}
+          </button>`
+        : ""}
+      <button
+        class="mini-btn"
+        type="button"
+        @click=${() => {
+          void navigator.clipboard?.writeText(value);
+          this.#emit("line-developers-console-copy", { field, channelId });
+        }}
+      >
+        ${this.messages.copy}
+      </button>
+    </span>`;
+  }
+
+  #renderTvLiff(liff: ConsoleLiffAppView): TemplateResult {
+    return html`<div role="treeitem" aria-expanded="false">
+      <div class="tv-row" style="cursor:default;">
+        <span class="tv-toggle"></span>
+        <span class="tv-node n-liff" aria-hidden="true">L</span>
+        <span class="tv-name">${liff.liffId}</span>
+        <span class="tv-type t-liff">LIFF</span>
+        <span class="tv-type t-provider">${liff.view.type.toUpperCase()}</span>
+        ${liff.permanentUrl
+          ? html`<a
+              class="open-link"
+              href=${liff.permanentUrl}
+              target="_blank"
+              rel="noopener"
+              style="margin-left:auto;"
+              >${this.messages.openLiff} ↗</a
+            >`
+          : ""}
+      </div>
+      <div class="tv-fields">
+        <span class="k">liffId:</span> <span class="v">${liff.liffId}</span> ·
+        <span class="k">size:</span> <span class="v">${liff.view.type}</span> ·
+        <span class="k">url:</span> <span class="v">${liff.view.url}</span>
+        ${liff.description
+          ? html` · <span class="k">description:</span> <span class="v">${liff.description}</span>`
+          : ""}
       </div>
     </div>`;
   }

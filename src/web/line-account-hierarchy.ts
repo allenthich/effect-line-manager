@@ -528,11 +528,9 @@ export class LineAccountHierarchy extends LitElement {
       part="node"
     >
       <div class="tree-node-header" @click=${() => this.#toggleProvider(p.item.id)}>
-        ${
-          p.channels.length > 0
-            ? this.#chevron(expanded)
-            : html`<span class="chevron-placeholder"></span>`
-        }
+        ${p.channels.length > 0
+          ? this.#chevron(expanded)
+          : html`<span class="chevron-placeholder"></span>`}
         <span class="node-avatar avatar-provider">${initial}</span>
         <div class="node-info">
           <span class="node-name">${p.item.name}</span>
@@ -541,10 +539,9 @@ export class LineAccountHierarchy extends LitElement {
             >${p.channels.length} channel${p.channels.length !== 1 ? "s" : ""}</span
           >
         </div>
-        ${
-          this.variant === "split"
-            ? ""
-            : html`
+        ${this.variant === "split"
+          ? ""
+          : html`
               <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
                 <button
                   class="node-btn primary"
@@ -583,22 +580,17 @@ export class LineAccountHierarchy extends LitElement {
                   Del
                 </button>
               </div>
-            `
-        }
+            `}
       </div>
-      ${
-        error
-          ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
-          : ""
-      }
-      ${
-        expanded && p.channels.length > 0
-          ? html` <div class="children">
+      ${error
+        ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
+        : ""}
+      ${expanded && p.channels.length > 0
+        ? html` <div class="children">
             ${p.channels.map((c) => this.#renderChannel(c))}
-            ${
-              this.variant === "split"
-                ? ""
-                : html`<div style="display: flex; gap: 0.5rem; margin-inline: 1.5rem;">
+            ${this.variant === "split"
+              ? ""
+              : html`<div style="display: flex; gap: 0.5rem; margin-inline: 1.5rem;">
                   <button
                     class="add-child-btn"
                     type="button"
@@ -639,11 +631,9 @@ export class LineAccountHierarchy extends LitElement {
                     </svg>
                     Add Login Channel
                   </button>
-                </div>`
-            }
+                </div>`}
           </div>`
-          : ""
-      }
+        : ""}
     </div>`;
   }
 
@@ -663,11 +653,9 @@ export class LineAccountHierarchy extends LitElement {
         class="tree-node-header"
         @click=${() => (isMessaging ? this.#selectItem(c.item) : this.#toggleChannel(c.item.id))}
       >
-        ${
-          !isMessaging && hasLiff
-            ? this.#chevron(expanded)
-            : html`<span class="chevron-placeholder"></span>`
-        }
+        ${!isMessaging && hasLiff
+          ? this.#chevron(expanded)
+          : html`<span class="chevron-placeholder"></span>`}
         <span
           class="node-avatar ${isMessaging ? "avatar-channel-messaging" : "avatar-channel-login"}"
           >${initial}</span
@@ -677,41 +665,37 @@ export class LineAccountHierarchy extends LitElement {
           <span class="node-subtitle"
             >${isMessaging ? "Messaging API" : "LINE Login"} · ${c.item.channelId}</span
           >
-          ${
-            isMessaging
-              ? html`<span
-                class="badge ${
-                  (c.item as LineMessagingChannelView).isActive ? "badge-active" : "badge-inactive"
-                }"
+          ${isMessaging
+            ? html`<span
+                class="badge ${(c.item as LineMessagingChannelView).isActive
+                  ? "badge-active"
+                  : "badge-inactive"}"
                 >${(c.item as LineMessagingChannelView).isActive ? "Active" : "Inactive"}</span
               >`
-              : ""
-          }
+            : ""}
         </div>
-        ${
-          this.variant === "split"
-            ? ""
-            : html`
+        ${this.variant === "split"
+          ? ""
+          : html`
               <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
-                ${
-                  isMessaging
-                    ? html`<button
-                      class="switch ${
-                        (c.item as LineMessagingChannelView).isActive ? "checked" : ""
-                      }"
+                ${isMessaging
+                  ? html`<button
+                      class="switch ${(c.item as LineMessagingChannelView).isActive
+                        ? "checked"
+                        : ""}"
                       role="switch"
-                      aria-checked=${
-                        (c.item as LineMessagingChannelView).isActive ? "true" : "false"
-                      }
-                      aria-label=${
-                        (c.item as LineMessagingChannelView).isActive ? "Deactivate" : "Activate"
-                      }
+                      aria-checked=${(c.item as LineMessagingChannelView).isActive
+                        ? "true"
+                        : "false"}
+                      aria-label=${(c.item as LineMessagingChannelView).isActive
+                        ? "Deactivate"
+                        : "Activate"}
                       ?disabled=${isPending}
                       @click=${() => this.#emit("hierarchy-toggle", { item: c.item })}
                     >
                       <span class="switch-thumb"></span>
                     </button>`
-                    : html`<button
+                  : html`<button
                       class="node-btn primary"
                       type="button"
                       ?disabled=${isPending}
@@ -720,11 +704,9 @@ export class LineAccountHierarchy extends LitElement {
                       title="Add LIFF"
                     >
                       +
-                    </button>`
-                }
-                ${
-                  isMessaging
-                    ? html`<button
+                    </button>`}
+                ${isMessaging
+                  ? html`<button
                       class="node-btn"
                       type="button"
                       ?disabled=${isPending}
@@ -732,8 +714,7 @@ export class LineAccountHierarchy extends LitElement {
                     >
                       Sync
                     </button>`
-                    : ""
-                }
+                  : ""}
                 <button
                   class="node-btn"
                   type="button"
@@ -751,17 +732,13 @@ export class LineAccountHierarchy extends LitElement {
                   Del
                 </button>
               </div>
-            `
-        }
+            `}
       </div>
-      ${
-        error
-          ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
-          : ""
-      }
-      ${
-        this.variant !== "split" && this.selectedChannelId === c.item.channelId
-          ? html`
+      ${error
+        ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
+        : ""}
+      ${this.variant !== "split" && this.selectedChannelId === c.item.channelId
+        ? html`
             <div
               style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--line-account-border-color, #e4e7eb);"
             >
@@ -779,16 +756,13 @@ export class LineAccountHierarchy extends LitElement {
               ></line-account-detail-panel>
             </div>
           `
-          : ""
-      }
-      ${
-        !isMessaging && expanded && hasLiff
-          ? html` <div class="children">
+        : ""}
+      ${!isMessaging && expanded && hasLiff
+        ? html` <div class="children">
             ${c.liffApps.map((l) => this.#renderLiff(l))}
-            ${
-              this.variant === "split"
-                ? ""
-                : html`<button
+            ${this.variant === "split"
+              ? ""
+              : html`<button
                   class="add-child-btn"
                   type="button"
                   @click=${() => this.#emit("hierarchy-add-liff", { channelId: c.item.channelId })}
@@ -805,11 +779,9 @@ export class LineAccountHierarchy extends LitElement {
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
                   Add LIFF App
-                </button>`
-            }
+                </button>`}
           </div>`
-          : ""
-      }
+        : ""}
     </div>`;
   }
 
@@ -828,10 +800,9 @@ export class LineAccountHierarchy extends LitElement {
           <span class="node-subtitle">LIFF · ${l.view.type.toUpperCase()}</span>
           <span class="badge badge-type">${l.view.type.toUpperCase()}</span>
         </div>
-        ${
-          this.variant === "split"
-            ? ""
-            : html`
+        ${this.variant === "split"
+          ? ""
+          : html`
               <div class="node-actions" @click=${(e: Event) => e.stopPropagation()}>
                 <button
                   class="node-btn"
@@ -850,17 +821,13 @@ export class LineAccountHierarchy extends LitElement {
                   Del
                 </button>
               </div>
-            `
-        }
+            `}
       </div>
-      ${
-        error
-          ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
-          : ""
-      }
-      ${
-        this.variant !== "split" && this.selectedLiffId === l.id
-          ? html`
+      ${error
+        ? html`<div class="error-text" style="padding: 0 0.75rem 0.5rem 2.5rem;">${error}</div>`
+        : ""}
+      ${this.variant !== "split" && this.selectedLiffId === l.id
+        ? html`
             <div
               style="padding: 0.75rem 1.5rem; border-top: 1px solid var(--line-account-border-color, #e4e7eb);"
             >
@@ -878,8 +845,7 @@ export class LineAccountHierarchy extends LitElement {
               ></line-account-detail-panel>
             </div>
           `
-          : ""
-      }
+        : ""}
     </div>`;
   }
 }

@@ -161,4 +161,32 @@ describe("line-developers-console", () => {
       defaultLineDevelopersConsoleMessages.noAdapter,
     );
   });
+
+  test("variant='tree' renders the IDE tree viewer with guide-line connectors", async () => {
+    const element = await mount();
+    element.variant = "tree";
+    await element.updateComplete;
+    // provider row carries the tree viewer toggle + provider node avatar
+    const tvRow = element.shadowRoot?.querySelector<HTMLButtonElement>(".tv-row");
+    expect(tvRow).not.toBeNull();
+    expect(tvRow?.querySelector(".tv-node.n-provider")).not.toBeNull();
+    expect(tvRow?.querySelector(".tv-type.t-provider")?.textContent).toBe("Provider");
+    // expand the provider — channels appear as tree rows with type chips
+    tvRow!.click();
+    await settle(element);
+    await settle(element);
+    const tree = element.shadowRoot?.textContent ?? "";
+    expect(tree).toContain("Messaging API");
+    expect(tree).toContain("LINE Login");
+    // expand the messaging channel to reveal its field block with masked secret
+    const channelRows =
+      element.shadowRoot?.querySelectorAll<HTMLButtonElement>(".tv-children .tv-row") ?? [];
+    const msgRow = [...channelRows].find((r) => r.textContent?.includes("Messaging API"));
+    expect(msgRow).toBeDefined();
+    msgRow!.click();
+    await settle(element);
+    await settle(element);
+    const expandedTree = element.shadowRoot?.textContent ?? "";
+    expect(expandedTree).toContain("••••••••");
+  });
 });

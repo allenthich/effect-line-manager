@@ -10,6 +10,7 @@ const element = document.querySelector<LineDevelopersConsole>("#developers-conso
 if (element === null) throw new Error("Missing #developers-console element");
 
 element.adapter = createDemoConsoleAdapter();
+element.variant = "tree";
 
 element.addEventListener("line-developers-console-error", (event) => {
   console.error("developers-console error", (event as CustomEvent).detail);
