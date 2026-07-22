@@ -6,6 +6,8 @@ export interface LineDevelopersConsoleMessages {
   readonly refreshLabel: string;
   readonly collapseAll: string;
   readonly collapseAllLabel: string;
+  readonly expandAll?: string;
+  readonly expandAllLabel?: string;
   readonly loadingLabel: string;
   readonly loadFailed: string;
   readonly retry: string;
@@ -39,6 +41,7 @@ export interface LineDevelopersConsoleMessages {
   readonly copy: string;
   readonly secretRevealed: string;
   readonly secretMasked: string;
+  readonly edit?: string;
   readonly liffId: string;
   readonly liffSize: string;
   readonly liffUrl: string;
@@ -54,6 +57,8 @@ export const defaultLineDevelopersConsoleMessages: LineDevelopersConsoleMessages
   refreshLabel: "Refresh from console",
   collapseAll: "Collapse all",
   collapseAllLabel: "Collapse all",
+  expandAll: "Expand all",
+  expandAllLabel: "Expand the complete hierarchy",
   loadingLabel: "Loading hierarchy",
   loadFailed: "Couldn't reach the console.",
   retry: "Retry",
@@ -87,6 +92,7 @@ export const defaultLineDevelopersConsoleMessages: LineDevelopersConsoleMessages
   copy: "Copy",
   secretRevealed: "Secret revealed",
   secretMasked: "Secret masked",
+  edit: "Edit",
   liffId: "LIFF ID",
   liffSize: "Size",
   liffUrl: "View URL",

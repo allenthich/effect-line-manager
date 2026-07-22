@@ -34,6 +34,10 @@ export interface ConsoleChannelView {
   // Messaging API
   readonly botBasicId?: string | null;
   readonly botUserId?: string | null;
+  readonly botDisplayName?: string | null;
+  readonly botPictureUrl?: string | null;
+  readonly addFriendUrl?: string | null;
+  readonly addFriendQrCodeUrl?: string | null;
   readonly webhookUrl?: string | null;
   readonly channelSecret?: string | null;
   readonly channelAccessToken?: string | null;

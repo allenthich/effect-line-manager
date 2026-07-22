@@ -1,7 +1,10 @@
 import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
-import type { LineAccountManagementMessages } from "./messages.ts";
+import {
+  defaultLineAccountManagementMessages,
+  type LineAccountManagementMessages,
+} from "./messages.ts";
 import { LineLoginChannelId } from "../shared/domain.ts";
 import type {
   ProviderView,
@@ -285,6 +288,7 @@ export class LineAccountForm extends LitElement {
     this.item = undefined;
     this.providers = [];
     this.loginChannels = [];
+    this.messages = defaultLineAccountManagementMessages;
     this.submitting = false;
     this.error = undefined;
     this.showChannelSecret = false;

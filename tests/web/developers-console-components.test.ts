@@ -166,11 +166,13 @@ describe("line-developers-console", () => {
     const element = await mount();
     element.variant = "tree";
     await element.updateComplete;
-    // provider row carries the tree viewer toggle + provider node avatar
+    // provider row carries the tree viewer toggle + provider type badge
     const tvRow = element.shadowRoot?.querySelector<HTMLButtonElement>(".tv-row");
     expect(tvRow).not.toBeNull();
-    expect(tvRow?.querySelector(".tv-node.n-provider")).not.toBeNull();
-    expect(tvRow?.querySelector(".tv-type.t-provider")?.textContent).toBe("Provider");
+    expect(tvRow?.querySelector(".tv-name")?.textContent).toBe("Acme");
+    expect(tvRow?.parentElement?.querySelector(".tv-type.t-provider")?.textContent).toBe(
+      "Provider",
+    );
     // expand the provider — channels appear as tree rows with type chips
     tvRow!.click();
     await settle(element);
@@ -180,13 +182,128 @@ describe("line-developers-console", () => {
     expect(tree).toContain("LINE Login");
     // expand the messaging channel to reveal its field block with masked secret
     const channelRows =
-      element.shadowRoot?.querySelectorAll<HTMLButtonElement>(".tv-children .tv-row") ?? [];
-    const msgRow = [...channelRows].find((r) => r.textContent?.includes("Messaging API"));
+      element.shadowRoot?.querySelectorAll<HTMLElement>(
+        ".tree-branch .tv-row-wrap, .tv-children .tv-row-wrap",
+      ) ?? [];
+    const msgRow = [...channelRows]
+      .find((row) => row.textContent?.includes("Messaging API"))
+      ?.querySelector<HTMLButtonElement>(".tv-row");
     expect(msgRow).toBeDefined();
     msgRow!.click();
     await settle(element);
     await settle(element);
     const expandedTree = element.shadowRoot?.textContent ?? "";
     expect(expandedTree).toContain("••••••••");
+  });
+
+  test("tree variant exposes the compact IDE surface and expands the complete hierarchy", async () => {
+    const element = await mount();
+    element.variant = "tree";
+    await element.updateComplete;
+
+    expect(element.shadowRoot?.querySelector(".tv-surface")).not.toBeNull();
+    expect(element.shadowRoot?.querySelector(".tv-toolbar")).not.toBeNull();
+
+    const expandAll = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '[data-action="expand-all"]',
+    );
+    expect(expandAll).not.toBeNull();
+    expandAll!.click();
+    await settle(element);
+    await settle(element);
+    await settle(element);
+
+    const tree = element.shadowRoot?.textContent ?? "";
+    expect(tree).toContain("Support Bot");
+    expect(tree).toContain("Auth");
+    expect(tree).toContain("Loyalty card");
+    expect(element.shadowRoot?.querySelector(".tv-field-card")).not.toBeNull();
+  });
+
+  test("tree rows place copy controls beside IDs without appending provider region", async () => {
+    const element = await mount();
+    element.variant = "tree";
+    await element.updateComplete;
+
+    const expandAll = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '[data-action="expand-all"]',
+    );
+    expandAll!.click();
+    await settle(element);
+    await settle(element);
+    await settle(element);
+
+    const providerRow = element.shadowRoot?.querySelector<HTMLElement>(".tv-row-wrap.r-provider");
+    const providerId = providerRow?.querySelector<HTMLElement>(".tv-id");
+    expect(providerId?.textContent?.trim()).toBe("(id: prov-1)");
+    expect(providerId?.nextElementSibling?.classList.contains("icon-copy-btn")).toBe(true);
+    expect(providerRow?.querySelector(".tv-actions .icon-copy-btn")).toBeNull();
+
+    const channelRow = element.shadowRoot?.querySelector<HTMLElement>(".tv-row-wrap.r-messaging");
+    const channelId = channelRow?.querySelector<HTMLElement>(".tv-id");
+    expect(channelId?.nextElementSibling?.classList.contains("icon-copy-btn")).toBe(true);
+    expect(channelRow?.querySelector(".tv-actions .icon-copy-btn")).toBeNull();
+
+    const liffRow = element.shadowRoot?.querySelector<HTMLElement>(".tv-row-wrap.r-liff");
+    const liffId = liffRow?.querySelector<HTMLElement>(".tv-id");
+    expect(liffId?.nextElementSibling?.classList.contains("icon-copy-btn")).toBe(true);
+    expect(liffRow?.querySelector(".tv-actions .icon-copy-btn")).toBeNull();
+  });
+
+  test("tree Edit buttons emit composed events with the selected entity", async () => {
+    const element = await mount();
+    element.variant = "tree";
+    await element.expandAll();
+    await settle(element);
+
+    const providerEdit = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      ".r-provider .tv-actions .mini-btn",
+    );
+    const providerEvent = new Promise<CustomEvent>((resolve) => {
+      element.addEventListener(
+        "line-developers-console-edit",
+        (event) => {
+          resolve(event as CustomEvent);
+        },
+        { once: true },
+      );
+    });
+    providerEdit!.click();
+
+    await expect(providerEvent).resolves.toMatchObject({
+      composed: true,
+      detail: { kind: "provider", item: providers[0] },
+    });
+
+    const channelEdit = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      ".r-messaging .tv-actions .mini-btn",
+    );
+    const channelEvent = new Promise<CustomEvent>((resolve) => {
+      element.addEventListener(
+        "line-developers-console-edit",
+        (event) => {
+          resolve(event as CustomEvent);
+        },
+        { once: true },
+      );
+    });
+    channelEdit!.click();
+
+    await expect(channelEvent).resolves.toMatchObject({
+      composed: true,
+      detail: { kind: "channel", item: channels[0] },
+    });
+  });
+
+  test("exposes expandAll for restoring the hierarchy after external updates", async () => {
+    const element = await mount();
+    element.variant = "tree";
+
+    await element.expandAll();
+    await settle(element);
+
+    expect(element.shadowRoot?.textContent ?? "").toContain("Loyalty card");
+    expect(element.expandedProviderIds).toEqual(new Set(["prov-1"]));
+    expect(element.expandedChannelIds).toEqual(new Set(["msg-1", "login-1"]));
   });
 });

@@ -99,6 +99,17 @@ const submit = (element: LineAccountForm): LineAccountFormSubmitDetail | undefin
 };
 
 describe("Provider form", () => {
+  test("renders with default messages when used as a standalone custom element", async () => {
+    const element = document.createElement("line-account-form") as LineAccountForm;
+    document.body.append(element);
+
+    await element.updateComplete;
+
+    expect(element.shadowRoot?.textContent).toContain(
+      defaultLineAccountManagementMessages.createProviderHeading,
+    );
+  });
+
   test("submits provider create correctly", async () => {
     const element = await makeForm("provider", "create");
     setValue(element, "providerName", "My Provider");
