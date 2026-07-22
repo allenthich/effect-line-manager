@@ -105,6 +105,8 @@ describe("line-developers-console", () => {
     const tree = element.shadowRoot?.textContent ?? "";
     expect(tree).toContain("login-1-AbCdEf");
     expect(tree).toContain("TALL");
+    expect(tree).toContain("Endpoint URL");
+    expect(tree).toContain("https://liff.line.me/login-1-AbCdEf");
   });
 
   test("renders channel expansion and console navigation as separate interactive controls", async () => {

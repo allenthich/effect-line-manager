@@ -45,6 +45,7 @@ export interface LineDevelopersConsoleMessages {
   readonly liffId: string;
   readonly liffSize: string;
   readonly liffUrl: string;
+  readonly liffLaunchUrl?: string;
   readonly liffDescription: string;
   readonly rowSummary: (providers: number, channels: number, liffApps: number) => string;
 }
@@ -95,7 +96,8 @@ export const defaultLineDevelopersConsoleMessages: LineDevelopersConsoleMessages
   edit: "Edit",
   liffId: "LIFF ID",
   liffSize: "Size",
-  liffUrl: "View URL",
+  liffUrl: "Endpoint URL",
+  liffLaunchUrl: "LIFF URL",
   liffDescription: "Description",
   rowSummary: (providers, channels, liffApps) =>
     `${providers} provider${providers === 1 ? "" : "s"} · ${channels} channel${channels === 1 ? "" : "s"} · ${liffApps} LIFF`,

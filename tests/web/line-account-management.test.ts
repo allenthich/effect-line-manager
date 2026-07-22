@@ -270,6 +270,24 @@ const getNodes = (element: LineAccountManagement) =>
   getHierarchy(element).shadowRoot?.querySelectorAll('[part="node"]') ?? [];
 
 describe("LineAccountManagement", () => {
+  test("does not schedule reactive work after an adapter update completes", async () => {
+    const element = document.createElement("line-account-management") as LineAccountManagement;
+    document.body.append(element);
+    await element.updateComplete;
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(" "));
+    try {
+      element.adapter = makeAdapter([mockProvider]);
+      await settle(element);
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(warnings.join("\n")).not.toContain("scheduled an update");
+  });
+
   test("renders hierarchy tree with provider nodes", async () => {
     const adapter = makeAdapter([mockProvider], [mockMessagingChannel], [], [mockLiff]);
     const element = await mount(adapter);

@@ -173,3 +173,12 @@ describe("Messaging Channel form", () => {
     });
   });
 });
+
+describe("LIFF form", () => {
+  test("labels the configured application URL as the endpoint URL", async () => {
+    const element = await makeForm("liff", "create");
+    const label = element.shadowRoot?.querySelector('label[for="liffViewUrl"]');
+
+    expect(label?.textContent?.trim()).toBe("Endpoint URL*");
+  });
+});

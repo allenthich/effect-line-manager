@@ -485,6 +485,11 @@ export class LineAccountManagement extends LitElement {
   }
 
   willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("adapter") && this.adapter !== this.#lastAdapter) {
+      this.#lastAdapter = this.adapter;
+      void this.reload();
+    }
+
     if (changedProperties.has("selectedItemId")) {
       if (this.selectedItemId) {
         const id = this.selectedItemId;
@@ -521,13 +526,6 @@ export class LineAccountManagement extends LitElement {
       } else {
         this.selectedLiffId = undefined;
       }
-    }
-  }
-
-  protected updated(changedProperties: PropertyValues<this>): void {
-    if (changedProperties.has("adapter") && this.adapter !== this.#lastAdapter) {
-      this.#lastAdapter = this.adapter as any;
-      void this.reload();
     }
   }
 

@@ -131,7 +131,7 @@ export const defaultLineAccountManagementMessages: LineAccountManagementMessages
   liffIdLabel: "LIFF ID",
   liffIdHint: "The LINE-assigned LIFF ID.",
   liffViewTypeLabel: "View Type",
-  liffViewUrlLabel: "View URL",
+  liffViewUrlLabel: "Endpoint URL",
   liffViewUrlHint: "The endpoint URL for the LIFF application.",
   liffDescriptionLabel: "Description",
 
