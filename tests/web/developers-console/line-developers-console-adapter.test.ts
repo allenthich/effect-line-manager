@@ -61,6 +61,7 @@ const mockLiff: LiffAppView = {
     type: "tall",
     url: "https://example.com/liff",
   },
+  additionalUrlParameters: "campaign=spring&source=poster",
   description: "Loyalty Card LIFF",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),

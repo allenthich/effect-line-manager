@@ -206,6 +206,7 @@ export const createInMemoryLineAccountAdapter = (
           type: input.view.type,
           url: input.view.url,
         },
+        additionalUrlParameters: input.additionalUrlParameters ?? "",
         description: input.description ?? null,
         createdAt: now,
         updatedAt: now,
@@ -221,6 +222,7 @@ export const createInMemoryLineAccountAdapter = (
         ...current,
         liffId: input.liffId ?? current.liffId,
         view: input.view ?? current.view,
+        additionalUrlParameters: input.additionalUrlParameters ?? current.additionalUrlParameters,
         description: input.description === undefined ? current.description : input.description,
         updatedAt: new Date(),
       };

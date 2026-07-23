@@ -30,6 +30,7 @@ Recommended LIFF columns:
 - `id`
 - `loginChannelId`
 - `liffId`
+- `additionalUrlParameters` (`TEXT NOT NULL`; application default `""`)
 - `viewType`
 - `viewUrl`
 - optional `description`

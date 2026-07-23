@@ -221,6 +221,7 @@ export const createLineConsoleAdapterFromProviderManagementAdapter = (
     liffId: app.liffId,
     channelId: app.loginChannelId,
     view: app.view,
+    additionalUrlParameters: app.additionalUrlParameters ?? "",
     description: app.description,
   });
 

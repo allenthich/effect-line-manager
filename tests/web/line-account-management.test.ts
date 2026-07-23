@@ -61,6 +61,7 @@ const mockLiff: LiffAppView = {
     type: "tall",
     url: "https://example.com/liff",
   },
+  additionalUrlParameters: "",
   description: "Loyalty card dashboard",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
@@ -74,6 +75,7 @@ const mockLiffForLogin: LiffAppView = {
     type: "full",
     url: "https://example.com/login-liff",
   },
+  additionalUrlParameters: "role=FULL_TIME",
   description: "Login App",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
@@ -233,6 +235,7 @@ const makeAdapter = (
         ...mockLiff,
         liffId: input.liffId,
         loginChannelId: input.loginChannelId,
+        additionalUrlParameters: input.additionalUrlParameters ?? "",
         id: `liff-${liffApps.length + 1}`,
       };
       liffApps.push(l);
@@ -241,7 +244,11 @@ const makeAdapter = (
     updateLiffApp: async (id, input) => {
       const l = liffApps.find((x) => x.liffId === id);
       if (!l) throw new Error("not found");
-      const updated = { ...l, liffId: input.liffId ?? l.liffId };
+      const updated = {
+        ...l,
+        liffId: input.liffId ?? l.liffId,
+        additionalUrlParameters: input.additionalUrlParameters ?? l.additionalUrlParameters,
+      };
       liffApps = liffApps.map((x) => (x.liffId === id ? updated : x));
       return updated;
     },
@@ -312,6 +319,18 @@ describe("LineAccountManagement", () => {
     const allNodes = hierarchy.shadowRoot?.querySelectorAll('[part="node"]');
     expect(allNodes!.length).toBeGreaterThan(1);
     expect(hierarchy.shadowRoot?.textContent).toContain("Login Channel");
+  });
+
+  test("keeps the parent channel expanded when a LIFF app is selected after saving", async () => {
+    const adapter = makeAdapter([mockProvider], [], [mockLoginChannel], [mockLiffForLogin]);
+    const element = await mount(adapter);
+    const hierarchy = getHierarchy(element);
+
+    hierarchy.selectedLiffId = mockLiffForLogin.id;
+    await hierarchy.updateComplete;
+
+    expect(hierarchy.expandedChannelIds).toContain(mockLoginChannel.id);
+    expect(hierarchy.shadowRoot?.textContent).toContain(mockLiffForLogin.liffId);
   });
 
   test("nested child lists in details pane", async () => {

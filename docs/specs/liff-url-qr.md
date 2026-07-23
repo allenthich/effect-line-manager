@@ -2,7 +2,7 @@
 
 ## Objective
 
-Make the web management UI distinguish the configured LIFF endpoint from the public LIFF launch URL. Users can add a query-string fragment to the generated launch URL and open a QR code for that exact URL.
+Make the web management UI distinguish the configured LIFF endpoint from the public LIFF launch URL. Users can persist one query-string fragment per LIFF app, generate the corresponding launch URL, and open a QR code for that exact URL.
 
 ## Tech Stack
 
@@ -47,9 +47,9 @@ Use focused Lit components, semantic form controls, accessible dialog behavior, 
 
 ## Boundaries
 
-- Always: generate the launch URL from `https://liff.line.me/` and the LIFF ID; encode the exact displayed launch URL in the QR code; preserve endpoint URL behavior.
-- Ask first: changes to the persistence/API contract or remote services.
-- Never: persist the transient additional parameters as if they were a LINE LIFF property; use an external QR-generation service; edit generated files or `CHANGELOG.md`.
+- Always: store one canonical `additionalUrlParameters` string per LIFF app without a leading `?` or `&`; generate the launch URL from `https://liff.line.me/`, the LIFF ID, and the stored parameters; encode the exact displayed launch URL in the QR code; preserve endpoint URL behavior.
+- Ask first: introducing multiple named launch links per LIFF app or using remote services.
+- Never: store the generated QR image; use an external QR-generation service; edit generated files or `CHANGELOG.md`.
 
 ## Success Criteria
 
@@ -57,10 +57,13 @@ Use focused Lit components, semantic form controls, accessible dialog behavior, 
 - LIFF details display `https://liff.line.me/{LIFF ID}` even if no permanent URL is supplied by an adapter.
 - A labeled additional-parameters input updates the displayed LIFF URL immediately.
 - Blank input produces the base LIFF URL; `foo=bar`, `?foo=bar`, and `&foo=bar` all produce `...?foo=bar`.
+- Create and update requests persist canonical `additionalUrlParameters`; omitted create values default to an empty string, omitted update values remain unchanged, and an empty update clears the value.
+- Existing LIFF records remain valid and expose an empty `additionalUrlParameters` value.
+- Reopening or reloading a LIFF app restores the saved parameters and uses them in the displayed launch URL.
 - A keyboard-accessible action opens a centered QR code dialog showing the generated URL.
 - The QR code value includes the additional parameters when present.
-- Existing LIFF create and edit requests continue sending the endpoint URL unchanged.
+- Existing LIFF create and edit requests continue sending the endpoint URL independently from the launch parameters.
 
 ## Open Questions
 
-None. Additional parameters are session-only presentation state because the LINE LIFF API model does not define them.
+None. The host application persists one additional-parameter string per LIFF app as application metadata. It is not sent to LINE as part of the LIFF endpoint configuration.

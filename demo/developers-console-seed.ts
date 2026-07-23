@@ -77,6 +77,7 @@ const toConsoleLiff = (liff: LiffAppView): ConsoleLiffAppView => ({
   channelId: liff.loginChannelId,
   liffId: liff.liffId,
   view: liff.view,
+  additionalUrlParameters: liff.additionalUrlParameters,
   description: liff.description,
   permanentUrl: `https://liff.line.me/${liff.liffId}`,
 });

@@ -27,7 +27,6 @@ export class LineAccountDetailPanel extends LitElement {
     readonly: { type: Boolean },
     inline: { type: Boolean, reflect: true },
     _visibleCredentials: { state: true },
-    _liffUrlParameters: { state: true },
     _qrCodeDataUrl: { state: true },
     _qrCodeError: { state: true },
     _qrCodeOpen: { state: true },
@@ -463,7 +462,6 @@ export class LineAccountDetailPanel extends LitElement {
   declare readonly: boolean;
   declare inline: boolean;
   declare _visibleCredentials: Set<string>;
-  declare _liffUrlParameters: string;
   declare _qrCodeDataUrl: string;
   declare _qrCodeError: string;
   declare _qrCodeOpen: boolean;
@@ -481,7 +479,6 @@ export class LineAccountDetailPanel extends LitElement {
     this.readonly = false;
     this.inline = false;
     this._visibleCredentials = new Set();
-    this._liffUrlParameters = "";
     this._qrCodeDataUrl = "";
     this._qrCodeError = "";
     this._qrCodeOpen = false;
@@ -492,7 +489,6 @@ export class LineAccountDetailPanel extends LitElement {
 
     const previousItem = changedProperties.get("item") as LineAccountEntity | undefined;
     if (previousItem?.id !== this.item?.id) {
-      this._liffUrlParameters = "";
       this._qrCodeDataUrl = "";
       this._qrCodeError = "";
       this._qrCodeOpen = false;
@@ -570,20 +566,19 @@ export class LineAccountDetailPanel extends LitElement {
     this._visibleCredentials = next;
   };
 
-  #handleLiffUrlParameters = (event: Event): void => {
-    this._liffUrlParameters = (event.target as HTMLInputElement).value;
-    if (this._qrCodeOpen) void this.#generateQrCode();
-  };
-
   #generateQrCode = async (): Promise<void> => {
     if (this.item === undefined || this.currentTab !== "liff") return;
 
-    const liffUrl = buildLiffUrl((this.item as LiffAppView).liffId, this._liffUrlParameters);
+    const liff = this.item as LiffAppView;
+    const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
     try {
       const svg = await QRCode.toString(liffUrl, { type: "svg", width: 240, margin: 1 });
       if (
         this.item !== undefined &&
-        buildLiffUrl((this.item as LiffAppView).liffId, this._liffUrlParameters) === liffUrl
+        buildLiffUrl(
+          (this.item as LiffAppView).liffId,
+          (this.item as LiffAppView).additionalUrlParameters,
+        ) === liffUrl
       ) {
         this._qrCodeDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
         this._qrCodeError = "";
@@ -1183,7 +1178,7 @@ export class LineAccountDetailPanel extends LitElement {
 
   #renderLiffDetails(liff: LiffAppView) {
     const isPending = this.pendingItemIds.has(liff.id);
-    const liffUrl = buildLiffUrl(liff.liffId, this._liffUrlParameters);
+    const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
 
     return html`
       ${this.inline
@@ -1217,22 +1212,6 @@ export class LineAccountDetailPanel extends LitElement {
 
         <div class="details-section liff-launch-section">
           <div class="details-section-title">LIFF URL</div>
-          <div class="liff-url-field">
-            <label class="details-label" for="liff-url-parameters">Additional URL parameters</label>
-            <input
-              id="liff-url-parameters"
-              name="liffUrlParameters"
-              type="text"
-              autocomplete="off"
-              placeholder="campaign=spring&amp;source=poster"
-              aria-describedby="liff-url-parameters-hint"
-              .value=${this._liffUrlParameters}
-              @input=${this.#handleLiffUrlParameters}
-            />
-            <p id="liff-url-parameters-hint" class="liff-url-hint">
-              Add query parameters without the leading question mark.
-            </p>
-          </div>
           <div class="liff-launch-actions">
             <a class="liff-url-link" href=${liffUrl} target="_blank" rel="noopener">${liffUrl}</a>
             <button class="primary" type="button" @click=${this.#openQrCode}>Show QR code</button>

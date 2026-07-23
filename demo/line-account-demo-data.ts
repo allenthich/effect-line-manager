@@ -71,6 +71,7 @@ export const createLineAccountDemoData = (): LineAccountDemoData => {
           type: "tall",
           url: "https://example.com/liff",
         },
+        additionalUrlParameters: "campaign=spring&source=poster",
         description: "Loyalty card dashboard for customers.",
         createdAt,
         updatedAt,

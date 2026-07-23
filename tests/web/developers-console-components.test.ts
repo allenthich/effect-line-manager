@@ -40,6 +40,7 @@ const liffApps: readonly ConsoleLiffAppView[] = [
     channelId: "login-1",
     liffId: "login-1-AbCdEf",
     view: { type: "tall", url: "https://example.com/liff" },
+    additionalUrlParameters: "campaign=spring&source=poster",
     description: "Loyalty card",
   },
 ];
@@ -339,5 +340,38 @@ describe("line-developers-console", () => {
     await settle(element);
 
     expect(element.shadowRoot?.textContent).toContain("Acme");
+  });
+
+  test("renders LIFF launch URL in details and opens QR code dialog", async () => {
+    const element = await mount();
+    // expand hierarchy
+    element.shadowRoot?.querySelector<HTMLButtonElement>(".node-header")!.click();
+    await settle(element);
+    const channelHeaders =
+      element.shadowRoot?.querySelectorAll<HTMLButtonElement>(".node .node .node-header") ?? [];
+    const loginHeader = [...channelHeaders].find((h) => h.textContent?.includes("LINE Login"));
+    expect(loginHeader).toBeDefined();
+    loginHeader!.click();
+    await settle(element);
+
+    // URL parameters input should NOT exist in details view
+    const input = element.shadowRoot?.querySelector<HTMLInputElement>(
+      "#liff-url-params-login-1-AbCdEf",
+    );
+    expect(input).toBeNull();
+
+    const link = element.shadowRoot?.querySelector<HTMLAnchorElement>(".liff-url-link");
+    expect(link?.href).toBe("https://liff.line.me/login-1-AbCdEf?campaign=spring&source=poster");
+
+    const qrBtn = element.shadowRoot?.querySelector<HTMLButtonElement>(".qr-show-btn");
+    expect(qrBtn).not.toBeNull();
+    qrBtn!.click();
+    await settle(element);
+
+    const img = element.shadowRoot?.querySelector<HTMLImageElement>(".qr-code");
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute("data-liff-url")).toBe(
+      "https://liff.line.me/login-1-AbCdEf?campaign=spring&source=poster",
+    );
   });
 });

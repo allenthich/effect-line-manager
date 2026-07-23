@@ -35,6 +35,7 @@ const mockLiffApp: LiffAppView = {
   loginChannelId: "login-channel-1" as LiffAppView["loginChannelId"],
   liffId: "2001043291-AbCdEf12",
   view: { type: "tall", url: "https://example.com/liff" },
+  additionalUrlParameters: "campaign=spring&source=poster",
   description: "Loyalty card",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
@@ -170,10 +171,12 @@ describe("line-account-detail-panel LIFF launch URL", () => {
     expect(text).toContain("Endpoint URL");
     expect(text).toContain("https://example.com/liff");
     expect(text).toContain("LIFF URL");
-    expect(text).toContain("https://liff.line.me/2001043291-AbCdEf12");
+    expect(text).toContain(
+      "https://liff.line.me/2001043291-AbCdEf12?campaign=spring&source=poster",
+    );
   });
 
-  test("updates the URL and QR dialog with additional parameters", async () => {
+  test("displays the persisted LIFF launch URL and opens QR code dialog", async () => {
     const element = document.createElement("line-account-detail-panel") as LineAccountDetailPanel;
     element.item = mockLiffApp;
     element.currentTab = "liff";
@@ -183,10 +186,7 @@ describe("line-account-detail-panel LIFF launch URL", () => {
     const parameters = element.shadowRoot?.querySelector<HTMLInputElement>(
       '[name="liffUrlParameters"]',
     );
-    expect(parameters).not.toBeNull();
-    parameters!.value = "campaign=spring&source=poster";
-    parameters!.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
-    await element.updateComplete;
+    expect(parameters).toBeNull();
 
     const expectedUrl = "https://liff.line.me/2001043291-AbCdEf12?campaign=spring&source=poster";
     expect(element.shadowRoot?.textContent).toContain(expectedUrl);
