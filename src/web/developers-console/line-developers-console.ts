@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues, TemplateResult } from "lit";
 import type { LineProviderManagementAdapter } from "../../adapter/types.ts";
@@ -13,6 +14,16 @@ import type {
   LineDevelopersConsoleErrorDetail,
 } from "./types.ts";
 import { buildLiffUrl } from "../liff-url.ts";
+import { LineLoginChannelId } from "../../shared/domain.ts";
+import type {
+  ProviderView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LiffAppView,
+  LineAccountFormType,
+  LineAccountEntity,
+  LineAccountFormSubmitDetail,
+} from "../types.ts";
 
 const MASK = "••••••••";
 
@@ -45,6 +56,8 @@ export class LineDevelopersConsole extends LitElement {
     expandedProviderIds: { state: true },
     expandedChannelIds: { state: true },
     revealedSecrets: { state: true },
+    editingItem: { state: true },
+    saving: { state: true },
   };
 
   static styles = css`
@@ -808,6 +821,13 @@ export class LineDevelopersConsole extends LitElement {
   declare expandedProviderIds: Set<string>;
   declare expandedChannelIds: Set<string>;
   declare revealedSecrets: Set<string>;
+  declare editingItem:
+    | {
+        type: LineAccountFormType;
+        item: LineAccountEntity;
+      }
+    | undefined;
+  declare saving: boolean;
 
   #lastAdapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
 
@@ -826,6 +846,8 @@ export class LineDevelopersConsole extends LitElement {
     this.expandedProviderIds = new Set();
     this.expandedChannelIds = new Set();
     this.revealedSecrets = new Set();
+    this.editingItem = undefined;
+    this.saving = false;
   }
 
   #emit(type: string, detail: unknown): void {
@@ -1007,53 +1029,54 @@ export class LineDevelopersConsole extends LitElement {
   protected render(): TemplateResult {
     if (this.variant === "tree") {
       return html`<div class="tv-surface">
-        <div class="tv-toolbar" part="toolbar">
-          <div class="tv-search">
-            <input
-              type="search"
-              name="line-console-filter"
-              .value=${this.searchQuery}
-              placeholder=${this.messages.searchPlaceholder}
-              aria-label=${this.messages.searchLabel}
-              @input=${(event: Event) => {
-                this.searchQuery = (event.target as HTMLInputElement).value;
+          <div class="tv-toolbar" part="toolbar">
+            <div class="tv-search">
+              <input
+                type="search"
+                name="line-console-filter"
+                .value=${this.searchQuery}
+                placeholder=${this.messages.searchPlaceholder}
+                aria-label=${this.messages.searchLabel}
+                @input=${(event: Event) => {
+                  this.searchQuery = (event.target as HTMLInputElement).value;
+                }}
+              />
+            </div>
+            <span class="row-count" aria-live="polite">${this.#rowSummary()}</span>
+            <button
+              class="console-btn"
+              type="button"
+              ?disabled=${this.loading || this.adapter === undefined}
+              @click=${() => void this.refresh()}
+              aria-label=${this.messages.refreshLabel}
+            >
+              ${this.messages.refresh}
+            </button>
+            <button
+              class="console-btn primary"
+              type="button"
+              data-action="expand-all"
+              ?disabled=${this.loading || this.adapter === undefined}
+              @click=${() => void this.expandAll()}
+              aria-label=${this.messages.expandAllLabel ?? "Expand the complete hierarchy"}
+            >
+              ${this.messages.expandAll ?? "Expand all"}
+            </button>
+            <button
+              class="console-btn"
+              type="button"
+              @click=${() => {
+                this.expandedProviderIds = new Set();
+                this.expandedChannelIds = new Set();
               }}
-            />
+              aria-label=${this.messages.collapseAllLabel}
+            >
+              ${this.messages.collapseAll}
+            </button>
           </div>
-          <span class="row-count" aria-live="polite">${this.#rowSummary()}</span>
-          <button
-            class="console-btn"
-            type="button"
-            ?disabled=${this.loading || this.adapter === undefined}
-            @click=${() => void this.refresh()}
-            aria-label=${this.messages.refreshLabel}
-          >
-            ${this.messages.refresh}
-          </button>
-          <button
-            class="console-btn primary"
-            type="button"
-            data-action="expand-all"
-            ?disabled=${this.loading || this.adapter === undefined}
-            @click=${() => void this.expandAll()}
-            aria-label=${this.messages.expandAllLabel ?? "Expand the complete hierarchy"}
-          >
-            ${this.messages.expandAll ?? "Expand all"}
-          </button>
-          <button
-            class="console-btn"
-            type="button"
-            @click=${() => {
-              this.expandedProviderIds = new Set();
-              this.expandedChannelIds = new Set();
-            }}
-            aria-label=${this.messages.collapseAllLabel}
-          >
-            ${this.messages.collapseAll}
-          </button>
+          <div class="tv-scroll">${this.loading ? this.#renderLoading() : this.#renderBody()}</div>
         </div>
-        <div class="tv-scroll">${this.loading ? this.#renderLoading() : this.#renderBody()}</div>
-      </div>`;
+        ${this.#renderEditDialog()}`;
     }
 
     return html`<div class="console-toolbar" part="toolbar">
@@ -1105,8 +1128,7 @@ export class LineDevelopersConsole extends LitElement {
           ${this.messages.collapseAll}
         </button>
       </div>
-      ${this.loading ? this.#renderLoading() : this.#renderBody()}
-    </div>`;
+      ${this.loading ? this.#renderLoading() : this.#renderBody()} ${this.#renderEditDialog()}`;
   }
 
   #renderLoading(): TemplateResult {
@@ -1497,7 +1519,7 @@ export class LineDevelopersConsole extends LitElement {
             type="button"
             @click=${(e: Event) => {
               e.stopPropagation();
-              this.#emit("line-developers-console-edit", { kind: "provider", item: provider });
+              this.#openEditProvider(provider);
             }}
           >
             ${this.messages.edit ?? "Edit"}
@@ -1558,7 +1580,7 @@ export class LineDevelopersConsole extends LitElement {
             type="button"
             @click=${(e: Event) => {
               e.stopPropagation();
-              this.#emit("line-developers-console-edit", { kind: "channel", item: channel });
+              this.#openEditChannel(channel);
             }}
           >
             ${this.messages.edit ?? "Edit"}
@@ -1679,7 +1701,7 @@ export class LineDevelopersConsole extends LitElement {
             type="button"
             @click=${(e: Event) => {
               e.stopPropagation();
-              this.#emit("line-developers-console-edit", { kind: "liff", item: liff });
+              this.#openEditLiff(liff);
             }}
           >
             ${this.messages.edit ?? "Edit"}
@@ -1720,5 +1742,162 @@ export class LineDevelopersConsole extends LitElement {
         </div>
       </div>
     </div>`;
+  }
+
+  #openEditProvider(provider: ConsoleProviderView): void {
+    const pItem: ProviderView = {
+      id: provider.providerId,
+      name: provider.name,
+      createdAt: provider.createdAt ? new Date(provider.createdAt) : new Date(),
+      updatedAt: new Date(),
+    };
+    this.editingItem = { type: "provider", item: pItem };
+    this.#emit("line-developers-console-edit", { kind: "provider", item: provider });
+  }
+
+  #openEditChannel(channel: ConsoleChannelView): void {
+    const type: LineAccountFormType =
+      channel.type === "login" ? "loginChannel" : "messagingChannel";
+    const cItem: LineAccountEntity =
+      channel.type === "login"
+        ? ({
+            id: channel.channelId,
+            channelId: channel.channelId,
+            providerId: channel.providerId,
+            channelType: "login",
+            name: channel.name,
+            channelSecret: channel.channelSecret ?? null,
+            createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+            updatedAt: new Date(),
+          } as LineLoginChannelView)
+        : ({
+            id: channel.channelId,
+            channelId: channel.channelId,
+            providerId: channel.providerId,
+            channelType: "messaging",
+            name: channel.name,
+            botUserId: channel.botUserId ?? null,
+            botBasicId: channel.botBasicId ?? null,
+            botDisplayName: channel.botDisplayName ?? null,
+            botPictureUrl: channel.botPictureUrl ?? null,
+            addFriendUrl: channel.addFriendUrl ?? null,
+            addFriendQrCodeUrl: channel.addFriendQrCodeUrl ?? null,
+            isActive: channel.status ? channel.status === "Active" : true,
+            channelSecret: channel.channelSecret ?? null,
+            channelAccessToken: channel.channelAccessToken ?? null,
+            createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+            updatedAt: new Date(),
+          } as LineMessagingChannelView);
+
+    this.editingItem = { type, item: cItem };
+    this.#emit("line-developers-console-edit", { kind: "channel", item: channel });
+  }
+
+  #openEditLiff(liff: ConsoleLiffAppView): void {
+    const decodeLoginChannelId = Schema.decodeUnknownSync(LineLoginChannelId);
+    const lItem: LiffAppView = {
+      id: liff.liffId,
+      loginChannelId: decodeLoginChannelId(liff.channelId),
+      liffId: liff.liffId,
+      view: liff.view,
+      description: liff.description ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.editingItem = { type: "liff", item: lItem };
+    this.#emit("line-developers-console-edit", { kind: "liff", item: liff });
+  }
+
+  async #handleFormSubmit(event: CustomEvent<LineAccountFormSubmitDetail>): Promise<void> {
+    if (this.adapter === undefined || this.editingItem === undefined) return;
+    const detail = event.detail;
+    const adapterAny = this.adapter as any;
+    this.saving = true;
+
+    try {
+      if (detail.type === "provider") {
+        if (typeof adapterAny.updateProvider === "function") {
+          await adapterAny.updateProvider(this.editingItem.item.id, detail.input);
+        }
+      } else if (detail.type === "messagingChannel") {
+        if (typeof adapterAny.updateMessagingChannel === "function") {
+          const channelId = (this.editingItem.item as LineMessagingChannelView).channelId;
+          await adapterAny.updateMessagingChannel(channelId, detail.input);
+        }
+      } else if (detail.type === "loginChannel") {
+        if (typeof adapterAny.updateLoginChannel === "function") {
+          const channelId = (this.editingItem.item as LineLoginChannelView).channelId;
+          await adapterAny.updateLoginChannel(channelId, detail.input);
+        }
+      } else if (detail.type === "liff") {
+        if (typeof adapterAny.updateLiffApp === "function") {
+          const liffId = (this.editingItem.item as LiffAppView).liffId;
+          await adapterAny.updateLiffApp(liffId, detail.input);
+        }
+      }
+
+      this.editingItem = undefined;
+      await this.refresh();
+      this.#emit("line-account-updated", { type: detail.type, input: detail.input });
+    } catch (error) {
+      this.#emitError({ operation: "updateProvider" as any, error });
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  #renderEditDialog(): TemplateResult {
+    if (this.editingItem === undefined) return html``;
+
+    const { type, item } = this.editingItem;
+    const heading =
+      type === "provider"
+        ? "Edit Provider"
+        : type === "messagingChannel"
+          ? "Edit Messaging Channel"
+          : type === "loginChannel"
+            ? "Edit Login Channel"
+            : "Edit LIFF Application";
+
+    const providerViews: ProviderView[] = this.providers.map((p) => ({
+      id: p.providerId,
+      name: p.name,
+      createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const loginChannelViews: LineLoginChannelView[] = [...this.channelsByProvider.values()]
+      .flat()
+      .filter((c) => c.type === "login")
+      .map((c) => ({
+        id: c.channelId,
+        channelId: c.channelId,
+        providerId: c.providerId,
+        channelType: "login",
+        name: c.name,
+        channelSecret: c.channelSecret ?? null,
+        createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+        updatedAt: new Date(),
+      }));
+
+    return html`
+      <line-account-dialog
+        .open=${this.editingItem !== undefined}
+        .heading=${heading}
+        @line-account-dialog-close-request=${() => {
+          this.editingItem = undefined;
+        }}
+      >
+        <line-account-form
+          .type=${type}
+          .mode=${"edit"}
+          .item=${item}
+          .providers=${providerViews}
+          .loginChannels=${loginChannelViews}
+          @line-account-form-submit=${(e: CustomEvent<LineAccountFormSubmitDetail>) =>
+            void this.#handleFormSubmit(e)}
+        ></line-account-form>
+      </line-account-dialog>
+    `;
   }
 }

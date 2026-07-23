@@ -194,4 +194,29 @@ describe("LineProviderManagementAdapter normalization in <line-developers-consol
     expect(text).toContain("Loyalty Card LIFF");
     expect(text).toContain("2222222222-AbCdEf");
   });
+
+  test("opens edit modal dialog when an edit button is clicked in tree view", async () => {
+    const mgmtAdapter = makeEnvelopeProviderManagementAdapter();
+    const element = document.createElement("line-developers-console") as LineDevelopersConsole;
+    element.variant = "tree";
+    element.adapter = mgmtAdapter;
+    document.body.append(element);
+
+    await settle(element);
+    await element.expandAll();
+    await settle(element);
+    await settle(element);
+
+    const editBtn = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      ".r-provider .tv-actions .mini-btn",
+    );
+    expect(editBtn).not.toBeNull();
+    editBtn!.click();
+    await settle(element);
+
+    const dialog = element.shadowRoot?.querySelector("line-account-dialog");
+    expect(dialog).not.toBeNull();
+    expect((dialog as any).open).toBe(true);
+    expect((dialog as any).heading).toBe("Edit Provider");
+  });
 });
