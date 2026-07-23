@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues, TemplateResult } from "lit";
@@ -58,6 +59,10 @@ export class LineDevelopersConsole extends LitElement {
     revealedSecrets: { state: true },
     editingItem: { state: true },
     saving: { state: true },
+    _qrCodeDataUrl: { state: true },
+    _qrCodeError: { state: true },
+    _qrCodeOpen: { state: true },
+    _qrCodeLiffUrl: { state: true },
   };
 
   static styles = css`
@@ -823,6 +828,100 @@ export class LineDevelopersConsole extends LitElement {
         width: 100%;
       }
     }
+
+    .liff-url-field {
+      display: grid;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .liff-url-field input {
+      width: 100%;
+      min-height: 2.25rem;
+      box-sizing: border-box;
+      padding: 0.375rem 0.625rem;
+      border: 1px solid var(--line-account-border-color, #cbd5e1);
+      border-radius: var(--line-account-input-radius, 0.5rem);
+      background: var(--line-account-surface-background, #fff);
+      color: inherit;
+      font: inherit;
+      font-size: 0.875rem;
+    }
+
+    .liff-url-field input:focus-visible {
+      outline: 3px solid var(--line-account-focus-color, #74d7a1);
+      outline-offset: 1px;
+      border-color: var(--line-account-primary-color, #06c755);
+    }
+
+    .liff-url-hint {
+      margin: 0;
+      color: var(--line-account-muted-color, #64748b);
+      font-size: 0.75rem;
+    }
+
+    .liff-launch-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .liff-url-link {
+      color: var(--line-account-primary-text-color, #057b38);
+      overflow-wrap: anywhere;
+      font-family: monospace;
+      font-size: 0.875rem;
+    }
+
+    .qr-dialog-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: center;
+    }
+
+    .qr-code {
+      display: block;
+      width: min(15rem, 100%);
+      height: auto;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .qr-url {
+      max-width: 30rem;
+      margin: 0;
+      color: var(--line-account-muted-color, #64748b);
+      font-size: 0.75rem;
+      overflow-wrap: anywhere;
+    }
+
+    .qr-show-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      min-height: 2.25rem;
+      padding: 0.375rem 0.75rem;
+      border: 1px solid var(--line-account-primary-color, #06c755);
+      border-radius: var(--line-account-button-radius, 0.5rem);
+      background: var(--line-account-primary-color, #06c755);
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .qr-show-btn:hover:not(:disabled) {
+      background: var(--line-account-primary-hover, #05b04b);
+      border-color: var(--line-account-primary-hover, #05b04b);
+    }
   `;
 
   declare adapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
@@ -847,6 +946,10 @@ export class LineDevelopersConsole extends LitElement {
       }
     | undefined;
   declare saving: boolean;
+  declare _qrCodeDataUrl: string;
+  declare _qrCodeError: string;
+  declare _qrCodeOpen: boolean;
+  declare _qrCodeLiffUrl: string;
 
   #lastAdapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
 
@@ -867,7 +970,34 @@ export class LineDevelopersConsole extends LitElement {
     this.revealedSecrets = new Set();
     this.editingItem = undefined;
     this.saving = false;
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    this._qrCodeOpen = false;
+    this._qrCodeLiffUrl = "";
   }
+
+  #generateQrCode = async (liffUrl: string): Promise<void> => {
+    try {
+      const svg = await QRCode.toString(liffUrl, { type: "svg", width: 240, margin: 1 });
+      this._qrCodeDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      this._qrCodeError = "";
+    } catch {
+      this._qrCodeDataUrl = "";
+      this._qrCodeError = "QR code could not be generated.";
+    }
+  };
+
+  #openQrCode = (liffUrl: string): void => {
+    this._qrCodeLiffUrl = liffUrl;
+    this._qrCodeOpen = true;
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    void this.#generateQrCode(liffUrl);
+  };
+
+  #closeQrCode = (): void => {
+    this._qrCodeOpen = false;
+  };
 
   #emit(type: string, detail: unknown): void {
     this.dispatchEvent(new CustomEvent(type, { bubbles: true, composed: true, detail }));
@@ -1440,6 +1570,8 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   #renderLiff(liff: ConsoleLiffAppView): TemplateResult {
+    const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
+
     return html`<div class="node" role="treeitem" aria-expanded="false">
       <div class="node-header" style="cursor:default;">
         <span class="chevron-placeholder"></span>
@@ -1449,8 +1581,8 @@ export class LineDevelopersConsole extends LitElement {
           <span class="badge badge-liff">LIFF</span>
           <span class="badge badge-type">${liff.view.type.toUpperCase()}</span>
           <a
-            class="open-link liff-url-link"
-            href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
+            class="open-link"
+            href=${liffUrl}
             target="_blank"
             rel="noopener"
             style="margin-left:0.5rem;"
@@ -1474,7 +1606,7 @@ export class LineDevelopersConsole extends LitElement {
           </div>
           <div>
             <dt>${this.messages.liffLaunchUrl ?? "LIFF URL"}</dt>
-            <dd>${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}</dd>
+            <dd>${liffUrl}</dd>
           </div>
           ${liff.description
             ? html`<div>
@@ -1483,6 +1615,12 @@ export class LineDevelopersConsole extends LitElement {
               </div>`
             : ""}
         </dl>
+        <div class="liff-launch-actions" style="margin-top:0.5rem;">
+          <a class="liff-url-link" href=${liffUrl} target="_blank" rel="noopener">${liffUrl}</a>
+          <button class="qr-show-btn" type="button" @click=${() => this.#openQrCode(liffUrl)}>
+            Show QR code
+          </button>
+        </div>
       </div>
     </div>`;
   }
@@ -1704,6 +1842,8 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   #renderTvLiff(liff: ConsoleLiffAppView): TemplateResult {
+    const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
+
     return html`<div role="treeitem" aria-expanded="true">
       <div class="tv-row-wrap r-liff">
         <div class="tv-row r-liff">
@@ -1741,21 +1881,17 @@ export class LineDevelopersConsole extends LitElement {
           </div>
           <div class="tv-field-card">
             <span class="k">${this.messages.liffLaunchUrl ?? "LIFF URL"}</span>
-            <span class="v"
-              >${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
-              ${this.#renderCopyBtn(
-                buildLiffUrl(liff.liffId, liff.additionalUrlParameters),
-                "Copy LIFF URL",
-              )}</span
-            >
+            <span class="v">${liffUrl} ${this.#renderCopyBtn(liffUrl, "Copy LIFF URL")}</span>
           </div>
         </div>
+        <div class="liff-launch-actions" style="margin-top:0.5rem;">
+          <a class="liff-url-link" href=${liffUrl} target="_blank" rel="noopener">${liffUrl}</a>
+          <button class="qr-show-btn" type="button" @click=${() => this.#openQrCode(liffUrl)}>
+            Show QR code
+          </button>
+        </div>
         <div class="tv-detail-footer">
-          <a
-            class="tv-open-link"
-            href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
-            target="_blank"
-            rel="noopener"
+          <a class="tv-open-link" href=${liffUrl} target="_blank" rel="noopener"
             >${this.messages.openLiff} ↗</a
           >
         </div>
@@ -1819,6 +1955,7 @@ export class LineDevelopersConsole extends LitElement {
       loginChannelId: decodeLoginChannelId(liff.channelId),
       liffId: liff.liffId,
       view: liff.view,
+      additionalUrlParameters: liff.additionalUrlParameters ?? "",
       description: liff.description ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -1866,9 +2003,9 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   #renderEditDialog(): TemplateResult {
-    if (this.editingItem === undefined) return html``;
-
-    const { type, item } = this.editingItem;
+    const editing = this.editingItem !== undefined;
+    const type = this.editingItem?.type ?? "provider";
+    const item = this.editingItem?.item;
     const heading =
       type === "provider"
         ? "Edit Provider"
@@ -1901,7 +2038,7 @@ export class LineDevelopersConsole extends LitElement {
 
     return html`
       <line-account-dialog
-        .open=${this.editingItem !== undefined}
+        .open=${editing}
         .heading=${heading}
         @line-account-dialog-close-request=${() => {
           this.editingItem = undefined;
@@ -1916,6 +2053,27 @@ export class LineDevelopersConsole extends LitElement {
           @line-account-form-submit=${(e: CustomEvent<LineAccountFormSubmitDetail>) =>
             void this.#handleFormSubmit(e)}
         ></line-account-form>
+      </line-account-dialog>
+
+      <line-account-dialog
+        .open=${this._qrCodeOpen}
+        heading="QR code"
+        @line-account-dialog-close-request=${this.#closeQrCode}
+      >
+        <div class="qr-dialog-content">
+          ${this._qrCodeDataUrl
+            ? html`<img
+                class="qr-code"
+                src=${this._qrCodeDataUrl}
+                alt="QR code for ${this._qrCodeLiffUrl}"
+                data-liff-url=${this._qrCodeLiffUrl}
+              />`
+            : this._qrCodeError
+              ? html`<p role="alert">${this._qrCodeError}</p>`
+              : html`<p role="status">Generating QR code...</p>`}
+          <p class="qr-url">${this._qrCodeLiffUrl}</p>
+        </div>
+        <button slot="footer" type="button" @click=${this.#closeQrCode}>Close</button>
       </line-account-dialog>
     `;
   }
