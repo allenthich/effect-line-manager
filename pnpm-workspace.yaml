@@ -1,8 +1,8 @@
 allowBuilds:
   msgpackr-extract: false
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.1
-  vite-plus: 0.2.1
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.6
+  vite-plus: 0.2.6
 minimumReleaseAgeExclude:
   - "@effect/tsgo-darwin-arm64@0.14.2"
   - "@effect/tsgo-darwin-x64@0.14.2"
@@ -12,7 +12,19 @@ minimumReleaseAgeExclude:
   - "@effect/tsgo-win32-arm64@0.14.2"
   - "@effect/tsgo-win32-x64@0.14.2"
   - "@effect/tsgo@0.14.2"
+  - "@voidzero-dev/vite-plus-core@0.2.6"
+  - "@voidzero-dev/vite-plus-darwin-arm64@0.2.6"
+  - "@voidzero-dev/vite-plus-darwin-x64@0.2.6"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@0.2.6"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@0.2.6"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@0.2.6"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@0.2.6"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@0.2.6"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@0.2.6"
+  - vite-plus@0.2.6
 overrides:
+  js-yaml@^3.0.0: 3.15.0
+  js-yaml@^4.0.0: 4.3.0
   vite: "catalog:"
 peerDependencyRules:
   allowAny:
