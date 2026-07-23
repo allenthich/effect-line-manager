@@ -330,16 +330,21 @@ describe("line-developers-console", () => {
     expect(element.expandedChannelIds).toEqual(new Set(["msg-1", "login-1"]));
   });
 
-  test("loads data when an adapter is assigned after connection", async () => {
+  test("automatically populates data when adapter property is set after component is mounted", async () => {
     const element = document.createElement("line-developers-console") as LineDevelopersConsole;
     document.body.append(element);
     await element.updateComplete;
+
+    expect(element.shadowRoot?.textContent).toContain(
+      defaultLineDevelopersConsoleMessages.noAdapter,
+    );
 
     element.adapter = adapter;
     await settle(element);
     await settle(element);
 
     expect(element.shadowRoot?.textContent).toContain("Acme");
+    expect(element.shadowRoot?.textContent).toContain("1 provider");
   });
 
   test("renders the persisted LIFF launch URL in details", async () => {
