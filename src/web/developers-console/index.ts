@@ -13,7 +13,11 @@ export { LineDevelopersConsole } from "./line-developers-console.ts";
 export type { LineDevelopersConsoleVariant } from "./line-developers-console.ts";
 export { defaultLineDevelopersConsoleMessages } from "./messages.ts";
 export type { LineDevelopersConsoleMessages } from "./messages.ts";
-export { createLineConsoleAdapter, createInMemoryConsoleAdapter } from "./console-adapter.ts";
+export {
+  createLineConsoleAdapter,
+  createInMemoryConsoleAdapter,
+  createLineConsoleAdapterFromProviderManagementAdapter,
+} from "./console-adapter.ts";
 export type { LineConsoleAdapterOptions, ConsoleEndpoints } from "./console-adapter.ts";
 export type {
   ConsoleChannelType,

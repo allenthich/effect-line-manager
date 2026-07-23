@@ -150,3 +150,21 @@ vp test
 vp check
 vp run build
 ```
+
+### Local Linking in Consumer Apps
+
+When linking `effect-line-manager` locally into a consumer application (e.g., via `file:` or `npm link`), avoid linking the root repository directory directly. Linking the root directory causes Node to resolve duplicate instances of the `effect` package from `effect-line-manager`'s local `node_modules` (due to its `devDependencies`), leading to runtime errors like `Unable to get redacted value` caused by split Effect `Redacted` `WeakMap` registries.
+
+Instead, build and consume the isolated `.dev-package` target:
+
+1. In `effect-line-manager`, run the consumer watcher:
+   ```bash
+   pnpm dev:consumer
+   ```
+2. In your consumer project's `package.json`, point to `.dev-package`:
+   ```json
+   "dependencies": {
+     "@allenthich/effect-line-manager": "file:../path-to/effect-line-manager/.dev-package"
+   }
+   ```
+3. Run `npm install` in the consumer project.
