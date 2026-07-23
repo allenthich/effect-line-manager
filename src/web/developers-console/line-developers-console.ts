@@ -330,8 +330,16 @@ export class LineDevelopersConsole extends LitElement {
     }
     .secret-row {
       display: inline-flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 0.25rem;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .secret {
+      min-width: 0;
+      word-break: break-all;
+      overflow-wrap: anywhere;
     }
     .mini-btn {
       padding: 0 0.4rem;
@@ -734,9 +742,12 @@ export class LineDevelopersConsole extends LitElement {
     }
     .tv-fields .v {
       display: inline-flex;
+      flex-wrap: wrap;
       min-width: 0;
+      max-width: 100%;
       align-items: center;
       gap: 0.25rem;
+      word-break: break-all;
       overflow-wrap: anywhere;
       color: #e2e8f0;
       font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
@@ -745,6 +756,9 @@ export class LineDevelopersConsole extends LitElement {
     .tv-fields .secret {
       color: #e2e8f0;
       font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      min-width: 0;
+      word-break: break-all;
+      overflow-wrap: anywhere;
     }
     .tv-detail-footer {
       display: flex;
@@ -794,6 +808,11 @@ export class LineDevelopersConsole extends LitElement {
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
+    }
+    @media (max-width: 48rem) {
+      .tv-fields-grid {
+        grid-template-columns: 1fr;
+      }
     }
     @media (max-width: 40rem) {
       .tv-search {
