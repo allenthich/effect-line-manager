@@ -219,4 +219,47 @@ describe("LineProviderManagementAdapter normalization in <line-developers-consol
     expect((dialog as any).open).toBe(true);
     expect((dialog as any).heading).toBe("Edit Provider");
   });
+
+  test("saves edits from the tree view dialog footer", async () => {
+    let updatedProvider:
+      | {
+          id: string;
+          input: { readonly name?: string };
+        }
+      | undefined;
+    const mgmtAdapter: LineProviderManagementAdapter = {
+      ...makeEnvelopeProviderManagementAdapter(),
+      updateProvider: async (id, input) => {
+        updatedProvider = { id, input };
+        return { ...mockProvider, name: input.name ?? mockProvider.name };
+      },
+    };
+    const element = document.createElement("line-developers-console") as LineDevelopersConsole;
+    element.variant = "tree";
+    element.adapter = mgmtAdapter;
+    document.body.append(element);
+
+    await settle(element);
+    await element.expandAll();
+    await settle(element);
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>(".r-provider .tv-actions .mini-btn")
+      ?.click();
+    await settle(element);
+
+    const dialog = element.shadowRoot?.querySelector("line-account-dialog");
+    const footerButtons = dialog?.querySelectorAll<HTMLButtonElement>('button[slot="footer"]');
+    expect(footerButtons).toHaveLength(2);
+    expect(footerButtons?.[0]?.textContent?.trim()).toBe("Cancel");
+    expect(footerButtons?.[1]?.textContent?.trim()).toBe("Save changes");
+
+    footerButtons?.[1]?.click();
+    await settle(element);
+    await settle(element);
+
+    expect(updatedProvider).toEqual({
+      id: "provider-1",
+      input: { name: "Acme Corp" },
+    });
+  });
 });

@@ -273,6 +273,29 @@ describe("line-developers-console", () => {
     expect(liffRow?.querySelector(".tv-actions .icon-copy-btn")).toBeNull();
   });
 
+  test("tree LIFF details show one complete generated URL and matching footer actions", async () => {
+    const element = await mount();
+    element.variant = "tree";
+    await element.expandAll();
+    await settle(element);
+
+    const liffRow = element.shadowRoot?.querySelector<HTMLElement>(".tv-row-wrap.r-liff");
+    const liffTreeItem = liffRow?.parentElement;
+    const liffUrlField = [
+      ...(liffTreeItem?.querySelectorAll<HTMLElement>(".tv-field-card") ?? []),
+    ].find((field) => field.querySelector(".k")?.textContent?.trim() === "LIFF URL");
+    const completeLiffUrl = "https://liff.line.me/login-1-AbCdEf?campaign=spring&source=poster";
+
+    expect(liffUrlField?.querySelector(".v")?.textContent).toContain(completeLiffUrl);
+    expect(liffTreeItem?.querySelector(".liff-url-link")).toBeNull();
+
+    const footerActions =
+      liffTreeItem?.querySelectorAll<HTMLElement>(".tv-detail-footer .tv-open-link") ?? [];
+    expect(footerActions).toHaveLength(2);
+    expect(footerActions[0]?.textContent?.trim()).toBe("Show QR code");
+    expect(footerActions[1]?.textContent?.trim()).toBe("LIFF app ↗");
+  });
+
   test("tree Edit buttons emit composed events with the selected entity", async () => {
     const element = await mount();
     element.variant = "tree";
@@ -297,6 +320,7 @@ describe("line-developers-console", () => {
       composed: true,
       detail: { kind: "provider", item: providers[0] },
     });
+    expect(element.editingItem).toBeUndefined();
 
     const channelEdit = element.shadowRoot?.querySelector<HTMLButtonElement>(
       ".r-messaging .tv-actions .mini-btn",

@@ -15,6 +15,7 @@ import type {
   LineDevelopersConsoleErrorDetail,
 } from "./types.ts";
 import { buildLiffUrl } from "../liff-url.ts";
+import type { LineAccountForm } from "../line-account-form.ts";
 import { LineLoginChannelId } from "../../shared/domain.ts";
 import type {
   ProviderView,
@@ -775,11 +776,15 @@ export class LineDevelopersConsole extends LitElement {
       border-top: 1px solid #1e293b;
     }
     .tv-open-link {
+      display: inline-flex;
+      align-items: center;
       padding: 0.25rem 0.6rem;
       border: 1px solid #334155;
       border-radius: 0.375rem;
       background: #1e293b;
       color: #e2e8f0;
+      cursor: pointer;
+      font-family: inherit;
       font-size: 0.65rem;
       font-weight: 600;
       text-decoration: none;
@@ -921,6 +926,34 @@ export class LineDevelopersConsole extends LitElement {
     .qr-show-btn:hover:not(:disabled) {
       background: var(--line-account-primary-hover, #05b04b);
       border-color: var(--line-account-primary-hover, #05b04b);
+    }
+
+    .dialog-action {
+      min-height: 2.75rem;
+      padding: 0.625rem 1rem;
+      border: 1px solid var(--line-account-border-color, #c7d0d9);
+      border-radius: var(--line-account-button-radius, 0.5rem);
+      background: var(--line-account-surface-background, #fff);
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 650;
+    }
+
+    .dialog-action.primary {
+      border-color: var(--line-account-primary-color, #06c755);
+      background: var(--line-account-primary-color, #06c755);
+      color: var(--line-account-primary-contrast, #fff);
+    }
+
+    .dialog-action:focus-visible {
+      outline: 3px solid var(--line-account-focus-color, #74d7a1);
+      outline-offset: 2px;
+    }
+
+    .dialog-action:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
     }
   `;
 
@@ -1884,13 +1917,10 @@ export class LineDevelopersConsole extends LitElement {
             <span class="v">${liffUrl} ${this.#renderCopyBtn(liffUrl, "Copy LIFF URL")}</span>
           </div>
         </div>
-        <div class="liff-launch-actions" style="margin-top:0.5rem;">
-          <a class="liff-url-link" href=${liffUrl} target="_blank" rel="noopener">${liffUrl}</a>
-          <button class="qr-show-btn" type="button" @click=${() => this.#openQrCode(liffUrl)}>
+        <div class="tv-detail-footer">
+          <button class="tv-open-link" type="button" @click=${() => this.#openQrCode(liffUrl)}>
             Show QR code
           </button>
-        </div>
-        <div class="tv-detail-footer">
           <a class="tv-open-link" href=${liffUrl} target="_blank" rel="noopener"
             >${this.messages.openLiff} ↗</a
           >
@@ -1899,7 +1929,14 @@ export class LineDevelopersConsole extends LitElement {
     </div>`;
   }
 
+  #supportsInternalEditing(): boolean {
+    return this.adapter !== undefined && "updateProvider" in this.adapter;
+  }
+
   #openEditProvider(provider: ConsoleProviderView): void {
+    this.#emit("line-developers-console-edit", { kind: "provider", item: provider });
+    if (!this.#supportsInternalEditing()) return;
+
     const pItem: ProviderView = {
       id: provider.providerId,
       name: provider.name,
@@ -1907,10 +1944,12 @@ export class LineDevelopersConsole extends LitElement {
       updatedAt: new Date(),
     };
     this.editingItem = { type: "provider", item: pItem };
-    this.#emit("line-developers-console-edit", { kind: "provider", item: provider });
   }
 
   #openEditChannel(channel: ConsoleChannelView): void {
+    this.#emit("line-developers-console-edit", { kind: "channel", item: channel });
+    if (!this.#supportsInternalEditing()) return;
+
     const type: LineAccountFormType =
       channel.type === "login" ? "loginChannel" : "messagingChannel";
     const cItem: LineAccountEntity =
@@ -1945,10 +1984,12 @@ export class LineDevelopersConsole extends LitElement {
           } as LineMessagingChannelView);
 
     this.editingItem = { type, item: cItem };
-    this.#emit("line-developers-console-edit", { kind: "channel", item: channel });
   }
 
   #openEditLiff(liff: ConsoleLiffAppView): void {
+    this.#emit("line-developers-console-edit", { kind: "liff", item: liff });
+    if (!this.#supportsInternalEditing()) return;
+
     const decodeLoginChannelId = Schema.decodeUnknownSync(LineLoginChannelId);
     const lItem: LiffAppView = {
       id: liff.liffId,
@@ -1961,7 +2002,6 @@ export class LineDevelopersConsole extends LitElement {
       updatedAt: new Date(),
     };
     this.editingItem = { type: "liff", item: lItem };
-    this.#emit("line-developers-console-edit", { kind: "liff", item: liff });
   }
 
   async #handleFormSubmit(event: CustomEvent<LineAccountFormSubmitDetail>): Promise<void> {
@@ -2002,6 +2042,12 @@ export class LineDevelopersConsole extends LitElement {
     }
   }
 
+  #submitEditForm(): void {
+    this.shadowRoot
+      ?.querySelector<LineAccountForm>('line-account-dialog[data-kind="edit"] line-account-form')
+      ?.submit();
+  }
+
   #renderEditDialog(): TemplateResult {
     const editing = this.editingItem !== undefined;
     const type = this.editingItem?.type ?? "provider";
@@ -2038,6 +2084,7 @@ export class LineDevelopersConsole extends LitElement {
 
     return html`
       <line-account-dialog
+        data-kind="edit"
         .open=${editing}
         .heading=${heading}
         @line-account-dialog-close-request=${() => {
@@ -2053,6 +2100,27 @@ export class LineDevelopersConsole extends LitElement {
           @line-account-form-submit=${(e: CustomEvent<LineAccountFormSubmitDetail>) =>
             void this.#handleFormSubmit(e)}
         ></line-account-form>
+        <button
+          class="dialog-action"
+          slot="footer"
+          type="button"
+          ?disabled=${this.saving}
+          @click=${() => {
+            this.editingItem = undefined;
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          class="dialog-action primary"
+          part="submit-button"
+          slot="footer"
+          type="button"
+          ?disabled=${this.saving}
+          @click=${() => this.#submitEditForm()}
+        >
+          ${this.saving ? "Saving..." : "Save changes"}
+        </button>
       </line-account-dialog>
 
       <line-account-dialog
