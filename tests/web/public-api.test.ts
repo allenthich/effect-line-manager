@@ -1,5 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import * as rootApi from "../../src/index.ts";
+import * as webApi from "../../src/web/index.ts";
 import {
   LiffAppView as RootLiffAppView,
   LineLoginChannels,
@@ -48,6 +49,12 @@ test("keeps web components out of the root package export", () => {
   expect(rootApi).not.toHaveProperty("defineLineAccountBreadcrumbs");
   expect(rootApi).not.toHaveProperty("defineLineAccountManagement");
   expect(rootApi).not.toHaveProperty("defaultLineAccountManagementMessages");
+});
+
+test("keeps the developers console in its optional subpath", () => {
+  expect(webApi).not.toHaveProperty("LineDevelopersConsole");
+  expect(webApi).not.toHaveProperty("createLineConsoleAdapter");
+  expect(webApi).not.toHaveProperty("defineLineDevelopersConsole");
 });
 
 test("exports the web components from the dedicated web package", () => {

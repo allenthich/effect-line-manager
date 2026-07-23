@@ -1,5 +1,7 @@
 import { LitElement, css, html } from "lit";
-import type { TemplateResult } from "lit";
+import type { PropertyValues, TemplateResult } from "lit";
+import type { LineProviderManagementAdapter } from "../../adapter/types.ts";
+import { createLineConsoleAdapterFromProviderManagementAdapter } from "./console-adapter.ts";
 import { defaultLineDevelopersConsoleMessages } from "./messages.ts";
 import type { LineDevelopersConsoleMessages } from "./messages.ts";
 import type {
@@ -19,6 +21,9 @@ const channelTypeLabel: Record<ConsoleChannelType, string> = {
   miniApp: "LINE MINI App",
   blockchain: "Blockchain Service",
 };
+
+const buildConsoleUrl = (channelId: string): string =>
+  `https://developers.line.biz/console/channel/${channelId}`;
 
 /** Visual layout for the hierarchy surface. */
 export type LineDevelopersConsoleVariant = "list" | "tree";
@@ -156,6 +161,21 @@ export class LineDevelopersConsole extends LitElement {
     .node-header:focus-visible {
       outline: 2px solid var(--line-account-primary-color, #10b981);
       outline-offset: -2px;
+    }
+    .channel-header-row {
+      display: flex;
+      align-items: stretch;
+    }
+    .channel-header-row .node-header {
+      flex: 1;
+      width: auto;
+      min-width: 0;
+    }
+    .channel-header-row .open-link {
+      display: inline-flex;
+      align-items: center;
+      margin: 0.625rem 0.75rem 0.625rem 0.25rem;
+      white-space: nowrap;
     }
     .chevron {
       width: 1rem;
@@ -386,6 +406,47 @@ export class LineDevelopersConsole extends LitElement {
       gap: 0.125rem;
       margin-top: 0.75rem;
     }
+    .tv-surface {
+      margin-top: 0.75rem;
+      overflow: hidden;
+      border: 1px solid var(--line-account-border-color, #e2e8f0);
+      border-radius: var(--line-account-radius, 1rem);
+      background: var(--line-account-surface-background, #fff);
+    }
+    .tv-toolbar {
+      margin: 0;
+      border-bottom: 1px solid var(--line-account-border-color, #e2e8f0);
+      padding: 0.75rem;
+    }
+    .tv-surface .tv {
+      margin: 0;
+      padding: 0.75rem;
+    }
+    .tv-row-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 0;
+    }
+    .tv-row-wrap .tv-row {
+      flex: 0 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+    .tv-field-card {
+      min-width: 0;
+    }
+    .icon-copy-btn {
+      border: 0;
+      background: transparent;
+      color: var(--line-account-muted-color, #64748b);
+      cursor: pointer;
+      font: inherit;
+    }
+    .tv-actions {
+      display: inline-flex;
+      margin-left: auto;
+    }
     .tv-row {
       display: flex;
       align-items: center;
@@ -522,7 +583,7 @@ export class LineDevelopersConsole extends LitElement {
     }
   `;
 
-  declare adapter: LineConsoleAdapter | undefined;
+  declare adapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
   declare messages: LineDevelopersConsoleMessages;
   declare maskSecrets: boolean;
   declare variant: LineDevelopersConsoleVariant;
@@ -537,6 +598,8 @@ export class LineDevelopersConsole extends LitElement {
   declare expandedProviderIds: Set<string>;
   declare expandedChannelIds: Set<string>;
   declare revealedSecrets: Set<string>;
+
+  #lastAdapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
 
   constructor() {
     super();
@@ -566,7 +629,15 @@ export class LineDevelopersConsole extends LitElement {
 
   async connectedCallback(): Promise<void> {
     super.connectedCallback();
+    this.#lastAdapter = this.adapter;
     void this.#loadProviders();
+  }
+
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("adapter") && this.adapter !== this.#lastAdapter) {
+      this.#lastAdapter = this.adapter;
+      void this.refresh();
+    }
   }
 
   async refresh(): Promise<void> {
@@ -575,12 +646,19 @@ export class LineDevelopersConsole extends LitElement {
     await this.#loadProviders();
   }
 
+  #getNormalizedAdapter(): LineConsoleAdapter | undefined {
+    if (this.adapter === undefined) return undefined;
+    if ("listChannels" in this.adapter) return this.adapter;
+    return createLineConsoleAdapterFromProviderManagementAdapter(this.adapter);
+  }
+
   async #loadProviders(): Promise<void> {
-    if (this.adapter === undefined) return;
+    const adapter = this.#getNormalizedAdapter();
+    if (adapter === undefined) return;
     this.loading = true;
     this.error = undefined;
     try {
-      const providers = await this.adapter.listProviders();
+      const providers = await adapter.listProviders();
       this.providers = providers;
     } catch (error) {
       this.#emitError({ operation: "listProviders", error });
@@ -590,9 +668,10 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   async #loadChannels(providerId: string, provider: ConsoleProviderView): Promise<void> {
-    if (this.adapter === undefined || this.channelsByProvider.has(providerId)) return;
+    const adapter = this.#getNormalizedAdapter();
+    if (adapter === undefined || this.channelsByProvider.has(providerId)) return;
     try {
-      const channels = await this.adapter.listChannels(providerId);
+      const channels = await adapter.listChannels(providerId);
       const next = new Map(this.channelsByProvider);
       next.set(providerId, channels);
       this.channelsByProvider = next;
@@ -603,9 +682,10 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   async #loadLiffApps(channelId: string, channel: ConsoleChannelView): Promise<void> {
-    if (this.adapter === undefined || this.liffByChannel.has(channelId)) return;
+    const adapter = this.#getNormalizedAdapter();
+    if (adapter === undefined || this.liffByChannel.has(channelId)) return;
     try {
-      const apps = await this.adapter.listLiffApps(channelId);
+      const apps = await adapter.listLiffApps(channelId);
       const next = new Map(this.liffByChannel);
       next.set(channelId, apps);
       this.liffByChannel = next;
@@ -631,6 +711,25 @@ export class LineDevelopersConsole extends LitElement {
     );
     if (shouldExpand && channel.type === "login")
       void this.#loadLiffApps(channel.channelId, channel);
+  }
+
+  /** Expands and loads the complete visible hierarchy. */
+  async expandAll(): Promise<void> {
+    const providers = this.#filteredProviders();
+    this.expandedProviderIds = new Set(providers.map((provider) => provider.providerId));
+    await Promise.all(
+      providers.map((provider) => this.#loadChannels(provider.providerId, provider)),
+    );
+
+    const channels = providers.flatMap(
+      (provider) => this.channelsByProvider.get(provider.providerId) ?? [],
+    );
+    this.expandedChannelIds = new Set(channels.map((channel) => channel.channelId));
+    await Promise.all(
+      channels
+        .filter((channel) => channel.type === "login")
+        .map((channel) => this.#loadLiffApps(channel.channelId, channel)),
+    );
   }
 
   #selectProvider(provider: ConsoleProviderView, selected: boolean): void {
@@ -696,7 +795,9 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   protected render(): TemplateResult {
-    return html`<div class="console-toolbar" part="toolbar">
+    const treeVariant = this.variant === "tree";
+    return html`<div class=${treeVariant ? "tv-surface" : ""}>
+      <div class="console-toolbar ${treeVariant ? "tv-toolbar" : ""}" part="toolbar">
         <div class="search">
           <input
             type="search"
@@ -732,6 +833,18 @@ export class LineDevelopersConsole extends LitElement {
           </svg>
           ${this.messages.refresh}
         </button>
+        ${treeVariant
+          ? html`<button
+              class="console-btn"
+              type="button"
+              data-action="expand-all"
+              ?disabled=${this.loading || this.adapter === undefined}
+              @click=${() => void this.expandAll()}
+              aria-label=${this.messages.expandAllLabel ?? "Expand the complete hierarchy"}
+            >
+              ${this.messages.expandAll ?? "Expand all"}
+            </button>`
+          : ""}
         <button
           class="console-btn"
           type="button"
@@ -744,7 +857,8 @@ export class LineDevelopersConsole extends LitElement {
           ${this.messages.collapseAll}
         </button>
       </div>
-      ${this.loading ? this.#renderLoading() : this.#renderBody()}`;
+      ${this.loading ? this.#renderLoading() : this.#renderBody()}
+    </div>`;
   }
 
   #renderLoading(): TemplateResult {
@@ -866,7 +980,7 @@ export class LineDevelopersConsole extends LitElement {
       </div>
       <div>
         <dt>${this.messages.region}</dt>
-        <dd>${provider.region ?? "—"}</dd>
+        <dd>${provider.region ?? "-"}</dd>
       </div>
       <div>
         <dt>${this.messages.certified}</dt>
@@ -874,7 +988,7 @@ export class LineDevelopersConsole extends LitElement {
       </div>
       <div>
         <dt>${this.messages.created}</dt>
-        <dd>${provider.createdAt ?? "—"}</dd>
+        <dd>${provider.createdAt ?? "-"}</dd>
       </div>
     </dl>`;
   }
@@ -901,52 +1015,41 @@ export class LineDevelopersConsole extends LitElement {
       role="treeitem"
       aria-expanded=${expanded ? "true" : "false"}
     >
-      <button class="node-header" type="button" @click=${() => this.#toggleChannel(channel)}>
-        ${hasLiff ? this.#chevron(expanded) : html`<span class="chevron-placeholder"></span>`}
-        <span class="avatar ${avatarClass}" aria-hidden="true"
-          >${channel.name.charAt(0).toUpperCase()}</span
-        >
-        <div class="head-row">
-          <span class="head-name">${channel.name}</span>
-          <span class="badge ${badgeClass}">${channelTypeLabel[channel.type]}</span>
-          <span class="head-sub">${channel.channelId}</span>
-          <div class="head-pills">
-            ${channel.status
-              ? html`<span
-                  class="badge ${channel.status.toLowerCase() === "active" ||
-                  channel.status.toLowerCase() === "published"
-                    ? "badge-active"
-                    : "badge-type"}"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  ${channel.status}
-                </span>`
-              : ""}
-          </div>
-        </div>
+      <div class="channel-header-row">
         <button
-          class="console-btn"
+          class="node-header channel-header-toggle"
           type="button"
-          style="margin-left:0.5rem;"
-          @click=${(event: Event) => {
-            event.stopPropagation();
-            this.#emit("line-developers-console-open", { kind: "channel", item: channel });
-          }}
-          aria-label=${this.messages.openConsole}
+          @click=${() => this.#toggleChannel(channel)}
         >
-          ↗
+          ${hasLiff ? this.#chevron(expanded) : html`<span class="chevron-placeholder"></span>`}
+          <span class="avatar ${avatarClass}" aria-hidden="true"
+            >${channel.name.charAt(0).toUpperCase()}</span
+          >
+          <span class="head-row">
+            <span class="head-name">${channel.name}</span>
+            <span class="badge ${badgeClass}">${channelTypeLabel[channel.type]}</span>
+            <span class="head-sub">${channel.channelId}</span>
+            <span class="head-pills">
+              ${channel.status
+                ? html`<span
+                    class="badge ${channel.status.toLowerCase() === "active" ||
+                    channel.status.toLowerCase() === "published"
+                      ? "badge-active"
+                      : "badge-type"}"
+                    >${channel.status}</span
+                  >`
+                : ""}
+            </span>
+          </span>
         </button>
-      </button>
+        <a
+          class="open-link"
+          href=${buildConsoleUrl(channel.channelId)}
+          target="_blank"
+          rel="noopener"
+          >${this.messages.openConsole} ↗</a
+        >
+      </div>
       ${expanded
         ? html`<div class="children">
             ${this.#renderChannelMeta(channel)}
@@ -1105,31 +1208,52 @@ export class LineDevelopersConsole extends LitElement {
 
   // ---- variant="tree": IDE tree viewer --------------------------------------
 
+  #renderCopyButton(value: string, label: string): TemplateResult {
+    return html`<button
+      class="icon-copy-btn"
+      type="button"
+      aria-label=${label}
+      title=${label}
+      @click=${() => {
+        void navigator.clipboard?.writeText(value);
+        this.#emit("line-developers-console-copy", { value });
+      }}
+    >
+      Copy
+    </button>`;
+  }
+
   #renderTvProvider(provider: ConsoleProviderView): TemplateResult {
     const expanded = this.expandedProviderIds.has(provider.providerId);
     const channels = this.channelsByProvider.get(provider.providerId) ?? [];
     const hasChildren = channels.length > 0;
     return html`<div role="treeitem" aria-expanded=${expanded ? "true" : "false"}>
-      <button
-        class="tv-row ${expanded ? "sel" : ""}"
-        type="button"
-        @click=${() => this.#toggleProvider(provider)}
-      >
-        <span class="tv-toggle">${hasChildren ? (expanded ? "▾" : "▸") : ""}</span>
-        <span class="tv-node n-provider" aria-hidden="true"
-          >${provider.name.charAt(0).toUpperCase()}</span
+      <div class="tv-row-wrap r-provider">
+        <button
+          class="tv-row ${expanded ? "sel" : ""}"
+          type="button"
+          @click=${() => this.#toggleProvider(provider)}
         >
-        <span class="tv-name">${provider.name}</span>
+          <span class="tv-toggle">${hasChildren ? (expanded ? "▾" : "▸") : ""}</span>
+          <span class="tv-node n-provider" aria-hidden="true"
+            >${provider.name.charAt(0).toUpperCase()}</span
+          >
+          <span class="tv-name">${provider.name}</span>
+        </button>
+        <span class="tv-id">(id: ${provider.providerId})</span>
+        ${this.#renderCopyButton(provider.providerId, `Copy provider ID ${provider.providerId}`)}
         <span class="tv-type t-provider">Provider</span>
-        <span class="tv-id"
-          >${provider.providerId}${provider.region ? ` · ${provider.region}` : ""}</span
-        >
-        <span class="tv-status ${provider.certified ? "s-active" : "s-other"}">
-          ${provider.certified
-            ? "Certified"
-            : `${channels.length} ${channels.length === 1 ? this.messages.channel : this.messages.channels}`}
+        <span class="tv-actions">
+          <button
+            class="mini-btn"
+            type="button"
+            @click=${() =>
+              this.#emit("line-developers-console-edit", { kind: "provider", item: provider })}
+          >
+            Edit
+          </button>
         </span>
-      </button>
+      </div>
       ${expanded && hasChildren
         ? html`<div class="tv-children">
             ${this.#renderTvProviderFields(provider)}
@@ -1140,9 +1264,9 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   #renderTvProviderFields(provider: ConsoleProviderView): TemplateResult {
-    return html`<div class="tv-fields">
+    return html`<div class="tv-fields tv-field-card">
       <span class="k">providerId:</span> <span class="v">${provider.providerId}</span> ·
-      <span class="k">region:</span> <span class="v">${provider.region ?? "—"}</span> ·
+      <span class="k">region:</span> <span class="v">${provider.region ?? "-"}</span> ·
       <span class="k">certified:</span>
       <span class="v">${provider.certified ? this.messages.yes : this.messages.no}</span>
       ${provider.createdAt
@@ -1174,23 +1298,42 @@ export class LineDevelopersConsole extends LitElement {
         : channel.status?.toLowerCase() === "published"
           ? "s-published"
           : "s-other";
+    const rowClass =
+      channel.type === "messaging"
+        ? "r-messaging"
+        : channel.type === "login"
+          ? "r-login"
+          : "r-provider";
     return html`<div role="treeitem" aria-expanded=${expanded ? "true" : "false"}>
-      <button
-        class="tv-row ${expanded ? "sel" : ""}"
-        type="button"
-        @click=${() => this.#toggleChannel(channel)}
-      >
-        <span class="tv-toggle">${hasLiff ? (expanded ? "▾" : "▸") : ""}</span>
-        <span class="tv-node ${nodeClass}" aria-hidden="true"
-          >${channel.name.charAt(0).toUpperCase()}</span
+      <div class="tv-row-wrap ${rowClass}">
+        <button
+          class="tv-row ${expanded ? "sel" : ""}"
+          type="button"
+          @click=${() => this.#toggleChannel(channel)}
         >
-        <span class="tv-name">${channel.name}</span>
+          <span class="tv-toggle">${hasLiff ? (expanded ? "▾" : "▸") : ""}</span>
+          <span class="tv-node ${nodeClass}" aria-hidden="true"
+            >${channel.name.charAt(0).toUpperCase()}</span
+          >
+          <span class="tv-name">${channel.name}</span>
+        </button>
+        <span class="tv-id">(id: ${channel.channelId})</span>
+        ${this.#renderCopyButton(channel.channelId, `Copy channel ID ${channel.channelId}`)}
         <span class="tv-type ${typeClass}">${channelTypeLabel[channel.type]}</span>
-        <span class="tv-id">${channel.channelId}</span>
         ${channel.status
           ? html`<span class="tv-status ${statusClass}">● ${channel.status}</span>`
           : html`<span class="tv-status s-other">${this.messages.openConsole} ↗</span>`}
-      </button>
+        <span class="tv-actions">
+          <button
+            class="mini-btn"
+            type="button"
+            @click=${() =>
+              this.#emit("line-developers-console-edit", { kind: "channel", item: channel })}
+          >
+            Edit
+          </button>
+        </span>
+      </div>
       ${expanded
         ? html`<div class="tv-children">
             ${this.#renderTvChannelFields(channel)}
@@ -1234,7 +1377,7 @@ export class LineDevelopersConsole extends LitElement {
             channel.channelAccessToken,
           )}`,
       );
-    return html`<div class="tv-fields">
+    return html`<div class="tv-fields tv-field-card">
       ${parts.map((p, i) => html`${i > 0 ? " · " : ""}${p}`)}
     </div>`;
   }
@@ -1269,10 +1412,14 @@ export class LineDevelopersConsole extends LitElement {
 
   #renderTvLiff(liff: ConsoleLiffAppView): TemplateResult {
     return html`<div role="treeitem" aria-expanded="false">
-      <div class="tv-row" style="cursor:default;">
-        <span class="tv-toggle"></span>
-        <span class="tv-node n-liff" aria-hidden="true">L</span>
-        <span class="tv-name">${liff.liffId}</span>
+      <div class="tv-row-wrap r-liff">
+        <div class="tv-row" style="cursor:default;">
+          <span class="tv-toggle"></span>
+          <span class="tv-node n-liff" aria-hidden="true">L</span>
+          <span class="tv-name">${liff.description ?? liff.liffId}</span>
+        </div>
+        <span class="tv-id">(id: ${liff.liffId})</span>
+        ${this.#renderCopyButton(liff.liffId, `Copy LIFF ID ${liff.liffId}`)}
         <span class="tv-type t-liff">LIFF</span>
         <span class="tv-type t-provider">${liff.view.type.toUpperCase()}</span>
         ${liff.permanentUrl
@@ -1286,7 +1433,7 @@ export class LineDevelopersConsole extends LitElement {
             >`
           : ""}
       </div>
-      <div class="tv-fields">
+      <div class="tv-fields tv-field-card">
         <span class="k">liffId:</span> <span class="v">${liff.liffId}</span> ·
         <span class="k">size:</span> <span class="v">${liff.view.type}</span> ·
         <span class="k">url:</span> <span class="v">${liff.view.url}</span>

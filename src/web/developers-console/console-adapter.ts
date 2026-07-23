@@ -1,4 +1,11 @@
+import { Schema } from "effect";
 import type { LineProviderManagementAdapter } from "../../adapter/types.ts";
+import type {
+  LineLoginChannelView,
+  LineMessagingChannelView,
+} from "../../channels/management-domain.ts";
+import type { LiffAppView } from "../../liff/domain.ts";
+import type { ProviderView } from "../../provider/domain.ts";
 import type {
   ConsoleChannelView,
   ConsoleLiffAppView,
@@ -8,12 +15,10 @@ import type {
 } from "./types.ts";
 
 /**
- * Default endpoints for the LINE Developers Console internal REST API.
+ * Explicit endpoints for a host-owned LINE Developers Console proxy.
  *
- * These paths are undocumented and modelled from the console's documented
- * structure; override them via {@link LineConsoleAdapterOptions.endpoints} to
- * match a captured session, or point {@link LineConsoleAdapterOptions.baseUrl}
- * at a same-origin backend proxy.
+ * LINE does not publish a stable console REST contract, so the library does
+ * not guess endpoint paths. Hosts must provide endpoints they control.
  */
 export interface ConsoleEndpoints {
   readonly providers: string;
@@ -22,39 +27,17 @@ export interface ConsoleEndpoints {
   readonly liffApps: (channelId: string) => string;
 }
 
-const defaultBase = "https://developers.line.biz";
-
-const defaultEndpoints = (base: string): ConsoleEndpoints => ({
-  providers: `${base}/api/console/providers`,
-  channelsByProvider: (providerId) =>
-    `${base}/api/console/providers/${encodeURIComponent(providerId)}/channels`,
-  channel: (channelId) => `${base}/api/console/channels/${encodeURIComponent(channelId)}`,
-  liffApps: (channelId) =>
-    `${base}/api/console/channels/${encodeURIComponent(channelId)}/liff-apps`,
-});
-
 /** Options for {@link createLineConsoleAdapter}. */
 export interface LineConsoleAdapterOptions {
-  /**
-   * Base URL for console requests. Defaults to the real developers console.
-   * Set this to a proxy origin to work around same-origin cookie / CORS.
-   */
-  readonly baseUrl?: string;
-  /**
-   * Value of the `Cookie` header to send. In a browser extension with host
-   * permissions, omit this and rely on credentials being attached
-   * automatically; for a backend proxy you may set it explicitly.
-   */
-  readonly cookie?: string;
+  /** Host-owned endpoint definitions. Relative URLs target the current origin. */
+  readonly endpoints: ConsoleEndpoints;
   /** Custom fetch implementation (e.g. a proxy-aware or extension fetch). */
   readonly fetch?: typeof fetch;
-  /** Endpoint overrides; a base URL is applied for you. */
-  readonly endpoints?: Partial<ConsoleEndpoints>;
   /** Map raw console responses into view objects. Defaults pass through. */
   readonly mappers?: ConsoleResponseMappers;
 }
 
-const asArray = (value: unknown): readonly unknown[] => {
+const readArrayResponse = (value: unknown, resource: string): readonly unknown[] => {
   if (Array.isArray(value)) return value;
   if (
     value !== null &&
@@ -63,7 +46,68 @@ const asArray = (value: unknown): readonly unknown[] => {
   ) {
     return (value as { data: unknown[] }).data;
   }
-  return [];
+  throw new TypeError(`Invalid LINE Developers Console ${resource} list response`);
+};
+
+const pageData = <A>(value: readonly A[] | { readonly data: readonly A[] }): readonly A[] =>
+  Array.isArray(value) ? value : (value as { readonly data: readonly A[] }).data;
+
+const NullableString = Schema.optional(Schema.NullOr(Schema.String));
+
+const ConsoleProviderResponse = Schema.Struct({
+  providerId: Schema.String,
+  name: Schema.String,
+  region: NullableString,
+  certified: Schema.optional(Schema.NullOr(Schema.Boolean)),
+  createdAt: NullableString,
+});
+
+const ConsoleChannelResponse = Schema.Struct({
+  channelId: Schema.String,
+  providerId: Schema.String,
+  type: Schema.Literals(["messaging", "login", "miniApp", "blockchain"]),
+  name: Schema.String,
+  status: NullableString,
+  botBasicId: NullableString,
+  botUserId: NullableString,
+  botDisplayName: NullableString,
+  botPictureUrl: NullableString,
+  addFriendUrl: NullableString,
+  addFriendQrCodeUrl: NullableString,
+  webhookUrl: NullableString,
+  channelSecret: NullableString,
+  channelAccessToken: NullableString,
+  callbackUrl: NullableString,
+  email: NullableString,
+  iconUrl: NullableString,
+  createdAt: NullableString,
+});
+
+const ConsoleLiffAppResponse = Schema.Struct({
+  liffId: Schema.String,
+  channelId: Schema.String,
+  view: Schema.Struct({
+    type: Schema.Literals(["compact", "tall", "full"]),
+    url: Schema.String,
+  }),
+  description: NullableString,
+  permanentUrl: NullableString,
+});
+
+const decodeProviderResponse = Schema.decodeUnknownSync(ConsoleProviderResponse);
+const decodeChannelResponse = Schema.decodeUnknownSync(ConsoleChannelResponse);
+const decodeLiffAppResponse = Schema.decodeUnknownSync(ConsoleLiffAppResponse);
+
+const validateResponse = <A>(
+  resource: string,
+  decode: (value: unknown) => A,
+  value: unknown,
+): A => {
+  try {
+    return decode(value);
+  } catch {
+    throw new TypeError(`Invalid LINE Developers Console ${resource} response`);
+  }
 };
 
 /**
@@ -74,46 +118,42 @@ const asArray = (value: unknown): readonly unknown[] => {
  * proxy). Pass a custom `fetch` / `baseUrl` to adapt any environment.
  */
 export const createLineConsoleAdapter = (
-  options: LineConsoleAdapterOptions = {},
+  options: LineConsoleAdapterOptions,
 ): LineConsoleAdapter => {
-  const baseUrl = options.baseUrl ?? defaultBase;
-  const baseEndpoints = defaultEndpoints(baseUrl);
-  const endpoints: ConsoleEndpoints = {
-    providers: options.endpoints?.providers ?? baseEndpoints.providers,
-    channelsByProvider: options.endpoints?.channelsByProvider ?? baseEndpoints.channelsByProvider,
-    channel: options.endpoints?.channel ?? baseEndpoints.channel,
-    liffApps: options.endpoints?.liffApps ?? baseEndpoints.liffApps,
-  };
+  const endpoints = options.endpoints;
   const doFetch = options.fetch ?? fetch.bind(globalThis);
-  const cookie = options.cookie;
-  const mapProvider: (raw: unknown) => ConsoleProviderView =
-    options.mappers?.providers ?? ((raw) => raw as ConsoleProviderView);
-  const mapChannel: (raw: unknown) => ConsoleChannelView =
-    options.mappers?.channel ?? ((raw) => raw as ConsoleChannelView);
-  const mapLiff: (raw: unknown) => ConsoleLiffAppView =
-    options.mappers?.liffApp ?? ((raw) => raw as ConsoleLiffAppView);
+  const mapProvider = options.mappers?.providers ?? ((raw: unknown) => raw);
+  const mapChannel = options.mappers?.channel ?? ((raw: unknown) => raw);
+  const mapLiff = options.mappers?.liffApp ?? ((raw: unknown) => raw);
 
-  const request = async <T>(url: string): Promise<T> => {
+  const request = async (url: string): Promise<unknown> => {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (cookie !== undefined && cookie.length > 0) headers.Cookie = cookie;
     const response = await doFetch(url, { credentials: "include", headers });
     if (!response.ok) {
       throw new Error(`LINE Developers Console request failed: ${String(response.status)} ${url}`);
     }
-    return (await response.json()) as T;
+    return response.json();
   };
 
   return {
     listProviders: async () =>
-      asArray(await request<unknown>(endpoints.providers)).map((row) => mapProvider(row)),
+      readArrayResponse(await request(endpoints.providers), "provider").map((row) =>
+        validateResponse("provider", decodeProviderResponse, mapProvider(row)),
+      ),
     listChannels: async (providerId) =>
-      asArray(await request<unknown>(endpoints.channelsByProvider(providerId))).map((row) =>
-        mapChannel(row),
+      readArrayResponse(await request(endpoints.channelsByProvider(providerId)), "channel").map(
+        (row) => validateResponse("channel", decodeChannelResponse, mapChannel(row)),
       ),
     getChannel: async (channelId) =>
-      mapChannel(await request<unknown>(endpoints.channel(channelId))),
+      validateResponse(
+        "channel",
+        decodeChannelResponse,
+        mapChannel(await request(endpoints.channel(channelId))),
+      ),
     listLiffApps: async (channelId) =>
-      asArray(await request<unknown>(endpoints.liffApps(channelId))).map((row) => mapLiff(row)),
+      readArrayResponse(await request(endpoints.liffApps(channelId)), "LIFF app").map((row) =>
+        validateResponse("LIFF app", decodeLiffAppResponse, mapLiff(row)),
+      ),
   };
 };
 
@@ -145,76 +185,49 @@ export const createInMemoryConsoleAdapter = (dataset: {
 export const createLineConsoleAdapterFromProviderManagementAdapter = (
   adapter: LineProviderManagementAdapter,
 ): LineConsoleAdapter => {
-  const mapProvider = (p: any): ConsoleProviderView => ({
-    providerId: p.providerId ?? p.id ?? "",
-    name: p.name ?? "",
-    region: p.region ?? null,
-    certified: p.certified ?? null,
-    createdAt: p.createdAt
-      ? typeof p.createdAt === "string"
-        ? p.createdAt
-        : p.createdAt instanceof Date
-          ? p.createdAt.toISOString()
-          : String(p.createdAt)
-      : null,
+  const mapProvider = (provider: ProviderView): ConsoleProviderView => ({
+    providerId: provider.id,
+    name: provider.name,
+    createdAt: provider.createdAt.toISOString(),
   });
 
-  const mapMessagingChannel = (c: any): ConsoleChannelView => ({
-    channelId: c.channelId ?? c.id ?? "",
-    providerId: c.providerId ?? "",
+  const mapMessagingChannel = (channel: LineMessagingChannelView): ConsoleChannelView => ({
+    channelId: channel.channelId,
+    providerId: channel.providerId,
     type: "messaging",
-    name: c.name ?? "",
-    status: c.status ?? (c.isActive !== undefined ? (c.isActive ? "Active" : "Inactive") : null),
-    botBasicId: c.botBasicId ?? null,
-    botUserId: c.botUserId ?? null,
-    botDisplayName: c.botDisplayName ?? null,
-    botPictureUrl: c.botPictureUrl ?? null,
-    addFriendUrl: c.addFriendUrl ?? null,
-    addFriendQrCodeUrl: c.addFriendQrCodeUrl ?? null,
-    webhookUrl: c.webhookUrl ?? null,
-    channelSecret: c.channelSecret ?? null,
-    channelAccessToken: c.channelAccessToken ?? null,
-    createdAt: c.createdAt
-      ? typeof c.createdAt === "string"
-        ? c.createdAt
-        : c.createdAt instanceof Date
-          ? c.createdAt.toISOString()
-          : String(c.createdAt)
-      : null,
+    name: channel.name,
+    status: channel.isActive ? "Active" : "Inactive",
+    botBasicId: channel.botBasicId,
+    botUserId: channel.botUserId,
+    botDisplayName: channel.botDisplayName,
+    botPictureUrl: channel.botPictureUrl,
+    addFriendUrl: channel.addFriendUrl,
+    addFriendQrCodeUrl: channel.addFriendQrCodeUrl,
+    channelSecret: channel.channelSecret,
+    channelAccessToken: channel.channelAccessToken,
+    createdAt: channel.createdAt.toISOString(),
   });
 
-  const mapLoginChannel = (c: any): ConsoleChannelView => ({
-    channelId: c.channelId ?? c.id ?? "",
-    providerId: c.providerId ?? "",
+  const mapLoginChannel = (channel: LineLoginChannelView): ConsoleChannelView => ({
+    channelId: channel.channelId,
+    providerId: channel.providerId,
     type: "login",
-    name: c.name ?? "",
-    status: c.status ?? null,
-    channelSecret: c.channelSecret ?? null,
-    callbackUrl: c.callbackUrl ?? null,
-    createdAt: c.createdAt
-      ? typeof c.createdAt === "string"
-        ? c.createdAt
-        : c.createdAt instanceof Date
-          ? c.createdAt.toISOString()
-          : String(c.createdAt)
-      : null,
+    name: channel.name,
+    channelSecret: channel.channelSecret,
+    createdAt: channel.createdAt.toISOString(),
   });
 
-  const mapLiffApp = (app: any): ConsoleLiffAppView => ({
-    liffId: app.liffId ?? app.id ?? "",
-    channelId: app.loginChannelId ?? app.channelId ?? "",
-    view: {
-      type: app.view?.type ?? "tall",
-      url: app.view?.url ?? "",
-    },
-    description: app.description ?? null,
-    permanentUrl: app.permanentUrl ?? null,
+  const mapLiffApp = (app: LiffAppView): ConsoleLiffAppView => ({
+    liffId: app.liffId,
+    channelId: app.loginChannelId,
+    view: app.view,
+    description: app.description,
   });
 
   return {
     listProviders: async () => {
       const res = await adapter.listProviders();
-      return asArray(res).map(mapProvider);
+      return pageData(res).map(mapProvider);
     },
 
     listChannels: async (providerId: string) => {
@@ -225,8 +238,8 @@ export const createLineConsoleAdapterFromProviderManagementAdapter = (
         ? await adapter.listLoginChannels({ providerId } as any)
         : [];
 
-      const messagingChannels = asArray(messagingRes).map(mapMessagingChannel);
-      const loginChannels = asArray(loginRes).map(mapLoginChannel);
+      const messagingChannels = pageData(messagingRes).map(mapMessagingChannel);
+      const loginChannels = pageData(loginRes).map(mapLoginChannel);
 
       const combined = [...messagingChannels, ...loginChannels];
       return combined.filter((c) => c.providerId === providerId);
@@ -255,8 +268,8 @@ export const createLineConsoleAdapterFromProviderManagementAdapter = (
         : [];
       const loginRes = adapter.listLoginChannels ? await adapter.listLoginChannels() : [];
 
-      const messagingList = asArray(messagingRes);
-      const loginList = asArray(loginRes);
+      const messagingList = pageData(messagingRes);
+      const loginList = pageData(loginRes);
 
       const foundMsg: any = messagingList.find(
         (c: any) => c.channelId === channelId || c.id === channelId,
@@ -273,7 +286,7 @@ export const createLineConsoleAdapterFromProviderManagementAdapter = (
 
     listLiffApps: async (channelId: string) => {
       const res = adapter.listLiffApps ? await adapter.listLiffApps({ channelId } as any) : [];
-      const apps = asArray(res).map(mapLiffApp);
+      const apps = pageData(res).map(mapLiffApp);
       return apps.filter((l) => l.channelId === channelId);
     },
   };

@@ -121,8 +121,8 @@ headless package surface.
 `effect-line-manager/web/developers-console` adds a read-only custom element
 that wraps the [LINE Developers Console](https://developers.line.biz/console/)
 itself, rendering providers → channels → LIFF apps as one expandable hierarchy
-via a cookie / proxy adapter. It is meant to be hosted where the developer
-session cookie is in scope (a Manifest V3 browser extension with
+via a credential-aware adapter. It is meant to be hosted where the developer
+session cookie is already in scope (a Manifest V3 browser extension with
 `host_permissions` for `developers.line.biz` is the recommended shape; a
 same-origin backend proxy also works).
 
@@ -136,11 +136,19 @@ defineLineDevelopersConsoleElements();
 
 const consoleEl = document.querySelector("line-developers-console")!;
 consoleEl.adapter = createLineConsoleAdapter({
-  // baseUrl points at a same-origin proxy by default; the real console base
-  // is used when the component runs inside the console origin (e.g. extension).
-  cookie: process.env.LINE_DEV_COOKIE, // optional in extension contexts
+  endpoints: {
+    providers: "/line-console/providers",
+    channelsByProvider: (providerId) =>
+      `/line-console/providers/${encodeURIComponent(providerId)}/channels`,
+    channel: (channelId) => `/line-console/channels/${encodeURIComponent(channelId)}`,
+    liffApps: (channelId) => `/line-console/channels/${encodeURIComponent(channelId)}/liff-apps`,
+  },
 });
 ```
+
+The adapter relies on browser-managed credentials and never accepts a raw
+cookie value. The required endpoints should target a same-origin, host-owned
+proxy that keeps the console session cookie on the server.
 
 ## Development
 

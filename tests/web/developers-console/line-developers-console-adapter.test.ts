@@ -1,15 +1,17 @@
 import { Schema } from "effect";
 import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
 import {
-  LineDevelopersConsole,
-  createLineConsoleAdapterFromProviderManagementAdapter,
-  defineLineDevelopersConsole,
   type LineProviderManagementAdapter,
   type ProviderView,
   type LineMessagingChannelView,
   type LineLoginChannelView,
   type LiffAppView,
 } from "../../../src/web/index.ts";
+import {
+  LineDevelopersConsole,
+  createLineConsoleAdapterFromProviderManagementAdapter,
+  defineLineDevelopersConsole,
+} from "../../../src/web/developers-console/index.ts";
 import { LineLoginChannelId } from "../../../src/shared/domain.ts";
 
 const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("2222222222");

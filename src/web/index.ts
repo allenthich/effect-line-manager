@@ -18,7 +18,6 @@
  * directly so that the per-aggregate shape dependency is explicit.
  */
 export * from "./define.ts";
-export * from "./developers-console/index.ts";
 export * from "./line-account-breadcrumbs.ts";
 export * from "./line-account-card.ts";
 export * from "./line-account-detail-panel.ts";

@@ -107,6 +107,26 @@ describe("line-developers-console", () => {
     expect(tree).toContain("TALL");
   });
 
+  test("renders channel expansion and console navigation as separate interactive controls", async () => {
+    const element = await mount();
+    element.shadowRoot?.querySelector<HTMLButtonElement>(".node-header")!.click();
+    await settle(element);
+
+    const channelToggle =
+      element.shadowRoot?.querySelector<HTMLButtonElement>(".channel-header-toggle");
+    const consoleLink = element.shadowRoot?.querySelector<HTMLAnchorElement>(
+      ".channel-header-row .open-link",
+    );
+
+    expect(channelToggle?.tagName).toBe("BUTTON");
+    expect(channelToggle?.querySelector("button, a")).toBeNull();
+    expect(consoleLink?.href).toBe("https://developers.line.biz/console/channel/msg-1");
+
+    channelToggle!.click();
+    await settle(element);
+    expect(element.expandedChannelIds).toContain("msg-1");
+  });
+
   test("masks secrets by default and reveals on demand", async () => {
     const element = await mount();
     element.shadowRoot?.querySelector<HTMLButtonElement>(".node-header")!.click();
@@ -173,7 +193,7 @@ describe("line-developers-console", () => {
     expect(tvRow?.parentElement?.querySelector(".tv-type.t-provider")?.textContent).toBe(
       "Provider",
     );
-    // expand the provider — channels appear as tree rows with type chips
+    // Expand the provider so channels appear as tree rows with type chips.
     tvRow!.click();
     await settle(element);
     await settle(element);
@@ -305,5 +325,17 @@ describe("line-developers-console", () => {
     expect(element.shadowRoot?.textContent ?? "").toContain("Loyalty card");
     expect(element.expandedProviderIds).toEqual(new Set(["prov-1"]));
     expect(element.expandedChannelIds).toEqual(new Set(["msg-1", "login-1"]));
+  });
+
+  test("loads data when an adapter is assigned after connection", async () => {
+    const element = document.createElement("line-developers-console") as LineDevelopersConsole;
+    document.body.append(element);
+    await element.updateComplete;
+
+    element.adapter = adapter;
+    await settle(element);
+    await settle(element);
+
+    expect(element.shadowRoot?.textContent).toContain("Acme");
   });
 });
