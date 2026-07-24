@@ -9,7 +9,8 @@
     "./login": "./src/login/index.ts",
     "./messaging": "./src/messaging/index.ts",
     "./registry": "./src/registry/index.ts",
-    "./web": "./src/web/index.ts"
+    "./web": "./src/web/index.ts",
+    "./web/developers-console": "./src/web/developers-console/index.ts"
   },
   "publish": {
     "include": ["src", "README.md", "LICENSE", "jsr.json", "package.json"],
