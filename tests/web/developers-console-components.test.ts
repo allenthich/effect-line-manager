@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 import {
   LineDevelopersConsole,
   createInMemoryConsoleAdapter,
@@ -371,7 +371,7 @@ describe("line-developers-console", () => {
     expect(element.shadowRoot?.textContent).toContain("1 provider");
   });
 
-  test("renders the persisted LIFF launch URL in details", async () => {
+  test("renders LIFF launch URL in details and opens QR code dialog", async () => {
     const element = await mount();
     // expand hierarchy
     element.shadowRoot?.querySelector<HTMLButtonElement>(".node-header")!.click();
@@ -391,5 +391,19 @@ describe("line-developers-console", () => {
 
     const link = element.shadowRoot?.querySelector<HTMLAnchorElement>(".liff-url-link");
     expect(link?.href).toBe("https://liff.line.me/login-1-AbCdEf?campaign=spring&source=poster");
+
+    const qrBtn = element.shadowRoot?.querySelector<HTMLButtonElement>(".qr-show-btn");
+    expect(qrBtn).not.toBeNull();
+    qrBtn!.click();
+    await settle(element);
+    await vi.waitFor(() => {
+      expect(element.shadowRoot?.querySelector(".qr-code")).not.toBeNull();
+    });
+
+    const img = element.shadowRoot?.querySelector<HTMLImageElement>(".qr-code");
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute("data-liff-url")).toBe(
+      "https://liff.line.me/login-1-AbCdEf?campaign=spring&source=poster",
+    );
   });
 });

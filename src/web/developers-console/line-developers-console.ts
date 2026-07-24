@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues, TemplateResult } from "lit";
@@ -15,6 +14,7 @@ import type {
   LineDevelopersConsoleErrorDetail,
 } from "./types.ts";
 import { buildLiffUrl } from "../liff-url.ts";
+import { generateQrCodeDataUrl } from "../qr-code.ts";
 import type { LineAccountForm } from "../line-account-form.ts";
 import { LineLoginChannelId } from "../../shared/domain.ts";
 import type {
@@ -957,6 +957,7 @@ export class LineDevelopersConsole extends LitElement {
     }
   `;
 
+  /** Data source. Management adapters also enable the integrated edit dialog. */
   declare adapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
   declare messages: LineDevelopersConsoleMessages;
   declare maskSecrets: boolean;
@@ -1011,10 +1012,12 @@ export class LineDevelopersConsole extends LitElement {
 
   #generateQrCode = async (liffUrl: string): Promise<void> => {
     try {
-      const svg = await QRCode.toString(liffUrl, { type: "svg", width: 240, margin: 1 });
-      this._qrCodeDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const dataUrl = await generateQrCodeDataUrl(liffUrl);
+      if (!this._qrCodeOpen || this._qrCodeLiffUrl !== liffUrl) return;
+      this._qrCodeDataUrl = dataUrl;
       this._qrCodeError = "";
     } catch {
+      if (!this._qrCodeOpen || this._qrCodeLiffUrl !== liffUrl) return;
       this._qrCodeDataUrl = "";
       this._qrCodeError = "QR code could not be generated.";
     }

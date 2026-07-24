@@ -1,9 +1,10 @@
 /**
  * LINE Developers Console wrapper web components.
  *
- * Lit-based custom elements that wrap the read-only
- * {@link LineConsoleAdapter} contract to render the providers → channels →
- * LIFF apps hierarchy at a glance. They are intentionally separate from the
+ * Lit-based custom elements that render the providers → channels → LIFF apps
+ * hierarchy at a glance. They accept the read-only {@link LineConsoleAdapter}
+ * or the management adapter used by the integrated editing workflow. They are
+ * intentionally separate from the
  * headless package surface and the `line-account-*` components: those operate
  * on the project's persisted domain model, whereas these read directly from
  * the LINE Developers Console via a cookie / proxy adapter.

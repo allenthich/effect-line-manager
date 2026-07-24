@@ -6,8 +6,9 @@
  * LIFF apps. They are intentionally plain (transport-shaped) so a cookie /
  * proxy adapter can populate them without an Effect schema round-trip.
  *
- * The wrapper is read-only: it surfaces console data at a glance. Mutating
- * operations stay in the real console (reached via deep-links from the UI).
+ * The console-specific contract is read-only and surfaces remote data at a
+ * glance. The component may also consume `LineProviderManagementAdapter` when
+ * a host application opts into the integrated editing workflow.
  */
 
 /** Discriminator for the kind of channel shown on the console. */

@@ -150,6 +150,10 @@ The adapter relies on browser-managed credentials and never accepts a raw
 cookie value. The required endpoints should target a same-origin, host-owned
 proxy that keeps the console session cookie on the server.
 
+`LineConsoleAdapter` remains read-only. The component may instead receive a
+`LineProviderManagementAdapter` when the host wants the tree variant to open
+the integrated editing workflow.
+
 ## Development
 
 ```bash
