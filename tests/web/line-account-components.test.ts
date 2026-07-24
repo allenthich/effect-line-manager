@@ -1,11 +1,14 @@
-import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 import {
   LineAccountCard,
+  LineAccountDetailPanel,
   LineAccountDialog,
   LineAccountList,
+  LineAccountToolbar,
   defaultLineAccountManagementMessages,
   defineLineAccountManagementElements,
   type LineMessagingChannelView,
+  type LiffAppView,
 } from "../../src/web/index.ts";
 
 const mockMessagingChannel: LineMessagingChannelView = {
@@ -23,6 +26,17 @@ const mockMessagingChannel: LineMessagingChannelView = {
   isActive: true,
   channelSecret: "channel-secret",
   channelAccessToken: "channel-token",
+  createdAt: new Date("2026-06-10T00:00:00.000Z"),
+  updatedAt: new Date("2026-06-10T00:00:00.000Z"),
+};
+
+const mockLiffApp: LiffAppView = {
+  id: "liff-1",
+  loginChannelId: "login-channel-1" as LiffAppView["loginChannelId"],
+  liffId: "2001043291-AbCdEf12",
+  view: { type: "tall", url: "https://example.com/liff" },
+  additionalUrlParameters: "campaign=spring&source=poster",
+  description: "Loyalty card",
   createdAt: new Date("2026-06-10T00:00:00.000Z"),
   updatedAt: new Date("2026-06-10T00:00:00.000Z"),
 };
@@ -130,6 +144,72 @@ describe("line-account-list", () => {
 
     expect(received?.detail.item).toBe(mockMessagingChannel);
     expect(received?.composed).toBe(true);
+  });
+});
+
+describe("line-account-toolbar", () => {
+  test("gives the search field a stable form-control name", async () => {
+    const element = document.createElement("line-account-toolbar") as LineAccountToolbar;
+    document.body.append(element);
+    await element.updateComplete;
+
+    const search = element.shadowRoot?.querySelector<HTMLInputElement>('[aria-label="Search"]');
+    expect(search?.id).toBe("line-account-search");
+    expect(search?.name).toBe("search");
+  });
+});
+
+describe("line-account-detail-panel LIFF launch URL", () => {
+  test("distinguishes the endpoint URL from the generated LIFF URL", async () => {
+    const element = document.createElement("line-account-detail-panel") as LineAccountDetailPanel;
+    element.item = mockLiffApp;
+    element.currentTab = "liff";
+    document.body.append(element);
+    await element.updateComplete;
+
+    const text = element.shadowRoot?.textContent ?? "";
+    expect(text).toContain("Endpoint URL");
+    expect(text).toContain("https://example.com/liff");
+    expect(text).toContain("LIFF URL");
+    expect(text).toContain(
+      "https://liff.line.me/2001043291-AbCdEf12?campaign=spring&source=poster",
+    );
+  });
+
+  test("displays the persisted LIFF launch URL and opens QR code dialog", async () => {
+    const element = document.createElement("line-account-detail-panel") as LineAccountDetailPanel;
+    element.item = mockLiffApp;
+    element.currentTab = "liff";
+    document.body.append(element);
+    await element.updateComplete;
+
+    const parameters = element.shadowRoot?.querySelector<HTMLInputElement>(
+      '[name="liffUrlParameters"]',
+    );
+    expect(parameters).toBeNull();
+
+    const expectedUrl = "https://liff.line.me/2001043291-AbCdEf12?campaign=spring&source=poster";
+    expect(element.shadowRoot?.textContent).toContain(expectedUrl);
+
+    const openQrCode = [...(element.shadowRoot?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent?.trim() === "Show QR code",
+    );
+    expect(openQrCode).toBeDefined();
+    openQrCode!.click();
+    await element.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await element.updateComplete;
+
+    const qrDialog = element.shadowRoot?.querySelector("line-account-dialog") as LineAccountDialog;
+    await qrDialog.updateComplete;
+    await vi.waitFor(() => {
+      expect(qrDialog.querySelector("[data-liff-url]")).not.toBeNull();
+    });
+    const qrCode = qrDialog.querySelector<HTMLImageElement>("[data-liff-url]");
+    expect(qrDialog.open).toBe(true);
+    expect(qrCode?.dataset.liffUrl).toBe(expectedUrl);
+    expect(qrCode?.src).toMatch(/^data:image\/svg\+xml/);
+    expect(qrDialog.textContent).toContain(expectedUrl);
   });
 });
 

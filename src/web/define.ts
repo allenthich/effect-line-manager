@@ -47,6 +47,7 @@ export const defineLineAccountBreadcrumbs = (): void => {
 
 /** Registers the &lt;line-account-detail-panel&gt; custom element. */
 export const defineLineAccountDetailPanel = (): void => {
+  defineLineAccountDialog();
   defineElement("line-account-detail-panel", LineAccountDetailPanel);
 };
 

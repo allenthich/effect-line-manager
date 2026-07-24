@@ -59,6 +59,7 @@ export interface ConsoleLiffAppView {
   readonly liffId: string;
   readonly channelId: string;
   readonly view: { readonly type: ConsoleLiffViewType; readonly url: string };
+  readonly additionalUrlParameters?: string;
   readonly description?: string | null;
   readonly permanentUrl?: string | null;
 }

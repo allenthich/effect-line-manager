@@ -1,4 +1,5 @@
 import { LitElement, css, html } from "lit";
+import type { PropertyValues } from "lit";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type {
@@ -9,6 +10,8 @@ import type {
   ChannelView,
   LineAccountEntity,
 } from "./types.ts";
+import { buildLiffUrl } from "./liff-url.ts";
+import { generateQrCodeDataUrl } from "./qr-code.ts";
 
 /** LitElement detail panel component rendering full metadata for a selected provider, channel, or LIFF app. */
 export class LineAccountDetailPanel extends LitElement {
@@ -24,6 +27,9 @@ export class LineAccountDetailPanel extends LitElement {
     readonly: { type: Boolean },
     inline: { type: Boolean, reflect: true },
     _visibleCredentials: { state: true },
+    _qrCodeDataUrl: { state: true },
+    _qrCodeError: { state: true },
+    _qrCodeOpen: { state: true },
   };
 
   static styles = css`
@@ -164,6 +170,80 @@ export class LineAccountDetailPanel extends LitElement {
       border-radius: 0.25rem;
       word-break: break-all;
       flex: 1;
+    }
+
+    .liff-url-field {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .liff-url-field input {
+      width: 100%;
+      min-height: 2.5rem;
+      box-sizing: border-box;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--line-account-border-color, #c7d0d9);
+      border-radius: var(--line-account-input-radius, 0.5rem);
+      background: var(--line-account-surface-background, #fff);
+      color: inherit;
+      font: inherit;
+    }
+
+    .liff-url-field input:focus-visible {
+      outline: 3px solid var(--line-account-focus-color, #74d7a1);
+      outline-offset: 1px;
+      border-color: var(--line-account-primary-color, #06c755);
+    }
+
+    .liff-url-hint {
+      margin: 0;
+      color: var(--line-account-muted-color, #52606d);
+      font-size: 0.75rem;
+    }
+
+    .liff-launch-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .liff-url-link {
+      color: var(--line-account-primary-text-color, #057b38);
+      overflow-wrap: anywhere;
+      font-family: monospace;
+      font-size: 0.875rem;
+    }
+
+    .liff-launch-section {
+      grid-column: 1 / -1;
+    }
+
+    .qr-dialog-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: center;
+    }
+
+    .qr-code {
+      display: block;
+      width: min(15rem, 100%);
+      height: auto;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .qr-url {
+      max-width: 30rem;
+      margin: 0;
+      color: var(--line-account-muted-color, #52606d);
+      font-size: 0.75rem;
+      overflow-wrap: anywhere;
     }
 
     .copy-btn {
@@ -382,6 +462,9 @@ export class LineAccountDetailPanel extends LitElement {
   declare readonly: boolean;
   declare inline: boolean;
   declare _visibleCredentials: Set<string>;
+  declare _qrCodeDataUrl: string;
+  declare _qrCodeError: string;
+  declare _qrCodeOpen: boolean;
 
   constructor() {
     super();
@@ -396,6 +479,20 @@ export class LineAccountDetailPanel extends LitElement {
     this.readonly = false;
     this.inline = false;
     this._visibleCredentials = new Set();
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    this._qrCodeOpen = false;
+  }
+
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (!changedProperties.has("item")) return;
+
+    const previousItem = changedProperties.get("item") as LineAccountEntity | undefined;
+    if (previousItem?.id !== this.item?.id) {
+      this._qrCodeDataUrl = "";
+      this._qrCodeError = "";
+      this._qrCodeOpen = false;
+    }
   }
 
   /** Combined view for table iteration and parent resolution. */
@@ -467,6 +564,43 @@ export class LineAccountDetailPanel extends LitElement {
       next.add(key);
     }
     this._visibleCredentials = next;
+  };
+
+  #generateQrCode = async (): Promise<void> => {
+    if (this.item === undefined || this.currentTab !== "liff") return;
+
+    const liff = this.item as LiffAppView;
+    const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
+    const isCurrentRequest = (): boolean =>
+      this._qrCodeOpen &&
+      this.item !== undefined &&
+      this.currentTab === "liff" &&
+      buildLiffUrl(
+        (this.item as LiffAppView).liffId,
+        (this.item as LiffAppView).additionalUrlParameters,
+      ) === liffUrl;
+    try {
+      const dataUrl = await generateQrCodeDataUrl(liffUrl);
+      if (isCurrentRequest()) {
+        this._qrCodeDataUrl = dataUrl;
+        this._qrCodeError = "";
+      }
+    } catch {
+      if (!isCurrentRequest()) return;
+      this._qrCodeDataUrl = "";
+      this._qrCodeError = "QR code could not be generated.";
+    }
+  };
+
+  #openQrCode = (): void => {
+    this._qrCodeOpen = true;
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    void this.#generateQrCode();
+  };
+
+  #closeQrCode = (): void => {
+    this._qrCodeOpen = false;
   };
 
   #renderCredentialField = (label: string, value: string | null, key: string) => {
@@ -959,7 +1093,7 @@ export class LineAccountDetailPanel extends LitElement {
                           >
                             <th style="padding: 0.5rem 0.25rem; font-weight: 600;">LIFF ID</th>
                             <th style="padding: 0.5rem 0.25rem; font-weight: 600;">View Type</th>
-                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">URL</th>
+                            <th style="padding: 0.5rem 0.25rem; font-weight: 600;">Endpoint URL</th>
                             ${this.readonly
                               ? ""
                               : html`<th
@@ -1047,6 +1181,7 @@ export class LineAccountDetailPanel extends LitElement {
 
   #renderLiffDetails(liff: LiffAppView) {
     const isPending = this.pendingItemIds.has(liff.id);
+    const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
 
     return html`
       ${this.inline
@@ -1073,8 +1208,16 @@ export class LineAccountDetailPanel extends LitElement {
             <span class="details-value">${liff.view.type.toUpperCase()}</span>
           </div>
           <div class="details-row">
-            <span class="details-label">View URL</span>
+            <span class="details-label">Endpoint URL</span>
             <span class="details-value">${liff.view.url}</span>
+          </div>
+        </div>
+
+        <div class="details-section liff-launch-section">
+          <div class="details-section-title">LIFF URL</div>
+          <div class="liff-launch-actions">
+            <a class="liff-url-link" href=${liffUrl} target="_blank" rel="noopener">${liffUrl}</a>
+            <button class="primary" type="button" @click=${this.#openQrCode}>Show QR code</button>
           </div>
         </div>
 
@@ -1091,6 +1234,27 @@ export class LineAccountDetailPanel extends LitElement {
             `
           : ""}
       </div>
+
+      <line-account-dialog
+        .open=${this._qrCodeOpen}
+        heading="QR code"
+        @line-account-dialog-close-request=${this.#closeQrCode}
+      >
+        <div class="qr-dialog-content">
+          ${this._qrCodeDataUrl
+            ? html`<img
+                class="qr-code"
+                src=${this._qrCodeDataUrl}
+                alt="QR code for ${liffUrl}"
+                data-liff-url=${liffUrl}
+              />`
+            : this._qrCodeError
+              ? html`<p role="alert">${this._qrCodeError}</p>`
+              : html`<p role="status">Generating QR code...</p>`}
+          <p class="qr-url">${liffUrl}</p>
+        </div>
+        <button slot="footer" type="button" @click=${this.#closeQrCode}>Close</button>
+      </line-account-dialog>
 
       ${this.readonly
         ? ""

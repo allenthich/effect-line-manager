@@ -2,6 +2,10 @@ import { Schema } from "effect";
 import { LineLoginChannelId } from "../shared/domain.ts";
 import { NonEmptyTrimmedString, Pagination, PageQuery } from "../shared/domain.ts";
 
+/** Canonicalizes a LIFF launch query string for persistence and URL composition. */
+export const normalizeAdditionalUrlParameters = (parameters: string): string =>
+  parameters.trim().replace(/^[?&]+/, "");
+
 /** Branded type for a LINE LIFF application ID. */
 export const LineLiffId = NonEmptyTrimmedString.pipe(
   Schema.brand("effect-line-manager/LineLiffId"),
@@ -25,6 +29,7 @@ export class LineLiffApp extends Schema.Class<LineLiffApp>("LineLiffApp")({
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
   createdAt: Schema.DateValid,
   updatedAt: Schema.DateValid,
@@ -40,6 +45,7 @@ export class CreateLiffAppRecordInput extends Schema.Class<CreateLiffAppRecordIn
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
 }) {}
 
@@ -54,6 +60,7 @@ export class UpdateLiffAppRecordInput extends Schema.Class<UpdateLiffAppRecordIn
       url: Schema.String,
     }),
   ),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
 }) {}
 
@@ -65,6 +72,7 @@ export const CreateLiffAppInput = Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
 });
 /** {@link CreateLiffAppInput} type alias. */
@@ -79,6 +87,7 @@ export const UpdateLiffAppInput = Schema.Struct({
       url: Schema.String,
     }),
   ),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
 });
 /** {@link UpdateLiffAppInput} type alias. */
@@ -101,6 +110,7 @@ export const LiffAppView = Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.NullOr(Schema.String),
   createdAt: Schema.DateFromString,
   updatedAt: Schema.DateFromString,

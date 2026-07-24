@@ -6,6 +6,10 @@ import {
   type LineAccountManagementMessages,
 } from "./messages.ts";
 import { LineLoginChannelId } from "../shared/domain.ts";
+import { buildLiffUrl } from "./liff-url.ts";
+import { generateQrCodeDataUrl } from "./qr-code.ts";
+import "./line-account-dialog.ts";
+import { normalizeAdditionalUrlParameters } from "../liff/domain.ts";
 import type {
   ProviderView,
   LineMessagingChannelView,
@@ -65,6 +69,10 @@ export class LineAccountForm extends LitElement {
     showChannelAccessToken: { state: true },
     selectedProviderId: { type: String },
     selectedChannelId: { type: String },
+    _liffUrlParameters: { state: true },
+    _qrCodeDataUrl: { state: true },
+    _qrCodeError: { state: true },
+    _qrCodeOpen: { state: true },
   };
 
   static styles = css`
@@ -146,6 +154,46 @@ export class LineAccountForm extends LitElement {
       outline: none;
       border-color: var(--line-account-primary-color, #06c755);
       box-shadow: 0 0 0 3px var(--line-account-focus-color, rgb(6 199 85 / 15%));
+    }
+
+    .liff-launch-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .liff-url-link {
+      color: var(--line-account-primary-text-color, #057b38);
+      overflow-wrap: anywhere;
+      font-family: monospace;
+      font-size: 0.875rem;
+    }
+
+    .qr-dialog-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: center;
+    }
+
+    .qr-code {
+      display: block;
+      width: min(15rem, 100%);
+      height: auto;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .qr-url {
+      max-width: 30rem;
+      margin: 0;
+      color: var(--line-account-muted-color, #52606d);
+      font-size: 0.75rem;
+      overflow-wrap: anywhere;
     }
 
     input:read-only,
@@ -250,6 +298,26 @@ export class LineAccountForm extends LitElement {
       opacity: 0.6;
     }
 
+    button.primary {
+      min-height: 2.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--line-account-primary-color, #06c755);
+      border-radius: var(--line-account-button-radius, 0.5rem);
+      background: var(--line-account-primary-color, #06c755);
+      color: var(--line-account-primary-contrast, #fff);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+      transition:
+        background-color 0.15s,
+        border-color 0.15s;
+    }
+
+    button.primary:hover:not(:disabled) {
+      background-color: var(--line-account-primary-hover, #05b04b);
+      border-color: var(--line-account-primary-hover, #05b04b);
+    }
+
     @media (min-width: 32rem) {
       .grid-2col {
         display: grid;
@@ -276,6 +344,10 @@ export class LineAccountForm extends LitElement {
   declare showChannelAccessToken: boolean;
   declare selectedProviderId: string | undefined;
   declare selectedChannelId: string | undefined;
+  declare _liffUrlParameters: string;
+  declare _qrCodeDataUrl: string;
+  declare _qrCodeError: string;
+  declare _qrCodeOpen: boolean;
 
   #values: FormValues;
   #invalidFields = new Set<keyof FormValues>();
@@ -295,6 +367,10 @@ export class LineAccountForm extends LitElement {
     this.showChannelAccessToken = false;
     this.selectedProviderId = undefined;
     this.selectedChannelId = undefined;
+    this._liffUrlParameters = "";
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    this._qrCodeOpen = false;
     this.#values = this.#initialValues();
   }
 
@@ -304,6 +380,13 @@ export class LineAccountForm extends LitElement {
     this.#validationError = undefined;
     this.showChannelSecret = false;
     this.showChannelAccessToken = false;
+    this._liffUrlParameters =
+      this.type === "liff" && this.item !== undefined
+        ? ((this.item as LiffAppView).additionalUrlParameters ?? "")
+        : "";
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    this._qrCodeOpen = false;
     this.requestUpdate();
   }
 
@@ -322,6 +405,13 @@ export class LineAccountForm extends LitElement {
       this.#validationError = undefined;
       this.showChannelSecret = false;
       this.showChannelAccessToken = false;
+      this._liffUrlParameters =
+        this.type === "liff" && this.item !== undefined
+          ? ((this.item as LiffAppView).additionalUrlParameters ?? "")
+          : "";
+      this._qrCodeDataUrl = "";
+      this._qrCodeError = "";
+      this._qrCodeOpen = false;
     }
   }
 
@@ -553,8 +643,48 @@ export class LineAccountForm extends LitElement {
     `;
   }
 
+  #handleLiffUrlParameters = (event: Event): void => {
+    this._liffUrlParameters = (event.target as HTMLInputElement).value;
+    if (this._qrCodeOpen) void this.#generateQrCode();
+  };
+
+  #generateQrCode = async (): Promise<void> => {
+    if (this.type !== "liff") return;
+
+    const liffId = this.#values.liffId.trim();
+    const liffUrl = buildLiffUrl(liffId, this._liffUrlParameters);
+    const isCurrentRequest = (): boolean =>
+      this._qrCodeOpen &&
+      this.type === "liff" &&
+      buildLiffUrl(this.#values.liffId.trim(), this._liffUrlParameters) === liffUrl;
+    try {
+      const dataUrl = await generateQrCodeDataUrl(liffUrl);
+      if (isCurrentRequest()) {
+        this._qrCodeDataUrl = dataUrl;
+        this._qrCodeError = "";
+      }
+    } catch {
+      if (!isCurrentRequest()) return;
+      this._qrCodeDataUrl = "";
+      this._qrCodeError = "QR code could not be generated.";
+    }
+  };
+
+  #openQrCode = (): void => {
+    this._qrCodeOpen = true;
+    this._qrCodeDataUrl = "";
+    this._qrCodeError = "";
+    void this.#generateQrCode();
+  };
+
+  #closeQrCode = (): void => {
+    this._qrCodeOpen = false;
+  };
+
   #renderLiffFields() {
     const editing = this.mode === "edit";
+    const liffId = this.#values.liffId.trim();
+    const liffUrl = buildLiffUrl(liffId, this._liffUrlParameters);
 
     return html`
       <fieldset>
@@ -629,7 +759,50 @@ export class LineAccountForm extends LitElement {
           "text",
           false,
         )}
+
+        <div class="field" part="field">
+          <label for="liffUrlParameters">Additional URL parameters</label>
+          <input
+            id="liffUrlParameters"
+            name="liffUrlParameters"
+            type="text"
+            autocomplete="off"
+            placeholder="campaign=spring&amp;source=poster"
+            aria-describedby="liffUrlParameters-hint"
+            .value=${this._liffUrlParameters}
+            @input=${this.#handleLiffUrlParameters}
+          />
+          <span class="hint" id="liffUrlParameters-hint">
+            Add query parameters without the leading question mark.
+          </span>
+        </div>
+
+        <div class="liff-launch-actions">
+          <a class="liff-url-link" href=${liffUrl} target="_blank" rel="noopener">${liffUrl}</a>
+          <button class="primary" type="button" @click=${this.#openQrCode}>Show QR code</button>
+        </div>
       </fieldset>
+
+      <line-account-dialog
+        .open=${this._qrCodeOpen}
+        heading="QR code"
+        @line-account-dialog-close-request=${this.#closeQrCode}
+      >
+        <div class="qr-dialog-content">
+          ${this._qrCodeDataUrl
+            ? html`<img
+                class="qr-code"
+                src=${this._qrCodeDataUrl}
+                alt="QR code for ${liffUrl}"
+                data-liff-url=${liffUrl}
+              />`
+            : this._qrCodeError
+              ? html`<p role="alert">${this._qrCodeError}</p>`
+              : html`<p role="status">Generating QR code...</p>`}
+          <p class="qr-url">${liffUrl}</p>
+        </div>
+        <button slot="footer" type="button" @click=${this.#closeQrCode}>Close</button>
+      </line-account-dialog>
     `;
   }
 
@@ -845,6 +1018,10 @@ export class LineAccountForm extends LitElement {
     if (!(target instanceof HTMLInputElement)) return;
     const name = target.name as keyof FormValues;
     (this.#values as any)[name] = target.value;
+    if (name === "liffId") {
+      this.requestUpdate();
+      if (this._qrCodeOpen) void this.#generateQrCode();
+    }
     if (this.#invalidFields.delete(name)) {
       if (this.#invalidFields.size === 0) this.#validationError = undefined;
       this.requestUpdate();
@@ -987,6 +1164,7 @@ export class LineAccountForm extends LitElement {
               type: this.#values.liffViewType,
               url: this.#values.liffViewUrl.trim(),
             },
+            additionalUrlParameters: normalizeAdditionalUrlParameters(this._liffUrlParameters),
             description: trimOptional(this.#values.liffDescription),
           },
         };
@@ -1004,6 +1182,10 @@ export class LineAccountForm extends LitElement {
             type: this.#values.liffViewType,
             url: this.#values.liffViewUrl.trim(),
           };
+        }
+        const additionalUrlParameters = normalizeAdditionalUrlParameters(this._liffUrlParameters);
+        if (additionalUrlParameters !== liff.additionalUrlParameters) {
+          input.additionalUrlParameters = additionalUrlParameters;
         }
         const desc = trimOptional(this.#values.liffDescription);
         const originalDesc = liff.description ?? null;

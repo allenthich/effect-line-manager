@@ -88,6 +88,7 @@ const liffAppView = Schema.decodeUnknownSync(LiffAppView)({
     type: "tall",
     url: "https://example.com/liff",
   },
+  additionalUrlParameters: "campaign=spring&source=poster",
   description: "Loyalty Card Dashboard",
   createdAt: "2026-06-10T00:00:00.000Z",
   updatedAt: "2026-06-11T00:00:00.000Z",
@@ -328,12 +329,16 @@ describe("LineApi", () => {
             loginChannelId,
             liffId: "1234567890-AbCdEf12",
             view: { type: "tall", url: "https://example.com/liff" },
+            additionalUrlParameters: "campaign=spring&source=poster",
             description: "Loyalty Card Dashboard",
           },
         });
         const updatedLiff = yield* client.lineLiffApps.updateLiffApp({
           params: { id: liffId },
-          payload: { view: { type: "tall", url: "https://example.com/liff" } },
+          payload: {
+            view: { type: "tall", url: "https://example.com/liff" },
+            additionalUrlParameters: "",
+          },
         });
         const gottenLiff = yield* client.lineLiffApps.getLiffApp({
           params: { id: liffId },
@@ -377,6 +382,24 @@ describe("LineApi", () => {
     expect(calls).toContainEqual(["deleteLoginChannel", "channel-record-1"]);
 
     expect(calls.some((c) => Array.isArray(c) && c[0] === "listLiffApps")).toBe(true);
+    expect(calls).toContainEqual([
+      "createLiffApp",
+      {
+        loginChannelId: "channel-record-1",
+        liffId: "1234567890-AbCdEf12",
+        view: { type: "tall", url: "https://example.com/liff" },
+        additionalUrlParameters: "campaign=spring&source=poster",
+        description: "Loyalty Card Dashboard",
+      },
+    ]);
+    expect(calls).toContainEqual([
+      "updateLiffApp",
+      "liff-record-1",
+      {
+        view: { type: "tall", url: "https://example.com/liff" },
+        additionalUrlParameters: "",
+      },
+    ]);
     expect(calls).toContainEqual(["getLiffApp", "liff-record-1"]);
     expect(calls).toContainEqual(["deleteLiffApp", "liff-record-1"]);
   });

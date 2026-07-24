@@ -12,6 +12,7 @@ import type {
   LineConsoleAdapter,
   LineDevelopersConsoleErrorDetail,
 } from "./types.ts";
+import { buildLiffUrl } from "../liff-url.ts";
 
 const MASK = "••••••••";
 
@@ -1169,16 +1170,14 @@ export class LineDevelopersConsole extends LitElement {
           <span class="head-name">${liff.liffId}</span>
           <span class="badge badge-liff">LIFF</span>
           <span class="badge badge-type">${liff.view.type.toUpperCase()}</span>
-          ${liff.permanentUrl
-            ? html`<a
-                class="open-link"
-                href=${liff.permanentUrl}
-                target="_blank"
-                rel="noopener"
-                style="margin-left:0.5rem;"
-                >${this.messages.openLiff} ↗</a
-              >`
-            : ""}
+          <a
+            class="open-link liff-url-link"
+            href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
+            target="_blank"
+            rel="noopener"
+            style="margin-left:0.5rem;"
+            >${this.messages.openLiff} ↗</a
+          >
         </div>
       </div>
       <div class="children">
@@ -1194,6 +1193,10 @@ export class LineDevelopersConsole extends LitElement {
           <div>
             <dt>${this.messages.liffUrl}</dt>
             <dd>${liff.view.url}</dd>
+          </div>
+          <div>
+            <dt>${this.messages.liffLaunchUrl ?? "LIFF URL"}</dt>
+            <dd>${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}</dd>
           </div>
           ${liff.description
             ? html`<div>
@@ -1422,21 +1425,21 @@ export class LineDevelopersConsole extends LitElement {
         ${this.#renderCopyButton(liff.liffId, `Copy LIFF ID ${liff.liffId}`)}
         <span class="tv-type t-liff">LIFF</span>
         <span class="tv-type t-provider">${liff.view.type.toUpperCase()}</span>
-        ${liff.permanentUrl
-          ? html`<a
-              class="open-link"
-              href=${liff.permanentUrl}
-              target="_blank"
-              rel="noopener"
-              style="margin-left:auto;"
-              >${this.messages.openLiff} ↗</a
-            >`
-          : ""}
+        <a
+          class="open-link liff-url-link"
+          href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
+          target="_blank"
+          rel="noopener"
+          style="margin-left:auto;"
+          >${this.messages.openLiff} ↗</a
+        >
       </div>
       <div class="tv-fields tv-field-card">
         <span class="k">liffId:</span> <span class="v">${liff.liffId}</span> ·
         <span class="k">size:</span> <span class="v">${liff.view.type}</span> ·
-        <span class="k">url:</span> <span class="v">${liff.view.url}</span>
+        <span class="k">endpointUrl:</span> <span class="v">${liff.view.url}</span> ·
+        <span class="k">liffUrl:</span>
+        <span class="v">${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}</span>
         ${liff.description
           ? html` · <span class="k">description:</span> <span class="v">${liff.description}</span>`
           : ""}

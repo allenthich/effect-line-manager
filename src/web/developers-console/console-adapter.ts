@@ -90,6 +90,7 @@ const ConsoleLiffAppResponse = Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: NullableString,
   permanentUrl: NullableString,
 });
@@ -221,6 +222,7 @@ export const createLineConsoleAdapterFromProviderManagementAdapter = (
     liffId: app.liffId,
     channelId: app.loginChannelId,
     view: app.view,
+    additionalUrlParameters: app.additionalUrlParameters ?? "",
     description: app.description,
   });
 

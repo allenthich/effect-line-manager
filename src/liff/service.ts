@@ -12,6 +12,7 @@ import {
   type LiffAppView,
   LiffAppListPage,
   type ListLiffAppsQuery,
+  normalizeAdditionalUrlParameters,
 } from "./domain.ts";
 import { LiffAppNotFoundError, LiffAppDuplicateError } from "./errors.ts";
 import { LinePersistenceError, type LineRepositoryError } from "../shared/errors.ts";
@@ -62,6 +63,7 @@ export const toLiffAppView = (app: LineLiffApp): LiffAppView => ({
   loginChannelId: app.loginChannelId,
   liffId: app.liffId,
   view: app.view,
+  additionalUrlParameters: app.additionalUrlParameters ?? "",
   description: app.description ?? null,
   createdAt: app.createdAt,
   updatedAt: app.updatedAt,
@@ -80,6 +82,7 @@ const toCreateLiffAppRecordInput = (
   loginChannelId: resolvedLoginChannelId,
   liffId: Schema.decodeUnknownSync(LineLiffId)(input.liffId),
   view: input.view,
+  additionalUrlParameters: normalizeAdditionalUrlParameters(input.additionalUrlParameters ?? ""),
   ...(input.description === undefined ? {} : { description: input.description }),
 });
 
@@ -88,6 +91,11 @@ const toUpdateLiffAppRecordInput = (input: UpdateLiffAppInput) => ({
     ? {}
     : { liffId: Schema.decodeUnknownSync(LineLiffId)(input.liffId) }),
   ...(input.view === undefined ? {} : { view: input.view }),
+  ...(input.additionalUrlParameters === undefined
+    ? {}
+    : {
+        additionalUrlParameters: normalizeAdditionalUrlParameters(input.additionalUrlParameters),
+      }),
   ...(input.description === undefined ? {} : { description: input.description }),
 });
 

@@ -355,9 +355,9 @@ export class LineAccountHierarchy extends LitElement {
       const activeLiffId = this.selectedLiffId || this.selectedItemId;
       const liff = activeLiffId ? this.liffApps.find((l) => l.id === activeLiffId) : undefined;
       if (liff) {
-        newExpandedChannels.add(liff.loginChannelId);
         const channel = this.#allChannels.find((c) => c.channelId === liff.loginChannelId);
         if (channel) {
+          newExpandedChannels.add(channel.id);
           newExpandedProviders.add(channel.providerId);
         }
       }

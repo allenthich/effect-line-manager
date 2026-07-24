@@ -25,6 +25,7 @@ export * from "./line-account-dialog.ts";
 export * from "./line-account-form.ts";
 export * from "./line-account-hierarchy.ts";
 export * from "./line-account-list.ts";
+export * from "./liff-url.ts";
 export * from "./line-account-management.ts";
 export * from "./line-account-toolbar.ts";
 export * from "./messages.ts";
