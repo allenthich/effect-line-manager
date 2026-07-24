@@ -19,7 +19,7 @@ The existing `demo/line-account-management.html` flow is the source of truth.
 
 - Both demos use one shared factory for the canonical sample account data.
 - The public developers-console adapter stays read-only.
-- A demo-only controller maps account entities to developers-console views and applies form submissions to its in-memory state.
+- The tree demo supplies the shared in-memory management adapter, which the developers-console component normalizes for display and uses for mutations.
 - The existing composed `line-developers-console-edit` event remains the integration point.
 - Optional Bot Profile properties may be added to the console channel view as backward-compatible fields.
 
@@ -27,10 +27,10 @@ The existing `demo/line-account-management.html` flow is the source of truth.
 
 1. The user selects Edit for a provider, channel, or LIFF app.
 2. The tree emits the existing edit event with the entity kind and selected item.
-3. The demo resolves the full account entity and opens the matching account-management form in edit mode.
+3. The component resolves the full account entity and opens the matching account-management form in edit mode.
 4. Cancel or a dialog close request closes without changing data.
 5. Save runs the existing form validation and emits its typed submission detail.
-6. The demo controller applies the update, closes the dialog, refreshes the tree, restores the expanded hierarchy, and announces success.
+6. The management adapter applies the update; the component closes the dialog, refreshes the tree, restores the expanded hierarchy, and announces success.
 
 ## Implementation boundaries
 

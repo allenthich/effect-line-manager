@@ -303,7 +303,7 @@ describe("line-developers-console", () => {
     await settle(element);
 
     const providerEdit = element.shadowRoot?.querySelector<HTMLButtonElement>(
-      ".r-provider .tv-actions .mini-btn",
+      '.r-provider .tv-actions [data-action="edit"]',
     );
     const providerEvent = new Promise<CustomEvent>((resolve) => {
       element.addEventListener(
@@ -323,7 +323,7 @@ describe("line-developers-console", () => {
     expect(element.editingItem).toBeUndefined();
 
     const channelEdit = element.shadowRoot?.querySelector<HTMLButtonElement>(
-      ".r-messaging .tv-actions .mini-btn",
+      '.r-messaging .tv-actions [data-action="edit"]',
     );
     const channelEvent = new Promise<CustomEvent>((resolve) => {
       element.addEventListener(
@@ -339,6 +339,45 @@ describe("line-developers-console", () => {
     await expect(channelEvent).resolves.toMatchObject({
       composed: true,
       detail: { kind: "channel", item: channels[0] },
+    });
+  });
+
+  test("tree create and delete actions emit composed request events for read-only adapters", async () => {
+    const element = await mount();
+    element.variant = "tree";
+    await element.expandAll();
+    await settle(element);
+
+    const createEvent = new Promise<CustomEvent>((resolve) => {
+      element.addEventListener(
+        "line-developers-console-create",
+        (event) => resolve(event as CustomEvent),
+        { once: true },
+      );
+    });
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="create-messaging-channel"]')
+      ?.click();
+
+    await expect(createEvent).resolves.toMatchObject({
+      bubbles: true,
+      composed: true,
+      detail: { type: "messagingChannel", providerId: "prov-1" },
+    });
+
+    const deleteEvent = new Promise<CustomEvent>((resolve) => {
+      element.addEventListener(
+        "line-developers-console-delete",
+        (event) => resolve(event as CustomEvent),
+        { once: true },
+      );
+    });
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.r-liff [data-action="delete"]')?.click();
+
+    await expect(deleteEvent).resolves.toMatchObject({
+      bubbles: true,
+      composed: true,
+      detail: { kind: "liff", item: liffApps[0] },
     });
   });
 

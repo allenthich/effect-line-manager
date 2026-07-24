@@ -28,5 +28,7 @@ export type {
   ConsoleProviderView,
   LineConsoleAdapter,
   ConsoleResponseMappers,
+  LineDevelopersConsoleCreateDetail,
+  LineDevelopersConsoleEntityDetail,
   LineDevelopersConsoleErrorDetail,
 } from "./types.ts";
