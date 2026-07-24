@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 import {
   LineAccountForm,
   defaultLineAccountManagementMessages,
@@ -229,8 +229,12 @@ describe("LIFF form", () => {
     expect(qrBtn).toBeDefined();
     qrBtn!.click();
     await element.updateComplete;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    await element.updateComplete;
+    await vi.waitFor(
+      () => {
+        expect(element.shadowRoot?.querySelector(".qr-code")).not.toBeNull();
+      },
+      { timeout: 5_000 },
+    );
 
     const img = element.shadowRoot?.querySelector<HTMLImageElement>(".qr-code");
     expect(img).not.toBeNull();

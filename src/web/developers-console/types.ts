@@ -79,6 +79,21 @@ export interface LineConsoleAdapter {
   readonly listLiffApps: (channelId: string) => Promise<readonly ConsoleLiffAppView[]>;
 }
 
+/** Context emitted when a host must provide a create workflow. */
+export type LineDevelopersConsoleCreateDetail =
+  | { readonly type: "provider" }
+  | {
+      readonly type: "messagingChannel" | "loginChannel";
+      readonly providerId: string;
+    }
+  | { readonly type: "liff"; readonly channelId: string };
+
+/** Entity selected for editing or deletion in the console hierarchy. */
+export type LineDevelopersConsoleEntityDetail =
+  | { readonly kind: "provider"; readonly item: ConsoleProviderView }
+  | { readonly kind: "channel"; readonly item: ConsoleChannelView }
+  | { readonly kind: "liff"; readonly item: ConsoleLiffAppView };
+
 /** Hook for mapping a raw console response into view objects. */
 export interface ConsoleResponseMappers {
   readonly providers?: (raw: unknown) => ConsoleProviderView;

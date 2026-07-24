@@ -6,6 +6,7 @@ import {
   type LineMessagingChannelView,
   type LineLoginChannelView,
   type LiffAppView,
+  type LineAccountFormSubmitDetail,
 } from "../../../src/web/index.ts";
 import {
   LineDevelopersConsole,
@@ -208,16 +209,16 @@ describe("LineProviderManagementAdapter normalization in <line-developers-consol
     await settle(element);
 
     const editBtn = element.shadowRoot?.querySelector<HTMLButtonElement>(
-      ".r-provider .tv-actions .mini-btn",
+      '.r-provider .tv-actions [data-action="edit"]',
     );
     expect(editBtn).not.toBeNull();
     editBtn!.click();
     await settle(element);
 
-    const dialog = element.shadowRoot?.querySelector("line-account-dialog");
+    const dialog = element.shadowRoot?.querySelector('line-account-dialog[data-kind="edit"]');
     expect(dialog).not.toBeNull();
     expect((dialog as any).open).toBe(true);
-    expect((dialog as any).heading).toBe("Edit Provider");
+    expect((dialog as any).heading).toBe("Edit LINE Provider");
   });
 
   test("saves edits from the tree view dialog footer", async () => {
@@ -243,11 +244,11 @@ describe("LineProviderManagementAdapter normalization in <line-developers-consol
     await element.expandAll();
     await settle(element);
     element.shadowRoot
-      ?.querySelector<HTMLButtonElement>(".r-provider .tv-actions .mini-btn")
+      ?.querySelector<HTMLButtonElement>('.r-provider .tv-actions [data-action="edit"]')
       ?.click();
     await settle(element);
 
-    const dialog = element.shadowRoot?.querySelector("line-account-dialog");
+    const dialog = element.shadowRoot?.querySelector('line-account-dialog[data-kind="edit"]');
     const footerButtons = dialog?.querySelectorAll<HTMLButtonElement>('button[slot="footer"]');
     expect(footerButtons).toHaveLength(2);
     expect(footerButtons?.[0]?.textContent?.trim()).toBe("Cancel");
@@ -261,5 +262,173 @@ describe("LineProviderManagementAdapter normalization in <line-developers-consol
       id: "provider-1",
       input: { name: "Acme Corp" },
     });
+  });
+
+  test("opens contextual create dialogs from the tree toolbar and rows", async () => {
+    const element = document.createElement("line-developers-console") as LineDevelopersConsole;
+    element.variant = "tree";
+    element.adapter = makeEnvelopeProviderManagementAdapter();
+    document.body.append(element);
+
+    await settle(element);
+    await element.expandAll();
+    await settle(element);
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="create-provider"]')
+      ?.click();
+    await settle(element);
+
+    const createDialog = element.shadowRoot?.querySelector(
+      'line-account-dialog[data-kind="create"]',
+    );
+    const createForm = createDialog?.querySelector("line-account-form");
+    expect((createDialog as any)?.open).toBe(true);
+    expect((createDialog as any)?.heading).toBe("Add LINE Provider");
+    expect((createForm as any)?.type).toBe("provider");
+    expect((createForm as any)?.mode).toBe("create");
+
+    createDialog?.querySelector<HTMLButtonElement>('button[slot="footer"]:not(.primary)')?.click();
+    await settle(element);
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="create-messaging-channel"]')
+      ?.click();
+    await settle(element);
+
+    expect((createDialog as any)?.open).toBe(true);
+    expect((createDialog as any)?.heading).toBe("Add LINE Messaging Channel");
+    expect((createForm as any)?.type).toBe("messagingChannel");
+    expect((createForm as any)?.selectedProviderId).toBe("provider-1");
+
+    createDialog?.querySelector<HTMLButtonElement>('button[slot="footer"]:not(.primary)')?.click();
+    await settle(element);
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[data-action="create-login-channel"]')
+      ?.click();
+    await settle(element);
+
+    expect((createDialog as any)?.heading).toBe("Add LINE Login Channel");
+    expect((createForm as any)?.type).toBe("loginChannel");
+    expect((createForm as any)?.selectedProviderId).toBe("provider-1");
+
+    createDialog?.querySelector<HTMLButtonElement>('button[slot="footer"]:not(.primary)')?.click();
+    await settle(element);
+
+    element.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="create-liff"]')?.click();
+    await settle(element);
+
+    expect((createDialog as any)?.heading).toBe("Add LIFF Application");
+    expect((createForm as any)?.type).toBe("liff");
+    expect((createForm as any)?.selectedChannelId).toBe("2222222222");
+  });
+
+  test("confirms and deletes every tree entity through the management adapter", async () => {
+    const deleted: Array<{ type: string; id: string }> = [];
+    const element = document.createElement("line-developers-console") as LineDevelopersConsole;
+    element.variant = "tree";
+    element.adapter = {
+      ...makeEnvelopeProviderManagementAdapter(),
+      deleteProvider: async (id) => {
+        deleted.push({ type: "provider", id });
+      },
+      deleteMessagingChannel: async (id) => {
+        deleted.push({ type: "messagingChannel", id });
+      },
+      deleteLoginChannel: async (id) => {
+        deleted.push({ type: "loginChannel", id });
+      },
+      deleteLiffApp: async (id) => {
+        deleted.push({ type: "liff", id });
+      },
+    };
+    document.body.append(element);
+
+    await settle(element);
+    await element.expandAll();
+    await settle(element);
+
+    const cases = [
+      { row: ".r-provider", type: "provider", id: "provider-1" },
+      { row: ".r-messaging", type: "messagingChannel", id: "1111111111" },
+      { row: ".r-login", type: "loginChannel", id: "2222222222" },
+      { row: ".r-liff", type: "liff", id: "2222222222-AbCdEf" },
+    ] as const;
+
+    for (const item of cases) {
+      element.shadowRoot
+        ?.querySelector<HTMLButtonElement>(`${item.row} [data-action="delete"]`)
+        ?.click();
+      await settle(element);
+
+      const deleteDialog = element.shadowRoot?.querySelector(
+        'line-account-dialog[data-kind="delete"]',
+      );
+      expect((deleteDialog as any)?.open).toBe(true);
+      deleteDialog?.querySelector<HTMLButtonElement>('[part="confirm-delete-button"]')?.click();
+      await settle(element);
+      await settle(element);
+      await settle(element);
+
+      expect(deleted).toContainEqual({ type: item.type, id: item.id });
+    }
+  });
+
+  test("reveals a newly created LIFF app when its login channel started collapsed", async () => {
+    const createdLiff: LiffAppView = {
+      ...mockLiff,
+      id: "liff-2",
+      liffId: "2222222222-NewApp",
+      description: "New tree LIFF",
+    };
+    const element = document.createElement("line-developers-console") as LineDevelopersConsole;
+    element.variant = "tree";
+    element.adapter = {
+      ...makeEnvelopeProviderManagementAdapter(),
+      createLiffApp: async () => createdLiff,
+      listLiffApps: async (query?: { readonly channelId?: string }) => {
+        const data =
+          query?.channelId === "2222222222" || !query?.channelId ? [mockLiff, createdLiff] : [];
+        return {
+          data,
+          pagination: { page: 1, pageSize: data.length, totalItems: data.length, totalPages: 1 },
+        };
+      },
+    };
+    document.body.append(element);
+
+    await settle(element);
+    await element.expandAll();
+    element.expandedChannelIds = new Set();
+    await settle(element);
+
+    element.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="create-liff"]')?.click();
+    await settle(element);
+
+    element.shadowRoot
+      ?.querySelector('line-account-dialog[data-kind="create"] line-account-form')
+      ?.dispatchEvent(
+        new CustomEvent<LineAccountFormSubmitDetail>("line-account-form-submit", {
+          bubbles: true,
+          composed: true,
+          detail: {
+            type: "liff",
+            mode: "create",
+            input: {
+              loginChannelId,
+              liffId: createdLiff.liffId,
+              view: createdLiff.view,
+              description: createdLiff.description ?? undefined,
+            },
+          },
+        }),
+      );
+    await settle(element);
+    await settle(element);
+    await settle(element);
+
+    expect(element.expandedChannelIds).toContain("2222222222");
+    expect(element.shadowRoot?.textContent).toContain("New tree LIFF");
   });
 });

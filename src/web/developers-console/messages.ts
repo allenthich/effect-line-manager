@@ -42,6 +42,11 @@ export interface LineDevelopersConsoleMessages {
   readonly secretRevealed: string;
   readonly secretMasked: string;
   readonly edit?: string;
+  readonly addProvider?: string;
+  readonly addMessagingChannel?: string;
+  readonly addLoginChannel?: string;
+  readonly addLiffApp?: string;
+  readonly delete?: string;
   readonly liffId: string;
   readonly liffSize: string;
   readonly liffUrl: string;
@@ -94,6 +99,11 @@ export const defaultLineDevelopersConsoleMessages: LineDevelopersConsoleMessages
   secretRevealed: "Secret revealed",
   secretMasked: "Secret masked",
   edit: "Edit",
+  addProvider: "+ Provider",
+  addMessagingChannel: "+ Messaging",
+  addLoginChannel: "+ Login",
+  addLiffApp: "+ LIFF",
+  delete: "Delete",
   liffId: "LIFF ID",
   liffSize: "Size",
   liffUrl: "Endpoint URL",
