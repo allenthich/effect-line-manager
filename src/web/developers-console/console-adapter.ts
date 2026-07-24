@@ -90,6 +90,7 @@ const ConsoleLiffAppResponse = Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: NullableString,
   permanentUrl: NullableString,
 });

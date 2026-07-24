@@ -1,6 +1,5 @@
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
-import QRCode from "qrcode";
 import { defaultLineAccountManagementMessages } from "./messages.ts";
 import type { LineAccountManagementMessages } from "./messages.ts";
 import type {
@@ -12,6 +11,7 @@ import type {
   LineAccountEntity,
 } from "./types.ts";
 import { buildLiffUrl } from "./liff-url.ts";
+import { generateQrCodeDataUrl } from "./qr-code.ts";
 
 /** LitElement detail panel component rendering full metadata for a selected provider, channel, or LIFF app. */
 export class LineAccountDetailPanel extends LitElement {
@@ -571,19 +571,22 @@ export class LineAccountDetailPanel extends LitElement {
 
     const liff = this.item as LiffAppView;
     const liffUrl = buildLiffUrl(liff.liffId, liff.additionalUrlParameters);
+    const isCurrentRequest = (): boolean =>
+      this._qrCodeOpen &&
+      this.item !== undefined &&
+      this.currentTab === "liff" &&
+      buildLiffUrl(
+        (this.item as LiffAppView).liffId,
+        (this.item as LiffAppView).additionalUrlParameters,
+      ) === liffUrl;
     try {
-      const svg = await QRCode.toString(liffUrl, { type: "svg", width: 240, margin: 1 });
-      if (
-        this.item !== undefined &&
-        buildLiffUrl(
-          (this.item as LiffAppView).liffId,
-          (this.item as LiffAppView).additionalUrlParameters,
-        ) === liffUrl
-      ) {
-        this._qrCodeDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const dataUrl = await generateQrCodeDataUrl(liffUrl);
+      if (isCurrentRequest()) {
+        this._qrCodeDataUrl = dataUrl;
         this._qrCodeError = "";
       }
     } catch {
+      if (!isCurrentRequest()) return;
       this._qrCodeDataUrl = "";
       this._qrCodeError = "QR code could not be generated.";
     }

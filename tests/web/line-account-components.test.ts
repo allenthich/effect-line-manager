@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 import {
   LineAccountCard,
   LineAccountDetailPanel,
@@ -202,6 +202,9 @@ describe("line-account-detail-panel LIFF launch URL", () => {
 
     const qrDialog = element.shadowRoot?.querySelector("line-account-dialog") as LineAccountDialog;
     await qrDialog.updateComplete;
+    await vi.waitFor(() => {
+      expect(qrDialog.querySelector("[data-liff-url]")).not.toBeNull();
+    });
     const qrCode = qrDialog.querySelector<HTMLImageElement>("[data-liff-url]");
     expect(qrDialog.open).toBe(true);
     expect(qrCode?.dataset.liffUrl).toBe(expectedUrl);

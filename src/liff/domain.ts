@@ -45,7 +45,7 @@ export class CreateLiffAppRecordInput extends Schema.Class<CreateLiffAppRecordIn
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
-  additionalUrlParameters: Schema.String,
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
 }) {}
 
@@ -110,7 +110,7 @@ export const LiffAppView = Schema.Struct({
     type: Schema.Literals(["compact", "tall", "full"]),
     url: Schema.String,
   }),
-  additionalUrlParameters: Schema.String,
+  additionalUrlParameters: Schema.optional(Schema.String),
   description: Schema.NullOr(Schema.String),
   createdAt: Schema.DateFromString,
   updatedAt: Schema.DateFromString,

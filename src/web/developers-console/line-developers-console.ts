@@ -1171,8 +1171,8 @@ export class LineDevelopersConsole extends LitElement {
           <span class="badge badge-liff">LIFF</span>
           <span class="badge badge-type">${liff.view.type.toUpperCase()}</span>
           <a
-            class="open-link"
-            href=${buildLiffUrl(liff.liffId)}
+            class="open-link liff-url-link"
+            href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
             target="_blank"
             rel="noopener"
             style="margin-left:0.5rem;"
@@ -1196,7 +1196,7 @@ export class LineDevelopersConsole extends LitElement {
           </div>
           <div>
             <dt>${this.messages.liffLaunchUrl ?? "LIFF URL"}</dt>
-            <dd>${buildLiffUrl(liff.liffId)}</dd>
+            <dd>${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}</dd>
           </div>
           ${liff.description
             ? html`<div>
@@ -1426,8 +1426,8 @@ export class LineDevelopersConsole extends LitElement {
         <span class="tv-type t-liff">LIFF</span>
         <span class="tv-type t-provider">${liff.view.type.toUpperCase()}</span>
         <a
-          class="open-link"
-          href=${buildLiffUrl(liff.liffId)}
+          class="open-link liff-url-link"
+          href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
           target="_blank"
           rel="noopener"
           style="margin-left:auto;"
@@ -1438,7 +1438,8 @@ export class LineDevelopersConsole extends LitElement {
         <span class="k">liffId:</span> <span class="v">${liff.liffId}</span> ·
         <span class="k">size:</span> <span class="v">${liff.view.type}</span> ·
         <span class="k">endpointUrl:</span> <span class="v">${liff.view.url}</span> ·
-        <span class="k">liffUrl:</span> <span class="v">${buildLiffUrl(liff.liffId)}</span>
+        <span class="k">liffUrl:</span>
+        <span class="v">${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}</span>
         ${liff.description
           ? html` · <span class="k">description:</span> <span class="v">${liff.description}</span>`
           : ""}

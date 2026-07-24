@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues } from "lit";
@@ -8,6 +7,7 @@ import {
 } from "./messages.ts";
 import { LineLoginChannelId } from "../shared/domain.ts";
 import { buildLiffUrl } from "./liff-url.ts";
+import { generateQrCodeDataUrl } from "./qr-code.ts";
 import "./line-account-dialog.ts";
 import { normalizeAdditionalUrlParameters } from "../liff/domain.ts";
 import type {
@@ -382,7 +382,7 @@ export class LineAccountForm extends LitElement {
     this.showChannelAccessToken = false;
     this._liffUrlParameters =
       this.type === "liff" && this.item !== undefined
-        ? (this.item as LiffAppView).additionalUrlParameters
+        ? ((this.item as LiffAppView).additionalUrlParameters ?? "")
         : "";
     this._qrCodeDataUrl = "";
     this._qrCodeError = "";
@@ -407,7 +407,7 @@ export class LineAccountForm extends LitElement {
       this.showChannelAccessToken = false;
       this._liffUrlParameters =
         this.type === "liff" && this.item !== undefined
-          ? (this.item as LiffAppView).additionalUrlParameters
+          ? ((this.item as LiffAppView).additionalUrlParameters ?? "")
           : "";
       this._qrCodeDataUrl = "";
       this._qrCodeError = "";
@@ -653,13 +653,18 @@ export class LineAccountForm extends LitElement {
 
     const liffId = this.#values.liffId.trim();
     const liffUrl = buildLiffUrl(liffId, this._liffUrlParameters);
+    const isCurrentRequest = (): boolean =>
+      this._qrCodeOpen &&
+      this.type === "liff" &&
+      buildLiffUrl(this.#values.liffId.trim(), this._liffUrlParameters) === liffUrl;
     try {
-      const svg = await QRCode.toString(liffUrl, { type: "svg", width: 240, margin: 1 });
-      if (buildLiffUrl(this.#values.liffId.trim(), this._liffUrlParameters) === liffUrl) {
-        this._qrCodeDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const dataUrl = await generateQrCodeDataUrl(liffUrl);
+      if (isCurrentRequest()) {
+        this._qrCodeDataUrl = dataUrl;
         this._qrCodeError = "";
       }
     } catch {
+      if (!isCurrentRequest()) return;
       this._qrCodeDataUrl = "";
       this._qrCodeError = "QR code could not be generated.";
     }
