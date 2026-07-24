@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { LitElement, css, html } from "lit";
 import type { PropertyValues, TemplateResult } from "lit";
 import type { LineProviderManagementAdapter } from "../../adapter/types.ts";
@@ -13,6 +14,16 @@ import type {
   LineDevelopersConsoleErrorDetail,
 } from "./types.ts";
 import { buildLiffUrl } from "../liff-url.ts";
+import { LineLoginChannelId } from "../../shared/domain.ts";
+import type {
+  ProviderView,
+  LineMessagingChannelView,
+  LineLoginChannelView,
+  LiffAppView,
+  LineAccountFormType,
+  LineAccountEntity,
+  LineAccountFormSubmitDetail,
+} from "../types.ts";
 
 const MASK = "••••••••";
 
@@ -45,6 +56,8 @@ export class LineDevelopersConsole extends LitElement {
     expandedProviderIds: { state: true },
     expandedChannelIds: { state: true },
     revealedSecrets: { state: true },
+    editingItem: { state: true },
+    saving: { state: true },
   };
 
   static styles = css`
@@ -55,6 +68,11 @@ export class LineDevelopersConsole extends LitElement {
     }
     :host([hidden]) {
       display: none;
+    }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
     }
 
     .console-toolbar {
@@ -312,8 +330,16 @@ export class LineDevelopersConsole extends LitElement {
     }
     .secret-row {
       display: inline-flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 0.25rem;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .secret {
+      min-width: 0;
+      word-break: break-all;
+      overflow-wrap: anywhere;
     }
     .mini-btn {
       padding: 0 0.4rem;
@@ -397,190 +423,405 @@ export class LineDevelopersConsole extends LitElement {
       }
     }
 
-    /* ---- variant="tree": IDE-style tree viewer ------------------------------- */
+    /* ---- variant="tree": Variation 2 compact IDE tree ----------------------- */
 
-    .tv {
-      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-      font-size: 0.72rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.125rem;
-      margin-top: 0.75rem;
-    }
     .tv-surface {
       margin-top: 0.75rem;
       overflow: hidden;
-      border: 1px solid var(--line-account-border-color, #e2e8f0);
+      border: 1px solid var(--line-console-tree-border, #1e293b);
       border-radius: var(--line-account-radius, 1rem);
-      background: var(--line-account-surface-background, #fff);
+      background: var(--line-console-tree-background, #0f172a);
+      color: var(--line-console-tree-text, #e2e8f0);
+      box-shadow: var(--line-account-shadow, 0 18px 40px rgb(2 6 23 / 0.18));
     }
     .tv-toolbar {
-      margin: 0;
-      border-bottom: 1px solid var(--line-account-border-color, #e2e8f0);
-      padding: 0.75rem;
-    }
-    .tv-surface .tv {
-      margin: 0;
-      padding: 0.75rem;
-    }
-    .tv-row-wrap {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
-      min-width: 0;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--line-console-tree-border, #1e293b);
+      background: var(--line-console-tree-toolbar-background, rgb(2 6 23 / 0.82));
+      flex-wrap: wrap;
     }
-    .tv-row-wrap .tv-row {
-      flex: 0 1 auto;
-      width: auto;
-      min-width: 0;
-    }
-    .tv-field-card {
-      min-width: 0;
-    }
-    .icon-copy-btn {
-      border: 0;
-      background: transparent;
-      color: var(--line-account-muted-color, #64748b);
-      cursor: pointer;
-      font: inherit;
-    }
-    .tv-actions {
-      display: inline-flex;
-      margin-left: auto;
-    }
-    .tv-row {
+    .tv-search {
       display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.3rem 0.5rem;
-      border-radius: 0.5rem;
-      background: none;
-      border: 0;
-      text-align: left;
-      font: inherit;
-      color: inherit;
+      flex: 1;
+      min-width: 15rem;
+    }
+    .tv-search input {
       width: 100%;
-      cursor: pointer;
+      min-width: 0;
+      padding: 0.4rem 0.75rem;
+      border: 1px solid var(--line-console-tree-border, #1e293b);
+      border-radius: 0.5rem;
+      background: var(--line-console-tree-background, #0f172a);
+      color: var(--line-console-tree-text, #e2e8f0);
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+    }
+    .tv-search input::placeholder {
+      color: var(--line-console-tree-muted, #64748b);
+    }
+    .tv-search input:focus-visible,
+    .tv-toolbar .console-btn:focus-visible,
+    .tv-row:focus-visible,
+    .tv-actions .mini-btn:focus-visible,
+    .icon-copy-btn:focus-visible,
+    .tv-open-link:focus-visible {
+      outline: 2px solid var(--line-account-primary-color, #10b981);
+      outline-offset: 2px;
+    }
+    .tv-toolbar .row-count {
+      color: var(--line-console-tree-muted, #94a3b8);
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.65rem;
       white-space: nowrap;
     }
-    .tv-row:hover {
-      background: var(--line-account-muted-background, #f1f5f9);
+    .tv-toolbar .console-btn {
+      border-color: var(--line-console-tree-border, #334155);
+      background: var(--line-console-tree-button-background, #1e293b);
+      color: var(--line-console-tree-text, #e2e8f0);
     }
-    .tv-row.sel {
-      background: var(--line-account-selected-bg, #ecfdf5);
-      box-shadow: inset 3px 0 0 var(--line-account-primary-color, #10b981);
+    .tv-toolbar .console-btn:hover {
+      border-color: var(--line-account-primary-color, #10b981);
+      background: #047857;
+      color: #ffffff;
     }
-    .tv-row:focus-visible {
-      outline: 2px solid var(--line-account-primary-color, #10b981);
-      outline-offset: -2px;
+    .tv-toolbar .console-btn.primary {
+      border-color: #047857;
+      background: #047857;
+      color: #ffffff;
     }
-    .tv-toggle {
-      width: 0.85rem;
-      flex-shrink: 0;
-      text-align: center;
-      color: var(--line-account-muted-color, #94a3b8);
+    .tv-scroll {
+      overflow-x: auto;
+      padding: 1rem;
+      scrollbar-color: #475569 #1e293b;
+      scrollbar-width: thin;
     }
-    .tv-node {
-      width: 1.1rem;
-      height: 1.1rem;
-      border-radius: 0.35rem;
-      display: grid;
-      place-items: center;
-      color: #fff;
-      font-size: 0.6rem;
-      font-weight: 700;
-      flex-shrink: 0;
-      font-family: var(--line-account-font-family, system-ui, sans-serif);
-    }
-    .tv-node.n-provider {
-      background: linear-gradient(135deg, #10b981, #059669);
-    }
-    .tv-node.n-messaging {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    }
-    .tv-node.n-login {
-      background: linear-gradient(135deg, #8b5cf6, #5b21b6);
-    }
-    .tv-node.n-liff {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-    }
-    .tv-name {
-      font-weight: 600;
-    }
-    .tv-type {
-      font-size: 0.62rem;
-      padding: 0.05rem 0.4rem;
-      border-radius: 0.4rem;
-      font-weight: 700;
-      font-family: var(--line-account-font-family, system-ui, sans-serif);
-    }
-    .tv-type.t-provider {
-      background: #ecfdf5;
-      color: #047a36;
-    }
-    .tv-type.t-messaging {
-      background: #eff6ff;
-      color: #1d4ed8;
-    }
-    .tv-type.t-login {
-      background: #f5f3ff;
-      color: #5b21b6;
-    }
-    .tv-type.t-liff {
-      background: #fffbeb;
-      color: #b45309;
-    }
-    .tv-id {
-      color: var(--line-account-muted-color, #94a3b8);
-    }
-    .tv-status {
-      margin-left: auto;
-      font-size: 0.62rem;
-      padding: 0.05rem 0.4rem;
-      border-radius: 0.4rem;
-      font-weight: 700;
-      font-family: var(--line-account-font-family, system-ui, sans-serif);
-    }
-    .tv-status.s-active {
-      background: #ecfdf5;
-      color: #047a36;
-    }
-    .tv-status.s-published {
-      background: #f5f3ff;
-      color: #5b21b6;
-    }
-    .tv-status.s-other {
-      background: #f1f5f9;
-      color: #475569;
-    }
-    .tv-children {
-      margin-left: 0.85rem;
-      padding-left: 0.85rem;
-      border-left: 1px solid var(--line-account-border-color, #e2e8f0);
+    .tv {
+      min-width: 42rem;
       display: flex;
       flex-direction: column;
-      gap: 0.125rem;
+      gap: 0.45rem;
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+    }
+    .tv-row-wrap {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.3rem;
+      border: 1px solid var(--line-console-tree-border, #1e293b);
+      border-radius: 0.5rem;
+      background: rgb(30 41 59 / 0.42);
+      transition:
+        background-color 0.15s,
+        border-color 0.15s;
+    }
+    .tv-row {
+      position: relative;
+      display: flex;
+      width: auto;
+      min-width: 0;
+      flex: 0 1 auto;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0 0.375rem 0.5rem;
+      border: 0;
+      border-radius: 0.45rem;
+      background: transparent;
+      color: var(--line-console-tree-text, #e2e8f0);
+      white-space: nowrap;
+    }
+    button.tv-row {
+      cursor: pointer;
+    }
+    .tv-row-wrap:hover {
+      background: rgb(30 41 59 / 0.78);
+      border-color: #475569;
+    }
+    .tv-row-wrap.r-provider.sel {
+      background: rgb(30 41 59 / 0.86);
+      border-color: #475569;
+    }
+    .tv-row-wrap.r-messaging.sel {
+      background: rgb(23 37 84 / 0.34);
+      border-color: rgb(59 130 246 / 0.55);
+    }
+    .tv-row-wrap.r-login.sel {
+      background: rgb(59 7 100 / 0.28);
+      border-color: rgb(139 92 246 / 0.55);
+    }
+    .tv-row-wrap.r-liff {
+      background: rgb(69 26 3 / 0.28);
+      border-color: rgb(245 158 11 / 0.45);
+    }
+    .tv-disclosure {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+    .tv-toggle {
+      width: 0.75rem;
+      flex-shrink: 0;
+      color: var(--line-console-tree-muted, #94a3b8);
+      font-weight: 700;
+      text-align: center;
+    }
+    .r-provider .tv-toggle,
+    .r-provider .tv-name {
+      color: #6ee7b7;
+    }
+    .r-messaging .tv-toggle {
+      color: #60a5fa;
+    }
+    .r-login .tv-toggle,
+    .r-login .tv-name {
+      color: #c4b5fd;
+    }
+    .r-liff .tv-toggle,
+    .r-liff .tv-name {
+      color: #fcd34d;
+    }
+    .tv-name {
+      max-width: 20rem;
+      overflow: hidden;
+      font-weight: 600;
+      text-overflow: ellipsis;
+    }
+    .tv-id {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.25rem;
+      color: var(--line-console-tree-muted, #94a3b8);
+      font-size: 0.65rem;
+    }
+    .tv-type {
+      flex-shrink: 0;
+      padding: 0.1rem 0.45rem;
+      border: 1px solid transparent;
+      border-radius: 0.35rem;
+      font-family: var(--line-account-font-family, system-ui, sans-serif);
+      font-size: 0.62rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tv-type.t-provider {
+      border-color: rgb(16 185 129 / 0.25);
+      background: rgb(16 185 129 / 0.1);
+      color: #34d399;
+    }
+    .tv-type.t-messaging {
+      border-color: rgb(59 130 246 / 0.25);
+      background: rgb(59 130 246 / 0.1);
+      color: #60a5fa;
+    }
+    .tv-type.t-login {
+      border-color: rgb(139 92 246 / 0.3);
+      background: rgb(139 92 246 / 0.16);
+      color: #c4b5fd;
+    }
+    .tv-type.t-liff {
+      border-color: rgb(245 158 11 / 0.25);
+      background: rgb(245 158 11 / 0.1);
+      color: #fbbf24;
+    }
+    .tv-actions {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 0.3rem;
+      margin-left: auto;
+      margin-right: 0.5rem;
+    }
+    .tv-actions .mini-btn,
+    .tv-fields .mini-btn {
+      min-height: 1.5rem;
+      padding: 0.1rem 0.5rem;
+      border: 1px solid #334155;
+      border-radius: 0.375rem;
+      background: #1e293b;
+      color: #cbd5e1;
+      font-family: var(--line-account-font-family, system-ui, sans-serif);
+      font-size: 0.62rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tv-actions .mini-btn:hover,
+    .tv-fields .mini-btn:hover {
+      border-color: var(--line-account-primary-color, #10b981);
+      background: #047857;
+      color: #ffffff;
+    }
+    .tv-actions .btn-messaging {
+      border-color: #1d4ed8;
+      background: #1e40af;
+      color: #ffffff;
+    }
+    .tv-actions .btn-login {
+      border-color: #6d28d9;
+      background: #5b21b6;
+      color: #ffffff;
+    }
+    .tree-branch {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-left: 1rem;
+      padding-top: 0.3rem;
+      padding-left: 1.5rem;
+    }
+    .tree-guide-v {
+      position: absolute;
+      top: 0;
+      bottom: 0.75rem;
+      left: 0.75rem;
+      width: 1px;
+      background: #334155;
+    }
+    .tree-guide-h {
+      position: absolute;
+      top: 50%;
+      left: -0.8rem;
+      width: 0.75rem;
+      height: 1px;
+      background: #334155;
+    }
+    .tv-children {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
     .tv-fields {
-      margin-left: 2.6rem;
-      padding: 0.4rem 0.6rem 0.35rem;
-      line-height: 1.6;
-      color: var(--line-account-muted-color, #475569);
+      margin: 0.25rem 0 0.25rem 1.5rem;
+      padding: 0.75rem;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      background: rgb(2 6 23 / 0.9);
+      color: var(--line-console-tree-text, #e2e8f0);
       font-family: var(--line-account-font-family, system-ui, sans-serif);
       font-size: 0.72rem;
     }
+    .tv-fields.detail-messaging {
+      border-color: rgb(59 130 246 / 0.35);
+    }
+    .tv-fields.detail-login {
+      border-color: rgb(139 92 246 / 0.35);
+    }
+    .tv-fields.detail-liff {
+      border-color: rgb(245 158 11 / 0.28);
+    }
+    .tv-fields-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    .tv-field-card {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
     .tv-fields .k {
-      color: var(--line-account-muted-color, #94a3b8);
+      color: var(--line-console-tree-muted, #94a3b8);
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     .tv-fields .v {
-      color: var(--line-account-text-color, #0f172a);
-      font-weight: 600;
+      display: inline-flex;
+      flex-wrap: wrap;
+      min-width: 0;
+      max-width: 100%;
+      align-items: center;
+      gap: 0.25rem;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      color: #e2e8f0;
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      font-size: 0.68rem;
     }
     .tv-fields .secret {
-      color: #b45309;
+      color: #e2e8f0;
+      font-family: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+      min-width: 0;
+      word-break: break-all;
+      overflow-wrap: anywhere;
     }
-    .tv-fields .mini-btn {
-      font-family: inherit;
+    .tv-detail-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 0.65rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid #1e293b;
+    }
+    .tv-open-link {
+      padding: 0.25rem 0.6rem;
+      border: 1px solid #334155;
+      border-radius: 0.375rem;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .tv-open-link:hover {
+      border-color: #475569;
+      background: #334155;
+    }
+    .icon-copy-btn {
+      display: inline-flex;
+      width: 1.5rem;
+      height: 1.5rem;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 0.1rem;
+      border: 0;
+      border-radius: 0.25rem;
+      background: none;
+      color: var(--line-console-tree-muted, #94a3b8);
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .icon-copy-btn:hover {
+      color: #34d399;
+    }
+    .tv-sub-header {
+      margin: 0.4rem 0 0.1rem 1.5rem;
+      color: #94a3b8;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    @media (max-width: 48rem) {
+      .tv-fields-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 40rem) {
+      .tv-search {
+        flex-basis: 100%;
+      }
+      .tv-toolbar .row-count {
+        order: 2;
+        width: 100%;
+      }
     }
   `;
 
@@ -599,6 +840,13 @@ export class LineDevelopersConsole extends LitElement {
   declare expandedProviderIds: Set<string>;
   declare expandedChannelIds: Set<string>;
   declare revealedSecrets: Set<string>;
+  declare editingItem:
+    | {
+        type: LineAccountFormType;
+        item: LineAccountEntity;
+      }
+    | undefined;
+  declare saving: boolean;
 
   #lastAdapter: LineConsoleAdapter | LineProviderManagementAdapter | undefined;
 
@@ -617,6 +865,8 @@ export class LineDevelopersConsole extends LitElement {
     this.expandedProviderIds = new Set();
     this.expandedChannelIds = new Set();
     this.revealedSecrets = new Set();
+    this.editingItem = undefined;
+    this.saving = false;
   }
 
   #emit(type: string, detail: unknown): void {
@@ -796,12 +1046,63 @@ export class LineDevelopersConsole extends LitElement {
   }
 
   protected render(): TemplateResult {
-    const treeVariant = this.variant === "tree";
-    return html`<div class=${treeVariant ? "tv-surface" : ""}>
-      <div class="console-toolbar ${treeVariant ? "tv-toolbar" : ""}" part="toolbar">
+    if (this.variant === "tree") {
+      return html`<div class="tv-surface">
+          <div class="tv-toolbar" part="toolbar">
+            <div class="tv-search">
+              <input
+                type="search"
+                name="line-console-filter"
+                .value=${this.searchQuery}
+                placeholder=${this.messages.searchPlaceholder}
+                aria-label=${this.messages.searchLabel}
+                @input=${(event: Event) => {
+                  this.searchQuery = (event.target as HTMLInputElement).value;
+                }}
+              />
+            </div>
+            <span class="row-count" aria-live="polite">${this.#rowSummary()}</span>
+            <button
+              class="console-btn"
+              type="button"
+              ?disabled=${this.loading || this.adapter === undefined}
+              @click=${() => void this.refresh()}
+              aria-label=${this.messages.refreshLabel}
+            >
+              ${this.messages.refresh}
+            </button>
+            <button
+              class="console-btn primary"
+              type="button"
+              data-action="expand-all"
+              ?disabled=${this.loading || this.adapter === undefined}
+              @click=${() => void this.expandAll()}
+              aria-label=${this.messages.expandAllLabel ?? "Expand the complete hierarchy"}
+            >
+              ${this.messages.expandAll ?? "Expand all"}
+            </button>
+            <button
+              class="console-btn"
+              type="button"
+              @click=${() => {
+                this.expandedProviderIds = new Set();
+                this.expandedChannelIds = new Set();
+              }}
+              aria-label=${this.messages.collapseAllLabel}
+            >
+              ${this.messages.collapseAll}
+            </button>
+          </div>
+          <div class="tv-scroll">${this.loading ? this.#renderLoading() : this.#renderBody()}</div>
+        </div>
+        ${this.#renderEditDialog()}`;
+    }
+
+    return html`<div class="console-toolbar" part="toolbar">
         <div class="search">
           <input
             type="search"
+            name="line-console-filter"
             .value=${this.searchQuery}
             placeholder=${this.messages.searchPlaceholder}
             aria-label=${this.messages.searchLabel}
@@ -834,18 +1135,6 @@ export class LineDevelopersConsole extends LitElement {
           </svg>
           ${this.messages.refresh}
         </button>
-        ${treeVariant
-          ? html`<button
-              class="console-btn"
-              type="button"
-              data-action="expand-all"
-              ?disabled=${this.loading || this.adapter === undefined}
-              @click=${() => void this.expandAll()}
-              aria-label=${this.messages.expandAllLabel ?? "Expand the complete hierarchy"}
-            >
-              ${this.messages.expandAll ?? "Expand all"}
-            </button>`
-          : ""}
         <button
           class="console-btn"
           type="button"
@@ -858,8 +1147,7 @@ export class LineDevelopersConsole extends LitElement {
           ${this.messages.collapseAll}
         </button>
       </div>
-      ${this.loading ? this.#renderLoading() : this.#renderBody()}
-    </div>`;
+      ${this.loading ? this.#renderLoading() : this.#renderBody()} ${this.#renderEditDialog()}`;
   }
 
   #renderLoading(): TemplateResult {
@@ -967,7 +1255,7 @@ export class LineDevelopersConsole extends LitElement {
       ${expanded && hasChildren
         ? html`<div id="provider-content-${provider.providerId}" class="children">
             ${this.#renderProviderMeta(provider)}
-            ${channels.map((channel) => this.#renderChannel(provider, channel))}
+            ${channels.map((channel) => this.#renderChannel(channel))}
           </div>`
         : ""}
     </div>`;
@@ -987,24 +1275,26 @@ export class LineDevelopersConsole extends LitElement {
         <dt>${this.messages.certified}</dt>
         <dd>${provider.certified ? this.messages.yes : this.messages.no}</dd>
       </div>
-      <div>
-        <dt>${this.messages.created}</dt>
-        <dd>${provider.createdAt ?? "-"}</dd>
-      </div>
+      ${provider.createdAt
+        ? html`<div>
+            <dt>${this.messages.created}</dt>
+            <dd>${provider.createdAt}</dd>
+          </div>`
+        : ""}
     </dl>`;
   }
 
-  #renderChannel(provider: ConsoleProviderView, channel: ConsoleChannelView): TemplateResult {
+  #renderChannel(channel: ConsoleChannelView): TemplateResult {
     const expanded = this.expandedChannelIds.has(channel.channelId);
     const liffApps =
       channel.type === "login" ? (this.liffByChannel.get(channel.channelId) ?? []) : [];
-    const hasLiff = channel.type === "login" && liffApps.length > 0;
+    const hasLiff = liffApps.length > 0;
     const badgeClass =
       channel.type === "messaging"
         ? "badge-messaging"
         : channel.type === "login"
           ? "badge-login"
-          : "badge-type";
+          : "badge-provider";
     const avatarClass =
       channel.type === "messaging"
         ? "avatar-messaging"
@@ -1029,18 +1319,8 @@ export class LineDevelopersConsole extends LitElement {
           <span class="head-row">
             <span class="head-name">${channel.name}</span>
             <span class="badge ${badgeClass}">${channelTypeLabel[channel.type]}</span>
-            <span class="head-sub">${channel.channelId}</span>
-            <span class="head-pills">
-              ${channel.status
-                ? html`<span
-                    class="badge ${channel.status.toLowerCase() === "active" ||
-                    channel.status.toLowerCase() === "published"
-                      ? "badge-active"
-                      : "badge-type"}"
-                    >${channel.status}</span
-                  >`
-                : ""}
-            </span>
+            <span class="meta-pill">${channel.channelId}</span>
+            ${channel.status ? html`<span class="meta-pill">${channel.status}</span>` : ""}
           </span>
         </button>
         <a
@@ -1054,7 +1334,11 @@ export class LineDevelopersConsole extends LitElement {
       ${expanded
         ? html`<div class="children">
             ${this.#renderChannelMeta(channel)}
-            ${hasLiff ? liffApps.map((liff) => this.#renderLiff(liff)) : ""}
+            ${channel.type === "login"
+              ? html`<div style="margin-top:0.5rem;">
+                  ${liffApps.map((liff) => this.#renderLiff(liff))}
+                </div>`
+              : ""}
           </div>`
         : ""}
     </div>`;
@@ -1094,12 +1378,6 @@ export class LineDevelopersConsole extends LitElement {
         ? html`<div>
             <dt>${this.messages.callbackUrl}</dt>
             <dd>${channel.callbackUrl}</dd>
-          </div>`
-        : ""}
-      ${channel.email
-        ? html`<div>
-            <dt>${this.messages.email}</dt>
-            <dd>${channel.email}</dd>
           </div>`
         : ""}
       ${channel.channelSecret !== undefined && channel.channelSecret !== null
@@ -1209,20 +1487,30 @@ export class LineDevelopersConsole extends LitElement {
     </div>`;
   }
 
-  // ---- variant="tree": IDE tree viewer --------------------------------------
-
-  #renderCopyButton(value: string, label: string): TemplateResult {
+  #renderCopyBtn(value: string, label?: string): TemplateResult {
     return html`<button
       class="icon-copy-btn"
       type="button"
-      aria-label=${label}
-      title=${label}
-      @click=${() => {
+      title=${label ?? this.messages.copy}
+      aria-label=${label ?? this.messages.copy}
+      @click=${(e: Event) => {
+        e.stopPropagation();
         void navigator.clipboard?.writeText(value);
         this.#emit("line-developers-console-copy", { value });
       }}
     >
-      Copy
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+        />
+      </svg>
     </button>`;
   }
 
@@ -1231,49 +1519,37 @@ export class LineDevelopersConsole extends LitElement {
     const channels = this.channelsByProvider.get(provider.providerId) ?? [];
     const hasChildren = channels.length > 0;
     return html`<div role="treeitem" aria-expanded=${expanded ? "true" : "false"}>
-      <div class="tv-row-wrap r-provider">
+      <div class="tv-row-wrap r-provider ${expanded ? "sel" : ""}">
         <button
-          class="tv-row ${expanded ? "sel" : ""}"
+          class="tv-row r-provider ${expanded ? "sel" : ""}"
           type="button"
+          aria-expanded=${expanded ? "true" : "false"}
           @click=${() => this.#toggleProvider(provider)}
         >
-          <span class="tv-toggle">${hasChildren ? (expanded ? "▾" : "▸") : ""}</span>
-          <span class="tv-node n-provider" aria-hidden="true"
-            >${provider.name.charAt(0).toUpperCase()}</span
-          >
+          <span class="tv-toggle">${expanded ? "▾" : "▸"}</span>
           <span class="tv-name">${provider.name}</span>
         </button>
         <span class="tv-id">(id: ${provider.providerId})</span>
-        ${this.#renderCopyButton(provider.providerId, `Copy provider ID ${provider.providerId}`)}
+        ${this.#renderCopyBtn(provider.providerId, `Copy provider ID ${provider.providerId}`)}
         <span class="tv-type t-provider">Provider</span>
-        <span class="tv-actions">
+        <div class="tv-actions">
           <button
-            class="mini-btn"
+            class="mini-btn btn-provider"
             type="button"
-            @click=${() =>
-              this.#emit("line-developers-console-edit", { kind: "provider", item: provider })}
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              this.#openEditProvider(provider);
+            }}
           >
-            Edit
+            ${this.messages.edit ?? "Edit"}
           </button>
-        </span>
+        </div>
       </div>
       ${expanded && hasChildren
-        ? html`<div class="tv-children">
-            ${this.#renderTvProviderFields(provider)}
+        ? html`<div class="tree-branch" role="group">
+            <span class="tree-guide-v" aria-hidden="true"></span>
             ${channels.map((channel) => this.#renderTvChannel(channel))}
           </div>`
-        : ""}
-    </div>`;
-  }
-
-  #renderTvProviderFields(provider: ConsoleProviderView): TemplateResult {
-    return html`<div class="tv-fields tv-field-card">
-      <span class="k">providerId:</span> <span class="v">${provider.providerId}</span> ·
-      <span class="k">region:</span> <span class="v">${provider.region ?? "-"}</span> ·
-      <span class="k">certified:</span>
-      <span class="v">${provider.certified ? this.messages.yes : this.messages.no}</span>
-      ${provider.createdAt
-        ? html`· <span class="k">created:</span> <span class="v">${provider.createdAt}</span>`
         : ""}
     </div>`;
   }
@@ -1283,64 +1559,63 @@ export class LineDevelopersConsole extends LitElement {
     const liffApps =
       channel.type === "login" ? (this.liffByChannel.get(channel.channelId) ?? []) : [];
     const hasLiff = channel.type === "login" && liffApps.length > 0;
-    const nodeClass =
-      channel.type === "messaging"
-        ? "n-messaging"
-        : channel.type === "login"
-          ? "n-login"
-          : "n-provider";
     const typeClass =
       channel.type === "messaging"
         ? "t-messaging"
         : channel.type === "login"
           ? "t-login"
           : "t-provider";
-    const statusClass =
-      channel.status?.toLowerCase() === "active"
-        ? "s-active"
-        : channel.status?.toLowerCase() === "published"
-          ? "s-published"
-          : "s-other";
     const rowClass =
       channel.type === "messaging"
         ? "r-messaging"
         : channel.type === "login"
           ? "r-login"
           : "r-provider";
+    const btnClass =
+      channel.type === "messaging"
+        ? "btn-messaging"
+        : channel.type === "login"
+          ? "btn-login"
+          : "btn-provider";
+
     return html`<div role="treeitem" aria-expanded=${expanded ? "true" : "false"}>
-      <div class="tv-row-wrap ${rowClass}">
+      <div class="tv-row-wrap ${rowClass} ${expanded ? "sel" : ""}">
         <button
-          class="tv-row ${expanded ? "sel" : ""}"
+          class="tv-row ${rowClass} ${expanded ? "sel" : ""}"
           type="button"
+          aria-expanded=${expanded ? "true" : "false"}
           @click=${() => this.#toggleChannel(channel)}
         >
-          <span class="tv-toggle">${hasLiff ? (expanded ? "▾" : "▸") : ""}</span>
-          <span class="tv-node ${nodeClass}" aria-hidden="true"
-            >${channel.name.charAt(0).toUpperCase()}</span
-          >
+          <span class="tree-guide-h" aria-hidden="true"></span>
+          <span class="tv-toggle">${expanded ? "▾" : "▸"}</span>
           <span class="tv-name">${channel.name}</span>
         </button>
         <span class="tv-id">(id: ${channel.channelId})</span>
-        ${this.#renderCopyButton(channel.channelId, `Copy channel ID ${channel.channelId}`)}
+        ${this.#renderCopyBtn(channel.channelId, `Copy channel ID ${channel.channelId}`)}
         <span class="tv-type ${typeClass}">${channelTypeLabel[channel.type]}</span>
-        ${channel.status
-          ? html`<span class="tv-status ${statusClass}">● ${channel.status}</span>`
-          : html`<span class="tv-status s-other">${this.messages.openConsole} ↗</span>`}
-        <span class="tv-actions">
+        <div class="tv-actions">
           <button
-            class="mini-btn"
+            class="mini-btn ${btnClass}"
             type="button"
-            @click=${() =>
-              this.#emit("line-developers-console-edit", { kind: "channel", item: channel })}
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              this.#openEditChannel(channel);
+            }}
           >
-            Edit
+            ${this.messages.edit ?? "Edit"}
           </button>
-        </span>
+        </div>
       </div>
       ${expanded
         ? html`<div class="tv-children">
             ${this.#renderTvChannelFields(channel)}
-            ${hasLiff ? liffApps.map((liff) => this.#renderTvLiff(liff)) : ""}
+            ${hasLiff
+              ? html`<div class="tv-sub-header">LIFF APPS (${liffApps.length}):</div>
+                  <div class="tree-branch" role="group">
+                    <span class="tree-guide-v" aria-hidden="true"></span>
+                    ${liffApps.map((liff) => this.#renderTvLiff(liff))}
+                  </div>`
+              : ""}
           </div>`
         : ""}
     </div>`;
@@ -1350,38 +1625,62 @@ export class LineDevelopersConsole extends LitElement {
     const parts: TemplateResult[] = [];
     if (channel.botBasicId)
       parts.push(
-        html`<span class="k">botBasicId:</span> <span class="v">${channel.botBasicId}</span>`,
+        html`<div class="tv-field-card">
+          <span class="k">botBasicId</span>
+          <span class="v">${channel.botBasicId} ${this.#renderCopyBtn(channel.botBasicId)}</span>
+        </div>`,
       );
     if (channel.botUserId)
       parts.push(
-        html`<span class="k">botUserId:</span> <span class="v">${channel.botUserId}</span>`,
+        html`<div class="tv-field-card">
+          <span class="k">botUserId</span>
+          <span class="v">${channel.botUserId} ${this.#renderCopyBtn(channel.botUserId)}</span>
+        </div>`,
       );
     if (channel.webhookUrl)
       parts.push(
-        html`<span class="k">webhookUrl:</span> <span class="v">${channel.webhookUrl}</span>`,
+        html`<div class="tv-field-card">
+          <span class="k">webhookUrl</span>
+          <span class="v">${channel.webhookUrl} ${this.#renderCopyBtn(channel.webhookUrl)}</span>
+        </div>`,
       );
     if (channel.callbackUrl)
       parts.push(
-        html`<span class="k">callbackUrl:</span> <span class="v">${channel.callbackUrl}</span>`,
+        html`<div class="tv-field-card">
+          <span class="k">callbackUrl</span>
+          <span class="v">${channel.callbackUrl} ${this.#renderCopyBtn(channel.callbackUrl)}</span>
+        </div>`,
       );
     if (channel.channelSecret !== undefined && channel.channelSecret !== null)
       parts.push(
-        html`<span class="k">channelSecret:</span> ${this.#renderTvSecret(
-            channel.channelId,
-            "channelSecret",
-            channel.channelSecret,
-          )}`,
+        html`<div class="tv-field-card">
+          <span class="k">channelSecret</span>
+          ${this.#renderTvSecret(channel.channelId, "channelSecret", channel.channelSecret)}
+        </div>`,
       );
     if (channel.channelAccessToken !== undefined && channel.channelAccessToken !== null)
       parts.push(
-        html`<span class="k">accessToken:</span> ${this.#renderTvSecret(
+        html`<div class="tv-field-card">
+          <span class="k">accessToken</span>
+          ${this.#renderTvSecret(
             channel.channelId,
             "channelAccessToken",
             channel.channelAccessToken,
-          )}`,
+          )}
+        </div>`,
       );
-    return html`<div class="tv-fields tv-field-card">
-      ${parts.map((p, i) => html`${i > 0 ? " · " : ""}${p}`)}
+    const detailClass = channel.type === "login" ? "detail-login" : "detail-messaging";
+    return html`<div class="tv-fields ${detailClass}">
+      <div class="tv-fields-grid">${parts.map((p) => p)}</div>
+      <div class="tv-detail-footer">
+        <a
+          class="tv-open-link"
+          href=${buildConsoleUrl(channel.channelId)}
+          target="_blank"
+          rel="noopener"
+          >${this.messages.openConsole} ↗</a
+        >
+      </div>
     </div>`;
   }
 
@@ -1400,50 +1699,224 @@ export class LineDevelopersConsole extends LitElement {
             ${revealed ? this.messages.hide : this.messages.reveal}
           </button>`
         : ""}
-      <button
-        class="mini-btn"
-        type="button"
-        @click=${() => {
-          void navigator.clipboard?.writeText(value);
-          this.#emit("line-developers-console-copy", { field, channelId });
-        }}
-      >
-        ${this.messages.copy}
-      </button>
+      ${this.#renderCopyBtn(value, this.messages.copy)}
     </span>`;
   }
 
   #renderTvLiff(liff: ConsoleLiffAppView): TemplateResult {
-    return html`<div role="treeitem" aria-expanded="false">
+    return html`<div role="treeitem" aria-expanded="true">
       <div class="tv-row-wrap r-liff">
-        <div class="tv-row" style="cursor:default;">
-          <span class="tv-toggle"></span>
-          <span class="tv-node n-liff" aria-hidden="true">L</span>
-          <span class="tv-name">${liff.description ?? liff.liffId}</span>
+        <div class="tv-row r-liff">
+          <span class="tree-guide-h" aria-hidden="true"></span>
+          <span class="tv-toggle">▾</span>
+          <span class="tv-name">${liff.description || liff.liffId}</span>
         </div>
-        <span class="tv-id">(id: ${liff.liffId})</span>
-        ${this.#renderCopyButton(liff.liffId, `Copy LIFF ID ${liff.liffId}`)}
-        <span class="tv-type t-liff">LIFF</span>
-        <span class="tv-type t-provider">${liff.view.type.toUpperCase()}</span>
-        <a
-          class="open-link liff-url-link"
-          href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
-          target="_blank"
-          rel="noopener"
-          style="margin-left:auto;"
-          >${this.messages.openLiff} ↗</a
-        >
+        <span class="tv-id">(liffId: ${liff.liffId})</span>
+        ${this.#renderCopyBtn(liff.liffId, `Copy LIFF ID ${liff.liffId}`)}
+        <span class="tv-type t-liff">LIFF App</span>
+        <div class="tv-actions">
+          <button
+            class="mini-btn btn-liff"
+            type="button"
+            @click=${(e: Event) => {
+              e.stopPropagation();
+              this.#openEditLiff(liff);
+            }}
+          >
+            ${this.messages.edit ?? "Edit"}
+          </button>
+        </div>
       </div>
-      <div class="tv-fields tv-field-card">
-        <span class="k">liffId:</span> <span class="v">${liff.liffId}</span> ·
-        <span class="k">size:</span> <span class="v">${liff.view.type}</span> ·
-        <span class="k">endpointUrl:</span> <span class="v">${liff.view.url}</span> ·
-        <span class="k">liffUrl:</span>
-        <span class="v">${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}</span>
-        ${liff.description
-          ? html` · <span class="k">description:</span> <span class="v">${liff.description}</span>`
-          : ""}
+      <div class="tv-fields detail-liff">
+        <div class="tv-fields-grid">
+          <div class="tv-field-card">
+            <span class="k">${this.messages.liffUrl}</span>
+            <span class="v"
+              >${liff.view.url} ${this.#renderCopyBtn(liff.view.url, "Copy endpoint URL")}</span
+            >
+          </div>
+          <div class="tv-field-card">
+            <span class="k">${this.messages.liffSize}</span>
+            <span class="v">${liff.view.type}</span>
+          </div>
+          <div class="tv-field-card">
+            <span class="k">${this.messages.liffLaunchUrl ?? "LIFF URL"}</span>
+            <span class="v"
+              >${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
+              ${this.#renderCopyBtn(
+                buildLiffUrl(liff.liffId, liff.additionalUrlParameters),
+                "Copy LIFF URL",
+              )}</span
+            >
+          </div>
+        </div>
+        <div class="tv-detail-footer">
+          <a
+            class="tv-open-link"
+            href=${buildLiffUrl(liff.liffId, liff.additionalUrlParameters)}
+            target="_blank"
+            rel="noopener"
+            >${this.messages.openLiff} ↗</a
+          >
+        </div>
       </div>
     </div>`;
+  }
+
+  #openEditProvider(provider: ConsoleProviderView): void {
+    const pItem: ProviderView = {
+      id: provider.providerId,
+      name: provider.name,
+      createdAt: provider.createdAt ? new Date(provider.createdAt) : new Date(),
+      updatedAt: new Date(),
+    };
+    this.editingItem = { type: "provider", item: pItem };
+    this.#emit("line-developers-console-edit", { kind: "provider", item: provider });
+  }
+
+  #openEditChannel(channel: ConsoleChannelView): void {
+    const type: LineAccountFormType =
+      channel.type === "login" ? "loginChannel" : "messagingChannel";
+    const cItem: LineAccountEntity =
+      channel.type === "login"
+        ? ({
+            id: channel.channelId,
+            channelId: channel.channelId,
+            providerId: channel.providerId,
+            channelType: "login",
+            name: channel.name,
+            channelSecret: channel.channelSecret ?? null,
+            createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+            updatedAt: new Date(),
+          } as LineLoginChannelView)
+        : ({
+            id: channel.channelId,
+            channelId: channel.channelId,
+            providerId: channel.providerId,
+            channelType: "messaging",
+            name: channel.name,
+            botUserId: channel.botUserId ?? null,
+            botBasicId: channel.botBasicId ?? null,
+            botDisplayName: channel.botDisplayName ?? null,
+            botPictureUrl: channel.botPictureUrl ?? null,
+            addFriendUrl: channel.addFriendUrl ?? null,
+            addFriendQrCodeUrl: channel.addFriendQrCodeUrl ?? null,
+            isActive: channel.status ? channel.status === "Active" : true,
+            channelSecret: channel.channelSecret ?? null,
+            channelAccessToken: channel.channelAccessToken ?? null,
+            createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+            updatedAt: new Date(),
+          } as LineMessagingChannelView);
+
+    this.editingItem = { type, item: cItem };
+    this.#emit("line-developers-console-edit", { kind: "channel", item: channel });
+  }
+
+  #openEditLiff(liff: ConsoleLiffAppView): void {
+    const decodeLoginChannelId = Schema.decodeUnknownSync(LineLoginChannelId);
+    const lItem: LiffAppView = {
+      id: liff.liffId,
+      loginChannelId: decodeLoginChannelId(liff.channelId),
+      liffId: liff.liffId,
+      view: liff.view,
+      description: liff.description ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.editingItem = { type: "liff", item: lItem };
+    this.#emit("line-developers-console-edit", { kind: "liff", item: liff });
+  }
+
+  async #handleFormSubmit(event: CustomEvent<LineAccountFormSubmitDetail>): Promise<void> {
+    if (this.adapter === undefined || this.editingItem === undefined) return;
+    const detail = event.detail;
+    const adapterAny = this.adapter as any;
+    this.saving = true;
+
+    try {
+      if (detail.type === "provider") {
+        if (typeof adapterAny.updateProvider === "function") {
+          await adapterAny.updateProvider(this.editingItem.item.id, detail.input);
+        }
+      } else if (detail.type === "messagingChannel") {
+        if (typeof adapterAny.updateMessagingChannel === "function") {
+          const channelId = (this.editingItem.item as LineMessagingChannelView).channelId;
+          await adapterAny.updateMessagingChannel(channelId, detail.input);
+        }
+      } else if (detail.type === "loginChannel") {
+        if (typeof adapterAny.updateLoginChannel === "function") {
+          const channelId = (this.editingItem.item as LineLoginChannelView).channelId;
+          await adapterAny.updateLoginChannel(channelId, detail.input);
+        }
+      } else if (detail.type === "liff") {
+        if (typeof adapterAny.updateLiffApp === "function") {
+          const liffId = (this.editingItem.item as LiffAppView).liffId;
+          await adapterAny.updateLiffApp(liffId, detail.input);
+        }
+      }
+
+      this.editingItem = undefined;
+      await this.refresh();
+      this.#emit("line-account-updated", { type: detail.type, input: detail.input });
+    } catch (error) {
+      this.#emitError({ operation: "updateProvider" as any, error });
+    } finally {
+      this.saving = false;
+    }
+  }
+
+  #renderEditDialog(): TemplateResult {
+    if (this.editingItem === undefined) return html``;
+
+    const { type, item } = this.editingItem;
+    const heading =
+      type === "provider"
+        ? "Edit Provider"
+        : type === "messagingChannel"
+          ? "Edit Messaging Channel"
+          : type === "loginChannel"
+            ? "Edit Login Channel"
+            : "Edit LIFF Application";
+
+    const providerViews: ProviderView[] = this.providers.map((p) => ({
+      id: p.providerId,
+      name: p.name,
+      createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const loginChannelViews: LineLoginChannelView[] = [...this.channelsByProvider.values()]
+      .flat()
+      .filter((c) => c.type === "login")
+      .map((c) => ({
+        id: c.channelId,
+        channelId: c.channelId,
+        providerId: c.providerId,
+        channelType: "login",
+        name: c.name,
+        channelSecret: c.channelSecret ?? null,
+        createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+        updatedAt: new Date(),
+      }));
+
+    return html`
+      <line-account-dialog
+        .open=${this.editingItem !== undefined}
+        .heading=${heading}
+        @line-account-dialog-close-request=${() => {
+          this.editingItem = undefined;
+        }}
+      >
+        <line-account-form
+          .type=${type}
+          .mode=${"edit"}
+          .item=${item}
+          .providers=${providerViews}
+          .loginChannels=${loginChannelViews}
+          @line-account-form-submit=${(e: CustomEvent<LineAccountFormSubmitDetail>) =>
+            void this.#handleFormSubmit(e)}
+        ></line-account-form>
+      </line-account-dialog>
+    `;
   }
 }
