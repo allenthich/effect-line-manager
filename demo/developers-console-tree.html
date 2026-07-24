@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Effect LINE Manager - Developers Console Wrapper (Tree variant)</title>
+    <style>
+      :root {
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: #f8fafc;
+        background: #0f172a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 12% 0%, rgb(16 185 129 / 10%), transparent 30rem), #0f172a;
+      }
+      .demo-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: min(100% - 2rem, 80rem);
+        margin: 0 auto;
+        padding: 1.25rem 0 1rem;
+      }
+      .demo-mark {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border-radius: 0.5rem;
+        background: #10b981;
+        color: white;
+        font-weight: 800;
+        box-shadow: 0 8px 20px rgb(16 185 129 / 0.2);
+      }
+      main {
+        padding-top: 0.5rem;
+        padding-bottom: 4rem;
+      }
+      .demo-header p:first-child {
+        color: #f1f5f9;
+      }
+      .demo-header a {
+        color: #94a3b8;
+        text-decoration: none;
+      }
+      .demo-header a:hover {
+        color: #34d399;
+      }
+      line-developers-console {
+        --line-account-surface-background: #0f172a;
+        --line-account-border-color: #334155;
+        --line-account-text-color: #e2e8f0;
+        --line-account-muted-color: #94a3b8;
+        --line-account-muted-background: #1e293b;
+        --line-account-primary-color: #10b981;
+        --line-account-radius: 1.25rem;
+        --line-account-button-radius: 0.75rem;
+        --line-account-fieldset-bg: #020617;
+        --line-account-selected-bg: rgb(16 185 129 / 0.12);
+        display: block;
+        width: min(100% - 2rem, 80rem);
+        margin: 0 auto;
+      }
+      line-account-dialog {
+        --line-account-surface-background: #1e293b;
+        --line-account-dialog-footer-bg: #0f172a;
+        --line-account-border-color: #334155;
+        --line-account-text-color: #f8fafc;
+        --line-account-muted-color: #94a3b8;
+        --line-account-muted-background: #334155;
+        --line-account-primary-color: #10b981;
+        --line-account-primary-hover: #34d399;
+        --line-account-primary-text-color: #34d399;
+        --line-account-focus-color: rgb(16 185 129 / 40%);
+        --line-account-fieldset-bg: #0f172a;
+        --line-account-selected-bg: rgb(16 185 129 / 0.12);
+        --line-account-backdrop-color: rgb(2 6 23 / 72%);
+        --line-account-dialog-shadow: 0 2rem 5rem rgb(0 0 0 / 55%);
+        color-scheme: dark;
+      }
+      line-account-dialog > button[slot="footer"] {
+        min-height: 2.75rem;
+        padding: 0.625rem 1rem;
+        border: 1px solid #475569;
+        border-radius: 0.65rem;
+        background: #1e293b;
+        color: #e2e8f0;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      line-account-dialog > button[slot="footer"]:hover {
+        border-color: #64748b;
+        background: #273449;
+      }
+      line-account-dialog > button[slot="footer"].primary {
+        border-color: #10b981;
+        background: #10b981;
+        color: #052e25;
+      }
+      line-account-dialog > button[slot="footer"].primary:hover {
+        border-color: #34d399;
+        background: #34d399;
+      }
+      line-account-dialog > button[slot="footer"]:focus-visible {
+        outline: 3px solid rgb(52 211 153 / 35%);
+        outline-offset: 2px;
+      }
+      .demo-status {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 10;
+        max-width: min(24rem, calc(100% - 2rem));
+        margin: 0;
+        padding: 0.75rem 1rem;
+        border: 1px solid #10b981;
+        border-radius: 0.75rem;
+        background: #052e25;
+        color: #d1fae5;
+        box-shadow: 0 1rem 2rem rgb(0 0 0 / 30%);
+        font-size: 0.875rem;
+      }
+      .demo-status:empty {
+        display: none;
+      }
+      @media (max-width: 48rem) {
+        .demo-header {
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+        .demo-header > div:last-child {
+          width: 100%;
+          margin-left: 2.75rem !important;
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="demo-header">
+      <span class="demo-mark" aria-hidden="true">L</span>
+      <div>
+        <p style="margin: 0"><strong>LINE Developers Console Wrapper - Tree variant</strong></p>
+        <p style="margin: 0; color: #94a3b8; font-size: 0.75rem">
+          Compact IDE tree with guide-line connectors and inline details
+        </p>
+      </div>
+      <div style="margin-left: auto; display: flex; gap: 1rem; align-items: center">
+        <a href="/index.html" style="font-size: 0.8rem">← List variant</a>
+        <a href="/line-account-management.html" style="font-size: 0.8rem"
+          >Line Account Management demo →</a
+        >
+      </div>
+    </header>
+    <main>
+      <line-developers-console id="developers-console"></line-developers-console>
+    </main>
+    <line-account-dialog id="edit-dialog">
+      <line-account-form id="edit-form"></line-account-form>
+      <button id="edit-cancel" slot="footer" type="button">Cancel</button>
+      <button id="edit-save" class="primary" slot="footer" type="button">Save changes</button>
+    </line-account-dialog>
+    <p id="demo-status" class="demo-status" role="status" aria-live="polite"></p>
+    <script type="module" src="/developers-console-tree.ts"></script>
+  </body>
+</html>

@@ -1,76 +1,9 @@
-import { Schema } from "effect";
 import { createInMemoryLineAccountAdapter } from "./in-memory-line-account-adapter.ts";
 import {
   defineLineAccountManagementElements,
   type LineAccountManagement,
-  type ProviderView,
-  type LineMessagingChannelView,
-  type LineLoginChannelView,
-  type LiffAppView,
 } from "../src/web/index.ts";
-import { LineLoginChannelId } from "../src/shared/domain.ts";
-
-const createdAt = new Date("2026-06-01T00:00:00.000Z");
-const updatedAt = new Date("2026-06-10T00:00:00.000Z");
-const loginChannelId = Schema.decodeUnknownSync(LineLoginChannelId)("2001043310");
-
-const seedProviders: ProviderView[] = [
-  {
-    id: "demo-provider-1",
-    name: "LINE Marketing",
-    createdAt,
-    updatedAt,
-  },
-];
-
-const seedMessagingChannels: LineMessagingChannelView[] = [
-  {
-    id: "demo-channel-1",
-    providerId: "demo-provider-1",
-    channelType: "messaging",
-    name: "Customer Support",
-    botDisplayName: "LINE Support",
-    channelId: "2001043291",
-    botUserId: "U1234567890",
-    botBasicId: "@line-support",
-    botPictureUrl: null,
-    addFriendUrl: null,
-    addFriendQrCodeUrl: null,
-    isActive: true,
-    channelSecret: "channel-secret",
-    channelAccessToken: "channel-token",
-    createdAt,
-    updatedAt,
-  },
-];
-
-const seedLoginChannels: LineLoginChannelView[] = [
-  {
-    id: "demo-channel-2",
-    providerId: "demo-provider-1",
-    channelType: "login",
-    name: "Customer Auth Portal",
-    channelId: "2001043310",
-    channelSecret: "channel-secret",
-    createdAt,
-    updatedAt,
-  },
-];
-
-const seedLiffApps: LiffAppView[] = [
-  {
-    id: "demo-liff-1",
-    loginChannelId,
-    liffId: "2001043291-AbCdEf12",
-    view: {
-      type: "tall",
-      url: "https://example.com/liff",
-    },
-    description: "Loyalty card dashboard for customers.",
-    createdAt,
-    updatedAt,
-  },
-];
+import { createLineAccountDemoData } from "./line-account-demo-data.ts";
 
 defineLineAccountManagementElements();
 
@@ -79,11 +12,12 @@ const status = document.querySelector<HTMLElement>("#demo-status");
 
 if (page === null) throw new Error("Missing line-account-management demo element");
 
+const demoData = createLineAccountDemoData();
 page.adapter = createInMemoryLineAccountAdapter(
-  seedProviders,
-  seedMessagingChannels,
-  seedLoginChannels,
-  seedLiffApps,
+  demoData.providers,
+  demoData.messagingChannels,
+  demoData.loginChannels,
+  demoData.liffApps,
 );
 
 const announce = (message: string): void => {

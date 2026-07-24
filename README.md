@@ -116,6 +116,40 @@ const adapter = makeLineProviderManagementAdapter(client);
 consume `LineProviderManagementAdapter` and are intentionally separate from the
 headless package surface.
 
+### Developers Console wrapper
+
+`effect-line-manager/web/developers-console` adds a read-only custom element
+that wraps the [LINE Developers Console](https://developers.line.biz/console/)
+itself, rendering providers → channels → LIFF apps as one expandable hierarchy
+via a credential-aware adapter. It is meant to be hosted where the developer
+session cookie is already in scope (a Manifest V3 browser extension with
+`host_permissions` for `developers.line.biz` is the recommended shape; a
+same-origin backend proxy also works).
+
+```ts
+import {
+  defineLineDevelopersConsoleElements,
+  createLineConsoleAdapter,
+} from "effect-line-manager/web/developers-console";
+
+defineLineDevelopersConsoleElements();
+
+const consoleEl = document.querySelector("line-developers-console")!;
+consoleEl.adapter = createLineConsoleAdapter({
+  endpoints: {
+    providers: "/line-console/providers",
+    channelsByProvider: (providerId) =>
+      `/line-console/providers/${encodeURIComponent(providerId)}/channels`,
+    channel: (channelId) => `/line-console/channels/${encodeURIComponent(channelId)}`,
+    liffApps: (channelId) => `/line-console/channels/${encodeURIComponent(channelId)}/liff-apps`,
+  },
+});
+```
+
+The adapter relies on browser-managed credentials and never accepts a raw
+cookie value. The required endpoints should target a same-origin, host-owned
+proxy that keeps the console session cookie on the server.
+
 ## Development
 
 ```bash
@@ -124,3 +158,21 @@ vp test
 vp check
 vp run build
 ```
+
+### Local Linking in Consumer Apps
+
+When linking `effect-line-manager` locally into a consumer application (e.g., via `file:` or `npm link`), avoid linking the root repository directory directly. Linking the root directory causes Node to resolve duplicate instances of the `effect` package from `effect-line-manager`'s local `node_modules` (due to its `devDependencies`), leading to runtime errors like `Unable to get redacted value` caused by split Effect `Redacted` `WeakMap` registries.
+
+Instead, build and consume the isolated `.dev-package` target:
+
+1. In `effect-line-manager`, run the consumer watcher:
+   ```bash
+   pnpm dev:consumer
+   ```
+2. In your consumer project's `package.json`, point to `.dev-package`:
+   ```json
+   "dependencies": {
+     "@allenthich/effect-line-manager": "file:../path-to/effect-line-manager/.dev-package"
+   }
+   ```
+3. Run `npm install` in the consumer project.
