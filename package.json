@@ -48,7 +48,7 @@
     "express": "^4.22.2",
     "express5": "npm:express@^5.2.1",
     "happy-dom": "^20.10.2",
-    "hono": "^4.12.25",
+    "hono": "^4.12.27",
     "lit": "^3.3.3",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
