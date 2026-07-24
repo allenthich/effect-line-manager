@@ -1,5 +1,13 @@
 # effect-line-manager
 
+## 0.3.0
+
+### Minor Changes
+
+- 00737e5: Add the optional LINE Developers Console hierarchy component and adapter subpath.
+- 084036e: Add LIFF launch URL parameter persistence and on-demand QR code generation.
+- c7f62fd: Add create and delete actions to tree view
+
 ## 0.2.2
 
 ### Patch Changes
